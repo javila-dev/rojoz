@@ -19,3 +19,5 @@ boto3
 # Admin / Static
 django-unfold
 whitenoise>=6.6.0
+
+gunicorn==21.2.0
