@@ -24,6 +24,7 @@
                                 <th>Nombre</th>
                                 <th>Precio base</th>
                                 <th>Máx. descuento</th>
+                                <th>Categorías obligatorias</th>
                                 <th>Área</th>
                                 <th>Habitaciones</th>
                                 <th></th>
@@ -35,6 +36,7 @@
                                 <td class="font-semibold">{{ house_type.name }}</td>
                                 <td>${{ house_type.base_price|floatformat:0|intcomma }}</td>
                                 <td>{{ house_type.max_discount_percent|default:0 }}%</td>
+                                <td>{{ house_type.required_finish_categories.count }}</td>
                                 <td>{{ house_type.area|default:"—" }}</td>
                                 <td>{{ house_type.rooms|default:"—" }}</td>
                                 <td class="text-right">
@@ -44,7 +46,7 @@
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="6" class="text-center text-gray-500 py-6">No hay tipos de casa.</td>
+                                <td colspan="7" class="text-center text-gray-500 py-6">No hay tipos de casa.</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -101,6 +103,12 @@
                         <div>
                             <label class="label"><span class="label-text">Duración (meses)</span></label>
                             {{ form.construction_duration_months }}
+                        </div>
+                    </div>
+                    <div>
+                        <label class="label"><span class="label-text">Categorías de acabado obligatorias</span></label>
+                        <div class="max-h-44 overflow-y-auto rounded-lg border border-gray-200 px-3 py-2 space-y-1 text-sm">
+                            {{ form.required_finish_categories }}
                         </div>
                     </div>
                     <button type="submit" class="btn btn-neutral-elegant w-full">Guardar</button>

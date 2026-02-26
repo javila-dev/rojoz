@@ -29,19 +29,30 @@ class InventoryFlowTests(BaseAppTestCase):
         self.assertContains(response, "Proyecto Norte")
 
     def test_house_type_create_from_list_view(self):
+        category = FinishCategory.objects.create(
+            project=self.project,
+            name="Pisos",
+            order=1,
+            is_active=True,
+        )
         response = self.client.post(
             reverse("inventory:house_type_list", kwargs={"project_id": self.project.id}),
-            {"name": "Casa Premium", "base_price": "250000000"},
+            {
+                "name": "Casa Premium",
+                "base_price": "250000000",
+                "max_discount_percent": "0",
+                "required_finish_categories": [str(category.id)],
+            },
         )
         self.assertEqual(response.status_code, 302)
-        self.assertTrue(
-            HouseType.objects.filter(project=self.project, name="Casa Premium").exists()
-        )
+        house_type = HouseType.objects.filter(project=self.project, name="Casa Premium").first()
+        self.assertIsNotNone(house_type)
+        self.assertEqual(list(house_type.required_finish_categories.values_list("id", flat=True)), [category.id])
 
     def test_house_type_create_supports_colombian_currency_format(self):
         response = self.client.post(
             reverse("inventory:house_type_list", kwargs={"project_id": self.project.id}),
-            {"name": "Casa Formato", "base_price": "250.000.000"},
+            {"name": "Casa Formato", "base_price": "250.000.000", "max_discount_percent": "0"},
         )
         self.assertEqual(response.status_code, 302)
         house_type = HouseType.objects.get(project=self.project, name="Casa Formato")

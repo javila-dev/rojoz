@@ -23,17 +23,18 @@ def project_settings(request, project_id):
 
 def house_type_list(request, project_id):
     project = get_object_or_404(Project, pk=project_id)
-    house_types = project.house_types.all().order_by("name")
+    house_types = project.house_types.prefetch_related("required_finish_categories").all().order_by("name")
 
     if request.method == "POST":
-        form = HouseTypeForm(request.POST)
+        form = HouseTypeForm(request.POST, project=project)
         if form.is_valid():
             house_type = form.save(commit=False)
             house_type.project = project
             house_type.save()
+            form.save_m2m()
             return redirect("inventory:house_type_list", project_id=project.id)
     else:
-        form = HouseTypeForm()
+        form = HouseTypeForm(project=project)
 
     return render(
         request,
@@ -47,12 +48,12 @@ def house_type_edit(request, project_id, pk):
     house_type = get_object_or_404(HouseType, pk=pk, project=project)
 
     if request.method == "POST":
-        form = HouseTypeForm(request.POST, instance=house_type)
+        form = HouseTypeForm(request.POST, instance=house_type, project=project)
         if form.is_valid():
             form.save()
             return redirect("inventory:house_type_list", project_id=project.id)
     else:
-        form = HouseTypeForm(instance=house_type)
+        form = HouseTypeForm(instance=house_type, project=project)
 
     return render(
         request,

@@ -1010,7 +1010,7 @@ def sale_flow_finishes(request, project_id, adjudicacion_id):
     else:
         integration_error = "Configura la URL y API Key en Integraciones para consultar adjudicaciones."
 
-    house_types = project.house_types.all().order_by("name")
+    house_types = project.house_types.prefetch_related("required_finish_categories").all().order_by("name")
     from django.db.models import Prefetch
     finish_categories = (
         FinishCategory.objects.filter(project=project, is_active=True)
@@ -1072,7 +1072,7 @@ def sale_flow_finishes(request, project_id, adjudicacion_id):
                 ).values_list("id", flat=True)
             )
             required_categories = (
-                FinishCategory.objects.filter(project=project, is_required=True, options__is_active=True)
+                selected_house_type.required_finish_categories.filter(is_active=True, options__is_active=True)
                 .distinct()
             )
             if required_categories:
@@ -1128,6 +1128,10 @@ def sale_flow_finishes(request, project_id, adjudicacion_id):
 
     selected_state = request.session.get(session_key, {})
     selected_house_type_id = selected_state.get("house_type_id")
+    required_category_ids_by_house_type = {
+        str(house_type.id): [str(category.id) for category in house_type.required_finish_categories.all()]
+        for house_type in house_types
+    }
     selected_finish_ids = set(str(value) for value in selected_state.get("finish_option_ids", []))
     titular_selection_initialized = "titular_ids" in selected_state
     available_titulares = adjudicacion.get("titulares") or []
@@ -1233,6 +1237,7 @@ def sale_flow_finishes(request, project_id, adjudicacion_id):
             "house_types": house_types,
             "finish_categories": finish_categories,
             "selected_house_type_id": selected_house_type_id,
+            "required_category_ids_by_house_type": required_category_ids_by_house_type,
             "selected_finish_ids": selected_finish_ids,
             "selected_titular_ids": set(selected_titular_ids),
             "titular_selection_initialized": titular_selection_initialized,
@@ -1790,6 +1795,21 @@ def sale_flow_payment_confirm(request, project_id, adjudicacion_id):
             category__project=project,
             is_active=True,
         )
+        selected_category_ids = set(selected_finishes.values_list("category_id", flat=True))
+        required_categories = (
+            house_type.required_finish_categories.filter(is_active=True, options__is_active=True).distinct()
+        )
+        missing_required = [category.name for category in required_categories if category.id not in selected_category_ids]
+        if missing_required:
+            return JsonResponse(
+                {
+                    "error": (
+                        "Debes seleccionar al menos un acabado en las categorías obligatorias: "
+                        + ", ".join(missing_required)
+                    )
+                },
+                status=400,
+            )
         SaleFinish.objects.filter(sale=sale).delete()
         SaleFinish.objects.bulk_create(
             [

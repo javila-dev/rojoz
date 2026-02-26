@@ -160,13 +160,14 @@
                         <p class="text-sm text-gray-600">Selecciona los acabados adicionales.</p>
                     </div>
                     {% for category in finish_categories %}
-                    <details class="border border-gray-100 rounded-lg bg-white group">
+                    <details class="border border-gray-100 rounded-lg bg-white group" data-category-id="{{ category.id }}">
                         <summary class="flex items-center justify-between gap-4 px-4 py-3 cursor-pointer select-none">
                             <span class="text-sm font-semibold text-gray-900">{{ category.name }}</span>
                             <div class="flex items-center gap-3">
-                                {% if category.is_required %}
-                                <span class="badge badge-warning badge-sm">Obligatoria</span>
-                                {% endif %}
+                                <span
+                                    id="required-category-badge-{{ category.id }}"
+                                    class="badge badge-warning badge-sm hidden"
+                                >Obligatoria</span>
                                 <span id="category-summary-{{ category.id }}" class="text-xs text-gray-500">Sin selección</span>
                                 <span class="transition-transform duration-200 group-open:rotate-180 text-gray-500">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -330,11 +331,16 @@
 {% endblock %}
 
 {% block extra_scripts %}
+{{ required_category_ids_by_house_type|json_script:"required-categories-by-house-type" }}
 <script>
     (function () {
         const formatter = new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 });
         const houseTypeInputs = Array.from(document.querySelectorAll('input[name="house_type"]'));
         const finishInputs = Array.from(document.querySelectorAll(".finish-option"));
+        const requiredCategoriesByHouseTypeEl = document.getElementById("required-categories-by-house-type");
+        const requiredCategoriesByHouseType = requiredCategoriesByHouseTypeEl
+            ? JSON.parse(requiredCategoriesByHouseTypeEl.textContent || "{}")
+            : {};
         const baseEl = document.getElementById("base-price");
         const finishesEl = document.getElementById("finishes-price");
         const totalEl = document.getElementById("total-price");
@@ -348,6 +354,16 @@
             const selected = houseTypeInputs.find((input) => input.checked);
             if (!selected) return 0;
             return parseFloat(selected.dataset.maxDiscount || "0") || 0;
+        };
+
+        const getSelectedHouseTypeId = () => {
+            const selected = houseTypeInputs.find((input) => input.checked);
+            return selected ? selected.value : "";
+        };
+
+        const getRequiredCategoryIds = () => {
+            const houseTypeId = getSelectedHouseTypeId();
+            return new Set((requiredCategoriesByHouseType[houseTypeId] || []).map((value) => String(value)));
         };
 
         const getBasePrice = () => {
@@ -389,6 +405,18 @@
                     return;
                 }
                 el.textContent = `${items.length} seleccionados (${formatter.format(total)})`;
+            });
+        };
+
+        const updateRequiredCategoryBadges = () => {
+            const requiredCategoryIds = getRequiredCategoryIds();
+            document.querySelectorAll('[id^="required-category-badge-"]').forEach((el) => {
+                const categoryId = el.id.replace("required-category-badge-", "");
+                if (requiredCategoryIds.has(String(categoryId))) {
+                    el.classList.remove("hidden");
+                } else {
+                    el.classList.add("hidden");
+                }
             });
         };
 
@@ -441,6 +469,7 @@
             if (discountValueEl) discountValueEl.textContent = formatter.format(discount);
             if (maxDiscountLabelEl) maxDiscountLabelEl.textContent = Number.isInteger(maxDiscount) ? `${maxDiscount}` : maxDiscount.toFixed(2);
             totalEl.textContent = formatter.format(total);
+            updateRequiredCategoryBadges();
             updateCategorySummaries();
         };
 

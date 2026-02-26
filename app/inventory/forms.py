@@ -69,6 +69,7 @@ class HouseTypeForm(forms.ModelForm):
             "rooms",
             "bathrooms",
             "construction_duration_months",
+            "required_finish_categories",
         ]
         widgets = {
             "name": forms.TextInput(attrs={"class": "input input-bordered w-full"}),
@@ -78,22 +79,31 @@ class HouseTypeForm(forms.ModelForm):
             "rooms": forms.NumberInput(attrs={"class": "input input-bordered w-full"}),
             "bathrooms": forms.NumberInput(attrs={"class": "input input-bordered w-full"}),
             "construction_duration_months": forms.NumberInput(attrs={"class": "input input-bordered w-full"}),
+            "required_finish_categories": forms.CheckboxSelectMultiple(),
         }
 
     def __init__(self, *args, **kwargs):
+        project = kwargs.pop("project", None)
         super().__init__(*args, **kwargs)
         if self.instance and self.instance.pk and self.instance.base_price is not None:
             self.initial["base_price"] = f"{self.instance.base_price:.0f}"
+        resolved_project = project
+        if resolved_project is None and self.instance and self.instance.pk:
+            resolved_project = self.instance.project
+        if resolved_project is not None:
+            self.fields["required_finish_categories"].queryset = (
+                FinishCategory.objects.filter(project=resolved_project, is_active=True).order_by("order", "name")
+            )
+        self.fields["required_finish_categories"].required = False
 
 
 class FinishCategoryForm(forms.ModelForm):
     class Meta:
         model = FinishCategory
-        fields = ["name", "order", "is_required", "is_active"]
+        fields = ["name", "order", "is_active"]
         widgets = {
             "name": forms.TextInput(attrs={"class": "input input-bordered w-full"}),
             "order": forms.NumberInput(attrs={"class": "input input-bordered w-full"}),
-            "is_required": forms.CheckboxInput(attrs={"class": "checkbox"}),
             "is_active": forms.CheckboxInput(attrs={"class": "checkbox"}),
         }
 

@@ -22,7 +22,6 @@
                             <tr>
                                 <th>Nombre</th>
                                 <th>Orden</th>
-                                <th>Obligatoria</th>
                                 <th>Activa</th>
                                 <th></th>
                             </tr>
@@ -32,11 +31,6 @@
                             <tr>
                                 <td class="font-semibold">{{ category.name }}</td>
                                 <td>{{ category.order }}</td>
-                                <td>
-                                    {% if category.is_required %}
-                                    <span class="badge badge-warning badge-sm">Obligatoria</span>
-                                    {% endif %}
-                                </td>
                                 <td>
                                     {% if category.is_active %}
                                     <span class="badge badge-success badge-sm">Sí</span>
@@ -51,7 +45,7 @@
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="5" class="text-center text-gray-500 py-6">No hay categorías.</td>
+                                <td colspan="4" class="text-center text-gray-500 py-6">No hay categorías.</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -74,10 +68,6 @@
                         <label class="label"><span class="label-text">Orden</span></label>
                         {{ form.order }}
                     </div>
-                    <label class="label cursor-pointer justify-start gap-3">
-                        {{ form.is_required }}
-                        <span class="label-text">Obligatoria</span>
-                    </label>
                     <label class="label cursor-pointer justify-start gap-3">
                         {{ form.is_active }}
                         <span class="label-text">Activa</span>

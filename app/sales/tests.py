@@ -4,6 +4,7 @@ from urllib.error import URLError
 
 from django.urls import reverse
 
+from inventory.models import FinishCategory, FinishOption
 from sales.models import ContractParty, PaymentPlan, PaymentSchedule, Sale, SaleLog
 from users.models import RoleCode
 from users.models import IntegrationSettings
@@ -447,6 +448,76 @@ class SalesFlowTests(BaseAppTestCase):
         )
 
     @patch("sales.views.urlopen")
+    def test_sale_flow_finishes_validates_required_categories_by_house_type(self, mock_urlopen):
+        category = FinishCategory.objects.create(
+            project=self.project,
+            name="Pisos",
+            order=1,
+            is_active=True,
+        )
+        option = FinishOption.objects.create(
+            category=category,
+            name="Porcelanato",
+            price="1800000",
+            unit="m2",
+            is_active=True,
+        )
+        self.house_type.required_finish_categories.add(category)
+        adjudicacion_id = "ADJ-REQ-CAT"
+
+        mocked_response = MagicMock()
+        mocked_response.read.return_value = json.dumps(
+            {
+                "adjudicaciones": [
+                    {
+                        "id": adjudicacion_id,
+                        "inmueble": {"id_inmueble": "INM-REQ-CAT"},
+                        "titulares": [{"id": "111"}],
+                    }
+                ]
+            }
+        ).encode("utf-8")
+        mock_urlopen.return_value.__enter__.return_value = mocked_response
+
+        missing_response = self.client.post(
+            reverse(
+                "sales:sale_flow_finishes",
+                kwargs={"project_id": self.project.id, "adjudicacion_id": adjudicacion_id},
+            ),
+            data={
+                "house_type": str(self.house_type.id),
+                "titulares": ["111"],
+                "discount_amount": "0",
+            },
+        )
+        self.assertEqual(missing_response.status_code, 200)
+        self.assertContains(
+            missing_response,
+            "Debes seleccionar al menos un acabado en las categorías obligatorias: Pisos",
+        )
+
+        ok_response = self.client.post(
+            reverse(
+                "sales:sale_flow_finishes",
+                kwargs={"project_id": self.project.id, "adjudicacion_id": adjudicacion_id},
+            ),
+            data={
+                "house_type": str(self.house_type.id),
+                "titulares": ["111"],
+                "finish_options": [str(option.id)],
+                "discount_amount": "0",
+            },
+        )
+        self.assertEqual(ok_response.status_code, 302)
+        self.assertEqual(
+            ok_response.url,
+            reverse(
+                "sales:sale_flow_payment",
+                kwargs={"project_id": self.project.id, "adjudicacion_id": adjudicacion_id},
+            ),
+        )
+
+    @patch("sales.views.urlopen")
     def test_sale_flow_third_party_search_returns_results(self, mock_urlopen):
         mocked_response = MagicMock()
         mocked_response.read.return_value = json.dumps(
@@ -504,6 +575,39 @@ class SalesFlowTests(BaseAppTestCase):
         )
         self.assertEqual(response.status_code, 400)
         self.assertIn("superan el máximo permitido", response.json()["error"])
+
+    @patch("sales.views.urlopen")
+    def test_sale_flow_payment_confirm_validates_required_categories_by_house_type(self, mock_urlopen):
+        category = FinishCategory.objects.create(
+            project=self.project,
+            name="Cocina",
+            order=2,
+            is_active=True,
+        )
+        FinishOption.objects.create(
+            category=category,
+            name="Meson granito",
+            price="2200000",
+            unit="global",
+            is_active=True,
+        )
+        self.house_type.required_finish_categories.add(category)
+        adjudicacion_id = self._set_confirm_session("ADJ-CONFIRM-REQ-CAT")
+
+        mocked_response = MagicMock()
+        mocked_response.read.return_value = json.dumps(
+            {"adjudicaciones": [{"id": adjudicacion_id, "inmueble": {}, "titulares": []}]}
+        ).encode("utf-8")
+        mock_urlopen.return_value.__enter__.return_value = mocked_response
+
+        response = self.client.post(
+            reverse(
+                "sales:sale_flow_payment_confirm",
+                kwargs={"project_id": self.project.id, "adjudicacion_id": adjudicacion_id},
+            )
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("categorías obligatorias", response.json()["error"])
 
     @patch("sales.views.urlopen")
     def test_sale_flow_payment_confirm_edit_mode_rejects_non_pending_sale(self, mock_urlopen):

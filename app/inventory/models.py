@@ -105,6 +105,12 @@ class HouseType(models.Model):
         blank=True,
         null=True,
     )
+    required_finish_categories = models.ManyToManyField(
+        "FinishCategory",
+        blank=True,
+        related_name="required_by_house_types",
+        verbose_name="Categorías de acabado obligatorias",
+    )
 
     # Anexos Técnicos (PDFs)
     blueprint_file = models.FileField(
