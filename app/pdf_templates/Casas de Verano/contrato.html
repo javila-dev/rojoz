@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+<style>
+@page {
+  size: legal portrait;
+  margin: 1.5cm 1.8cm 1.5cm 1.8cm;
+
+  @bottom-center {
+    content: "Página " counter(page) " de " counter(pages);
+    font-family: "Inter", Arial, sans-serif;
+    font-size: 8px;
+    color: #999;
+  }
+}
+
+@font-face {
+  font-family: "Inter";
+  src: url("fonts/Inter_18pt-Regular.ttf");
+  font-weight: 400;
+}
+@font-face {
+  font-family: "Inter";
+  src: url("fonts/Inter_18pt-Medium.ttf");
+  font-weight: 500;
+}
+@font-face {
+  font-family: "Inter";
+  src: url("fonts/Inter_18pt-SemiBold.ttf");
+  font-weight: 600;
+}
+@font-face {
+  font-family: "Inter";
+  src: url("fonts/Inter_18pt-Bold.ttf");
+  font-weight: 700;
+}
+@font-face {
+  font-family: "Inter";
+  src: url("fonts/Inter_18pt-Light.ttf");
+  font-weight: 300;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: "Inter", Arial, Helvetica, sans-serif;
+  font-size: 10.5px;
+  line-height: 1.55;
+  color: #1a1a2e;
+  margin: 0;
+}
+
+/* ── Header ── */
+.header-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 10px;
+}
+
+.header-table td {
+  vertical-align: middle;
+  border: none;
+  padding: 0;
+}
+
+.header-logo-left,
+.header-logo-right {
+  width: 14%;
+  text-align: center;
+}
+
+.header-logo-left img,
+.header-logo-right img {
+  width: 120px;
+  height: auto;
+}
+
+.header-center {
+  width: 72%;
+  text-align: center;
+}
+
+.header-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f2b46;
+  letter-spacing: 0.5px;
+  margin: 0;
+  padding: 0;
+}
+
+.header-subtitle {
+  font-size: 12px;
+  font-weight: 500;
+  color: #3a6b8c;
+  margin-top: 2px;
+}
+
+.header-divider {
+  border: none;
+  border-top: 2.5px solid #0f2b46;
+  margin: 10px 0 6px 0;
+}
+
+.header-divider-accent {
+  border: none;
+  border-top: 1px solid #c8a45a;
+  margin: 0 0 18px 0;
+}
+
+/* ── Body ── */
+.contract-body {
+  text-align: justify;
+  font-weight: 400;
+}
+
+.contract-body p {
+  margin-bottom: 6px;
+}
+
+.clause-title {
+  font-weight: 700;
+  color: #0f2b46;
+  text-transform: uppercase;
+  font-size: 10.5px;
+}
+
+.paragrafo-label {
+  font-weight: 600;
+  color: #3a6b8c;
+}
+
+/* ── Parties info ── */
+.party-highlight {
+  font-weight: 700;
+  color: #0f2b46;
+}
+
+.clientes-list {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0 10px 0;
+}
+
+.clientes-list li {
+  padding: 5px 10px;
+  margin-bottom: 3px;
+  background: #f4f7fa;
+  border-left: 3px solid #c8a45a;
+  font-size: 10.5px;
+}
+
+.clientes-list li b {
+  color: #0f2b46;
+}
+
+.clientes-list .field-label {
+  font-weight: 600;
+  color: #3a6b8c;
+}
+
+/* ── Obligations list ── */
+.obligations-list {
+  margin: 6px 0 8px 16px;
+  padding: 0;
+}
+
+.obligations-list li {
+  margin-bottom: 4px;
+  padding-left: 4px;
+}
+
+/* ── Acabados Table ── */
+.acabados-section {
+  margin: 10px 0;
+}
+
+.acabados-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10px;
+}
+
+.acabados-table th {
+  background: #0f2b46;
+  color: #fff;
+  font-weight: 600;
+  padding: 7px 8px;
+  text-align: left;
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.acabados-table th:last-child {
+  text-align: right;
+}
+
+.acabados-table td {
+  border-bottom: 1px solid #e2e8f0;
+  padding: 6px 8px;
+  font-size: 10px;
+}
+
+.acabados-table td:last-child {
+  text-align: right;
+}
+
+.acabados-table tr:nth-child(even) td {
+  background: #f8fafc;
+}
+
+/* ── Signatures ── */
+.signatures-section {
+  margin-top: 30px;
+}
+
+.sig-block {
+  display: inline-block;
+  width: 48%;
+  text-align: center;
+  vertical-align: top;
+  margin-bottom: 20px;
+  padding: 0 10px;
+}
+
+.sig-block:nth-child(odd) {
+  margin-right: 3%;
+}
+
+.sig-line {
+  border-top: 1.5px solid #1a1a2e;
+  margin: 50px auto 0 auto;
+  width: 85%;
+  padding-top: 6px;
+  font-size: 10px;
+}
+
+.sig-role {
+  font-weight: 600;
+  color: #0f2b46;
+  font-size: 10px;
+  margin-top: 2px;
+}
+
+/* ── Django wrapper ── */
+.django-template-wrapper {
+  font-size: 10.5px;
+  font-family: "Inter", Arial, Helvetica, sans-serif;
+}
+
+/* ── Anexo ── */
+.page-break {
+  page-break-before: always;
+}
+.no-append {
+  page-break-before: always;
+}
+
+.anexo-header {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.anexo-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f2b46;
+  letter-spacing: 0.3px;
+}
+
+.anexo-subtitle {
+  font-size: 11px;
+  font-weight: 500;
+  color: #3a6b8c;
+  margin-top: 2px;
+}
+
+.anexo-ref {
+  font-size: 10px;
+  color: #666;
+  margin-top: 4px;
+}
+
+.anexo-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10px;
+  margin-top: 14px;
+  table-layout: auto;
+}
+
+.anexo-table thead th {
+  background: #0f2b46;
+  color: #fff;
+  font-weight: 600;
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+.anexo-table thead th.col-precio {
+  text-align: right;
+}
+
+.anexo-table tbody td {
+  border-bottom: 1px solid #e2e8f0;
+  padding: 10px 14px;
+  font-size: 10px;
+  vertical-align: top;
+  line-height: 1.6;
+}
+
+.anexo-table tbody td.col-precio {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.anexo-table tbody tr:nth-child(even) td {
+  background: #f8fafc;
+}
+
+.anexo-table .category-row td {
+  background: #edf2f7 !important;
+  font-weight: 600;
+  color: #0f2b46;
+  border-bottom: 2px solid #c8a45a;
+  border-top: 1px solid #d1d9e0;
+  padding: 10px 14px;
+  font-size: 10px;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.anexo-table tfoot td {
+  border-top: 2.5px solid #0f2b46;
+  font-weight: 700;
+  color: #0f2b46;
+  padding: 12px 14px;
+  font-size: 10.5px;
+}
+
+.anexo-table tfoot td.col-precio {
+  text-align: right;
+}
+
+.anexo-note {
+  font-size: 9.5px;
+  color: #666;
+  margin-top: 12px;
+  font-style: italic;
+}
+
+/* WeasyPrint fixes */
+table { table-layout: fixed; width: 100%; }
+.anexo-table { table-layout: auto; }
+td, th { vertical-align: top; }
+</style>
+</head>
+<body>
+{% load humanize %}
+
+<!-- ═══════════ HEADER ═══════════ -->
+<table class="header-table">
+  <tbody>
+    <tr>
+      <td class="header-center">
+        <div class="header-title">CONTRATO DE CONSTRUCCIÓN DE VIVIENDA LLAVE EN MANO</div>
+        <div class="header-subtitle">Nro. {{ venta.contract_number }}</div>
+      </td>
+      <td class="header-logo-right">
+        <img src="https://s3.2asoft.tech/construccion-media-public/document_assets/logo_rojoz.png" alt="Andina Conceptos"/>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<hr class="header-divider"/>
+<hr class="header-divider-accent"/>
+
+<!-- ═══════════ CONTRATO ═══════════ -->
+<div class="contract-body">
+
+<p><span class="clause-title">Entre los suscritos a saber:</span> Por una parte, <span class="party-highlight">EDGAR ROBERT GALEANO ARANGO</span>, identificado con cédula de ciudadanía número <b>71.335.951</b>, en su condición de Representante Legal de la sociedad denominada <span class="party-highlight">CONSTRUCTORA ROJOZ S.A.S.</span> con NIT: <b>900.396.340-3</b>, sociedad con domicilio en la ciudad de Medellín, inscrita en la Cámara de Comercio de Medellín para Antioquia, con la matrícula mercantil No. 21-439821-12, con dirección de notificación en Calle 9 sur # 79c-151 apto 2405, correo electrónico constructorarojoz@gmail.com y teléfono 3054784426, quien para los efectos del presente contrato se denomina <span class="party-highlight">EL CONTRATISTA</span>, y de la otra parte, EL(LOS) SEÑOR(ES):</p>
+
+<div class="django-template-wrapper">
+<ul class="clientes-list">{% for cliente in clientes %}
+<li><b>{{ cliente.full_name }}</b> — <span class="field-label">C.C.</span> <b>{{ cliente.document_number }}</b>{% if cliente.phone or cliente.mobile %} — <span class="field-label">Tel:</span> {{ cliente.phone|default:cliente.mobile }}{% endif %}{% if cliente.address %} — <span class="field-label">Dir:</span> {{ cliente.address }}{% if cliente.city_name or cliente.city or cliente.department or cliente.country %}, {{ cliente.city_name|default:cliente.city }}{% if cliente.department %}, {{ cliente.department }}{% endif %}{% if cliente.country %}, {{ cliente.country }}{% endif %}{% endif %}{% endif %}{% if cliente.email %} — <span class="field-label">Email:</span> {{ cliente.email }}{% endif %}</li>
+{% endfor %}</ul>
+</div>
+
+<p>Quien(es) para los efectos del presente contrato se denomina(n) <span class="party-highlight">EL(LOS) CONTRATANTE(S)</span> y ambos conjuntamente se denominarán <span class="party-highlight">LAS PARTES</span>, hemos decidido celebrar el presente contrato de OBRA CIVIL, de acuerdo a los preceptos establecidos en nuestra Legislación Civil colombiana y demás normas concordantes, y según las siguientes cláusulas:</p>
+
+<p><span class="clause-title">PRIMERA: OBJETO DEL CONTRATO Y DESCRIPCIÓN DEL INMUEBLE.</span> El presente contrato tiene por objeto la <b>CONSTRUCCIÓN A TODO COSTO</b> de una vivienda tipo <b>{{ venta.house_type.name }}</b> ({{ venta.house_type.description }}), que EL CONTRATISTA se obliga a ejecutar para EL CONTRATANTE en el inmueble <b>{{ venta.lot_metadata.id_inmueble|default:"___" }}</b>, del conjunto residencial denominado <b>"CONJUNTO RESIDENCIAL FRACTAL CASAS DE VERANO"</b>, en jurisdicción del municipio de Moñitos, departamento de Córdoba. La vivienda contará con un área construida aproximada de <b>{{ venta.house_type.area }} m²</b> y será entregada completamente terminada y apta para su uso, conforme a los diseños arquitectónicos y constructivos, especificaciones técnicas, materiales y acabados contenidos en el Anexo No. 1, el cual forma parte integral del presente contrato.</p>
+
+
+<p><span class="clause-title">SEGUNDA: DURACIÓN DEL CONTRATO.</span> El CONTRATO DE OBRA tiene una duración de <b>{{ meses_total }} meses</b>, la fecha de entrega estará programada para el día <b>{{ fecha_entrega|date:"d \d\e F \d\e Y" }}</b>.</p>
+
+<p><span class="clause-title">TERCERA: VALOR DEL CONTRATO Y FORMA DE PAGO.</span> El valor del presente contrato es la suma de <b>${{ venta.final_price|floatformat:0|intcomma|default:"________________________" }}</b>, que EL CONTRATANTE se obliga a pagar a EL CONTRATISTA conforme a la forma, plazos y condiciones aquí estipulados.</p>
+
+<p><span class="paragrafo-label">PARÁGRAFO 1:</span> Estas condiciones económicas corresponden a lo previamente convenido en el Anexo No. 2 — Acuerdo de Negociación, el cual forma parte integral del presente contrato y constituye obligación clara, expresa y exigible para las partes.</p>
+
+<p><span class="clause-title">CUARTA: GARANTÍA DE PAGO.</span> EL CONTRATISTA podrá exigir a EL CONTRATANTE la constitución de garantías reales o personales que respalden el cumplimiento de las obligaciones económicas derivadas del presente contrato.</p>
+
+<p><span class="paragrafo-label">PARÁGRAFO 1:</span> Para tal efecto, EL CONTRATANTE suscribe a favor de EL CONTRATISTA un pagaré con su respectiva carta de instrucciones, el cual se incorpora como Anexo No. 3 y forma parte integral del presente contrato.</p>
+
+<p><span class="clause-title">QUINTA: ANTICIPO.</span> Corresponde a la cuota inicial, equivalente al <b>70%</b> del valor del contrato, según lo descrito en la cláusula CUARTA. Este valor se cancelará de acuerdo con la forma de pago establecida y la obra no iniciará hasta que dicho anticipo haya sido pagado en su totalidad.</p>
+
+<p><span class="clause-title">SEXTA: LICENCIA DE CONSTRUCCIÓN.</span> EL CONTRATISTA tendrá un plazo preliminar de <b>{{ meses_inicio_obra }}</b> meses para la solicitud y obtención de la licencia de construcción de la vivienda, siempre y cuando cumpla con todos los requerimientos jurídicos por parte del contratante para la solicitud de la misma.</p>
+
+<p><span class="clause-title">SÉPTIMA: INICIO DE OBRA.</span> El inicio de la ejecución material de la obra estará condicionado al pago total del anticipo señalado en la Cláusula QUINTA y a la obtención de la licencia de construcción prevista en la Cláusula SEXTA.</p>
+
+<p><span class="clause-title">OCTAVA: SUSPENSIÓN POR MORA.</span> El incumplimiento en el pago de cualquiera de las obligaciones económicas a cargo de EL CONTRATANTE faculta a EL CONTRATISTA para suspender de inmediato la ejecución de la obra, sin requerimiento previo y sin que ello constituya incumplimiento contractual para el contratista.</p>
+
+<p><span class="paragrafo-label">PARÁGRAFO 1:</span> El tiempo de suspensión prorrogará de manera automática el plazo de ejecución y la fecha de entrega de la obra por un período equivalente al de la mora, sin que haya lugar a penalidades o reclamaciones contra EL CONTRATISTA.</p>
+
+<p><span class="paragrafo-label">PARÁGRAFO 2:</span> Durante la suspensión, los costos de vigilancia, administración, custodia, mantenimiento y permanencia de la obra serán asumidos por EL CONTRATANTE.</p>
+
+<p><span class="clause-title">NOVENA: OBLIGACIONES DEL CONTRATISTA.</span> El contratista se obliga para con el contratante a ejecutar la obra en las fechas y en el término señalado en el presente documento, y de acuerdo con la descripción, planos, especificaciones y cotizaciones previamente estudiados y aprobados por el contratante, que se anexan como parte integral del mismo. El contratante se reserva el derecho a rechazar cualquier parte de la obra que no esté acorde con las especificaciones contratadas. Adicionalmente el contratista deberá:</p>
+
+<ol class="obligations-list">
+  <li>Poner al servicio del contratante toda su experiencia, conocimiento y, en general, todos los recursos y medios que sean necesarios para cumplir a cabalidad con el objeto del presente contrato.</li>
+  <li>Cumplir en forma eficiente y oportuna el objeto del presente contrato y, en especial, aquellas obligaciones expresamente anotadas en el presente documento.</li>
+  <li>Asignar personal idóneo para el desarrollo del servicio requerido por las autoridades competentes para la ejecución del objeto de este contrato.</li>
+  <li>Cumplir con los principios de eficiencia y calidad en la prestación del servicio.</li>
+  <li>Garantizar que todo el personal cumpla responsablemente con todos los principios, valores, normas, estándares, procedimientos y disposiciones generales y/o específicas que permitan garantizar la seguridad y salud ocupacional, la protección del medio ambiente, así como la calidad del servicio contratado.</li>
+  <li>Expedir pólizas de buen manejo del anticipo y estabilidad de la obra.</li>
+  <li>Presentar al contratante las facturas de cobro cada vez que se realice un pago.</li>
+</ol>
+
+<p><span class="paragrafo-label">PARÁGRAFO 1:</span> El contratista deberá verificar todas las especificaciones, estudios de suelo, cálculos, diseño y medidas de la obra, los cuales hacen parte integral del contrato, para que con previa revisión y aceptación por parte del contratista, ejecute la obra objeto de este contrato, sin que pueda alegar falta o ausencia de responsabilidad para el no cumplimiento de la garantía, toda vez que es responsabilidad y obligación del contratista revisar que el diseño entregado sea idóneo y cumpla con los requisitos necesarios.</p>
+
+<p><span class="paragrafo-label">PARÁGRAFO 2:</span> El contratista no podrá alegar falta o ausencia de responsabilidad para el no cumplimiento de la garantía por casos de fuerza mayor como eventos de la naturaleza, cuando dichos eventos sean los que se busquen precaver con la obra a ejecutar y estén previstos en el diseño de la misma.</p>
+
+<p><span class="paragrafo-label">PARÁGRAFO 3:</span> Antes de iniciar la obra, el contratista obtendrá las afiliaciones a la seguridad social integral para el personal a su cargo, quienes deberán estar completamente uniformados y dotados con los elementos de protección personal (cascos, botas, gafas de protección, guantes, arnés, eslingas, tapa oído y tapaboca). El contratista presentará junto con la cuenta de cobro copia de la Planilla de afiliación a ARL o Seguridad Social del personal para efectos del cumplimiento de la Ley 1562 y el Decreto 723 de 2013. Es de estricto cumplimiento reportar el accidente de trabajo de inmediato a la ARL o a más tardar el día siguiente. Las Planillas de afiliación del personal serán requisito para efectuar el pago y permitir el ingreso del personal a la obra. El contratista deberá permitir al contratante realizar visitas al lugar de ejecución, conforme a la norma 1562 de 2012 y al Decreto 1295, y está obligado a capacitar a los trabajadores sobre los riesgos y promover el buen uso de los EPP y autocuidado.</p>
+
+<p><span class="paragrafo-label">PARÁGRAFO 4:</span> El contratista deberá aportar a la firma del presente contrato los certificados de cursos en altura, certificado para trabajos eléctricos RETIE, certificado para excavaciones o cualquier otro certificado necesario para la ejecución de la obra.</p>
+
+<p><span class="paragrafo-label">PARÁGRAFO 5:</span> Las especificaciones constructivas están explícitas en el Anexo No. 1 que se adjunta al contrato y que hace parte integral del presente contrato.</p>
+
+<p><span class="clause-title">DÉCIMA: OBLIGACIONES DEL CONTRATANTE.</span> EL CONTRATANTE se obliga para con el contratista a los pagos señalados en la cláusula CUARTA del presente contrato, en los valores, formas y fechas establecidas.</p>
+
+<p><span class="clause-title">DÉCIMA PRIMERA: CALIDAD DE LA OBRA.</span> El contratista, sin perjuicio de su responsabilidad, garantiza la buena calidad de la construcción. Si el contratante da a la obra o a sus partes destinación inadecuada, o permite que personas diferentes al contratista o a sus técnicos ejecuten modificaciones o reparaciones en ellas, esto se acompaña de una evaluación de desempeño al contratista cada dos meses y al finalizar la obra, en la cual se califica: oportunidad en la entrega, reclamos y/o quejas, cumplimiento legal (calidad, SISO y otros), calidad del servicio, garantías, adaptación y uso de recursos.</p>
+
+<p><span class="clause-title">DÉCIMA SEGUNDA: APROBACIÓN DEL DISEÑO.</span> Con la firma del presente contrato, el contratista manifiesta que ha realizado los planos, diseños, cotizaciones y especificaciones y que estas cumplen con los requerimientos y normas técnicas que exige la obra en cuanto a la seguridad y estabilidad de la misma. Dichos planos y diseños se anexan al presente contrato y forman parte integral del mismo, previa aprobación por parte del contratante.</p>
+
+<p><span class="paragrafo-label">PARÁGRAFO 1:</span> El contratista se compromete a informar y capacitar a su personal sobre las especificaciones del diseño y sistema constructivo y a entregar el registro de ello.</p>
+
+<p><span class="clause-title">DÉCIMA TERCERA: DAÑOS A TERCEROS.</span> El contratista responderá de los daños que él o sus dependientes ocasionen a terceros durante la vigencia de la garantía de estabilidad, por un término superior a un año contado a partir del momento de recibo a satisfacción de la obra (según la garantía discriminada en la cláusula DÉCIMA NOVENA), y no habrá lugar a ningún tipo de solidaridad por parte del contratante.</p>
+
+<p><span class="clause-title">DÉCIMA CUARTA: TERMINACIÓN DEL CONTRATO.</span> El contratante podrá dar por terminado este contrato por las siguientes causas: a) Muerte o incapacidad económica del contratista, o disolución si se trata de sociedad; b) Incumplimiento del contratista de cualquiera de sus obligaciones; c) Que se ejecuten los trabajos en forma tal que no garantice razonablemente su terminación oportuna. El contratista deberá exigir un acta de terminación de la obra al Jefe de Obra, la cual será requisito para el pago final, además debe hacer la entrega de la totalidad de las herramientas que le fueron puestas a su disposición y obtener un paz y salvo por todo concepto.</p>
+
+<p><span class="clause-title">DÉCIMA QUINTA: AMPLIACIONES.</span> El contratista tendrá una prórroga de <b>180 días calendario</b> contados a partir de la fecha de entrega pactada, previa justificación por actos de fuerza mayor tales como ola invernal, paros de transportadores o afines de la construcción, paros en la zona por lugareños y/o nativos, incumplimiento en el acuerdo de pago de EL CONTRATANTE y todo aquello que interfiera en el programa de trabajo para hacer entrega a satisfacción de la casa.</p>
+
+<p><span class="clause-title">DÉCIMA SEXTA: SUMINISTRO DE LOS MATERIALES.</span> Los materiales necesarios para la ejecución de la obra serán suministrados en su totalidad por el contratista, y estos deberán contar con la calidad, idoneidad, especificaciones y características necesarias para garantizar la estabilidad de la obra. Asimismo, debe velar por el buen uso y cuidado de las herramientas de trabajo puestas a su disposición.</p>
+
+<p><span class="clause-title">DÉCIMA SÉPTIMA: VISITAS DE OBRA.</span> EL CONTRATANTE deberá programar cualquier visita a la obra con una antelación mínima de quince (15) días calendario, a fin de que EL CONTRATISTA pueda organizar la logística necesaria para dicha visita.</p>
+
+<p><span class="clause-title">DÉCIMA OCTAVA: MODIFICACIONES.</span> Cualquier modificación a este documento deberá hacerse por escrito con las firmas de las dos (2) partes y se denominará otrosí al contrato inicial, en este debe estar el valor adicional si lo hubiese y la forma de pago.</p>
+
+<p><span class="clause-title">DÉCIMA NOVENA: GARANTÍAS.</span> Las garantías que el contratista dará al contratante serán por medio de pólizas cuyas coberturas se describen a continuación: Póliza de buen manejo del anticipo por el 100% durante la ejecución del contrato; Póliza de cumplimiento del contrato por el 30% del valor final pactado durante la ejecución de las obras, adicionando dos meses más después del acta de recibo final a satisfacción; Póliza de estabilidad y calidad de la obra por el 20% del valor final pactado del contrato con una duración de tres años contados después del acta de recibo final a satisfacción.</p>
+
+<p><span class="clause-title">VIGÉSIMA: INDEPENDENCIA DEL CONTRATISTA.</span> El contratista actuará con absoluta autonomía en el sentido de no estar sometido a subordinación laboral con el contratante y sus derechos se limitarán, de acuerdo con la naturaleza del contrato, a exigir el cumplimiento de las obligaciones del contratante y al pago de los honorarios estipulados por la prestación del servicio.</p>
+
+<p><span class="clause-title">VIGÉSIMA PRIMERA: EXCLUSIÓN DE LA RELACIÓN LABORAL.</span> Queda claramente entendido que no existirá relación laboral alguna entre el contratante y el contratista, o entre el contratante y el personal que el contratista utilice en la ejecución del objeto del presente contrato. La naturaleza de la relación jurídica que vincula a las partes en ningún evento será de tipo laboral; esta solamente será de tipo civil y comercial.</p>
+
+<p><span class="clause-title">VIGÉSIMA SEGUNDA: CESIÓN DEL CONTRATO.</span> El contratista no podrá ceder parcial ni totalmente la ejecución del presente contrato a un tercero, salvo previa autorización y aceptación expresa y escrita del contratante.</p>
+
+<p><span class="clause-title">VIGÉSIMA TERCERA: AUTORIZACIÓN PARA EL TRATAMIENTO DE DATOS PERSONALES.</span> Para efectos de la protección de los datos personales y su tratamiento, de acuerdo a lo establecido en la Ley 1581 de 2012 y su Decreto Reglamentario 1377 de 2013, EL CONTRATANTE autoriza de manera libre, expresa y voluntaria a EL CONTRATISTA, la sociedad CONSTRUCTORA ROJOZ S.A.S., para recolectar, manejar, almacenar, usar, circular, actualizar y cruzar información propia, con el fin de facilitar la venta de bienes y prestación de servicios, adelantar las acciones de cobro y de recuperación de cartera, reportar a centrales de riesgo cuando corresponda, y demás fines que estipule la empresa en cumplimiento de la obligación contractual derivada de este contrato. El alcance de la autorización comprende la facultad para que la empresa envíe mensajes con contenidos institucionales, notificaciones, información del estado de cuenta, saldos, cuotas pendientes de pago, y demás información relativa al contrato suscrito, mediante correo electrónico, mensajes de texto, mensajes WhatsApp y correspondencia a la dirección de residencia. Adicionalmente, manifiesta que la sociedad CONSTRUCTORA ROJOZ S.A.S., sus filiales, sucursales o subordinados podrán realizar las consultas, reportes y actualizaciones necesarias en cumplimiento del SAGRILAFT y en bancos de datos de comportamiento crediticio y comercial.</p>
+
+<p><span class="clause-title">VIGÉSIMA CUARTA: CLÁUSULA PENAL.</span> Será causal de incumplimiento del acuerdo por parte de EL CONTRATANTE: 1) El desistimiento o determinación de no continuar con las obligaciones del contrato; 2) El incumplimiento de cualquiera de las cláusulas convenidas; 3) La mora por más de sesenta (60) días calendario en el pago de cualquiera de las cuotas establecidas; 4) La aparición en listas restrictivas o la condena proveniente de delitos relacionados con lavado de activos y financiación del terrorismo. Dichas causales darán derecho a EL CONTRATISTA de declarar extrajudicialmente la terminación unilateral del contrato y cobrará a EL CONTRATANTE, a título de cláusula penal, el equivalente al <b>veinte por ciento (20%)</b> del valor total del contrato. En caso de quedar un saldo a favor de EL CONTRATANTE, luego de deducir el valor de la cláusula penal, será devuelto por EL CONTRATISTA sin generación de intereses, en un máximo de trescientos sesenta (360) días calendario contados a partir de la solicitud escrita de devolución.</p>
+
+<p>Será causal de incumplimiento por parte de EL CONTRATISTA el desistimiento injustificado o la determinación de no continuar con las obligaciones del contrato, lo que faculta a EL CONTRATANTE al cobro de la cláusula penal equivalente al <b>veinte por ciento (20%)</b> del valor del acuerdo y la restitución de los valores cancelados. EL CONTRATISTA acordará con EL CONTRATANTE los plazos, fechas y montos para la devolución; de no existir acuerdo, se fijará un plazo máximo de trescientos sesenta (360) días calendario.</p>
+
+<p><span class="paragrafo-label">PARÁGRAFO 1:</span> En caso de que el incumplimiento por parte de EL CONTRATISTA se genere por caso fortuito o fuerza mayor comprobable e imputable al presente contrato, se podrá exonerar del pago de la cláusula penal pactada.</p>
+
+<p><span class="clause-title">VIGÉSIMA QUINTA: ARBITRAMENTO.</span> Toda controversia o diferencia relativa a este contrato se resolverá por un Tribunal de Arbitramento presentado ante el Centro de Conciliación y Arbitraje de la Cámara de Comercio de Medellín para Antioquia, sujeto a sus reglamentos. El Tribunal estará integrado por tres (3) árbitros designados por dicho Centro, a solicitud de cualquiera de las partes, siendo la parte convocante quien asuma todos los costos generados por el proceso.</p>
+
+<p><span class="clause-title">VIGÉSIMA SEXTA: ACUERDOS ANTERIORES.</span> Las partes manifiestan que no reconocen la validez de estipulaciones verbales relacionadas con el presente acuerdo, ya que este constituye el acuerdo completo y total entre las partes. Cualquier reclamo, solicitud, queja, petición o información que afecte directamente el objeto de este acuerdo debe ser comunicado únicamente por medio escrito y será respondido dentro del término legal.</p>
+
+<p><span class="clause-title">VIGÉSIMA SÉPTIMA: DECLARACIONES.</span> Declara EL CONTRATANTE: 1) Que los recursos económicos utilizados son de origen lícito; 2) Que la dirección oficial de correspondencia es la anotada en el encabezamiento de este contrato; 3) Que está(n) de acuerdo con el contenido de todas las cláusulas del presente acuerdo; 4) Que es su obligación informar por escrito a EL CONTRATISTA cualquier cambio de dirección o teléfonos; 5) Que es su obligación pagar oportunamente cualquiera de las obligaciones pecuniarias enunciadas en este acuerdo.</p>
+
+<p><span class="clause-title">VIGÉSIMA OCTAVA: LIQUIDACIÓN DEL CONTRATO.</span> Se hará entre el contratante y el contratista, una vez se haya cumplido la entrega de obra, la liquidación del contrato, teniendo en cuenta: a) Última acta de obra ejecutada y b) Estado de cuenta.</p>
+
+<p><span class="clause-title">VIGÉSIMA NOVENA: DERECHO DE RETENCIÓN.</span> EL CONTRATISTA podrá ejercer derecho de retención sobre la obra y abstenerse de realizar la entrega material y de llaves hasta que EL CONTRATANTE se encuentre a paz y salvo por todo concepto.</p>
+
+<!-- ═══════════ FIRMA ═══════════ -->
+<p style="margin-top: 16px;">En señal de aceptación de lo aquí suscrito, firman LAS PARTES el día {% now "d" %} de {% now "F" %} de {% now "Y" %}, en la ciudad de Medellín.</p>
+
+<div class="signatures-section">
+
+<!-- Firma del contratista -->
+<div class="sig-block">
+  <div class="sig-line">
+    EDGAR ROBERT GALEANO ARANGO<br/>
+    C.C. 71.335.951<br/>
+    Rep. Legal — CONSTRUCTORA ROJOZ S.A.S.<br/>
+    NIT 900.396.340-3
+    <div class="sig-role">EL CONTRATISTA</div>
+  </div>
+</div>
+
+<!-- Firma de cada comprador -->
+<div class="django-template-wrapper">{% for cliente in clientes %}
+<div class="sig-block">
+  <div class="sig-line">
+    {{ cliente.full_name }}<br/>
+    C.C. {{ cliente.document_number }}{% if cliente.city_name or cliente.city or cliente.department or cliente.country %}<br/>
+    {{ cliente.city_name|default:cliente.city }}{% if cliente.department %}, {{ cliente.department }}{% endif %}{% if cliente.country %}, {{ cliente.country }}{% endif %}{% endif %}
+    <div class="sig-role">CONTRATANTE</div>
+  </div>
+</div>
+{% endfor %}</div>
+
+</div>
+
+</div>
+
+<!-- ═══════════ ANEXO No. 1 ═══════════ -->
+<div class="page-break no-append"></div>
+
+<table class="header-table">
+  <tbody>
+    <tr>
+      <td class="header-center">
+        <div class="anexo-title">ANEXO No. 1 — ESPECIFICACIONES DE ACABADOS</div>
+        <div class="anexo-subtitle">Contrato Nro. {{ venta.contract_number }}</div>
+        <div class="anexo-ref">{{ venta.house_type.name }} — {{ venta.lot_metadata.id_inmueble|default:"" }}</div>
+      </td>
+      <td class="header-logo-right">
+        <img src="https://s3.2asoft.tech/construccion-media-public/document_assets/logo_rojoz.png" alt="Andina Conceptos"/>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<hr class="header-divider"/>
+<hr class="header-divider-accent"/>
+
+<div class="contract-body">
+
+<p>El presente anexo forma parte integral del contrato de construcción Nro. <b>{{ venta.contract_number }}</b> y detalla las especificaciones de acabados seleccionados por <span class="party-highlight">EL(LOS) CONTRATANTE(S)</span> para la vivienda tipo <b>{{ venta.house_type.name }}</b>.</p>
+
+<div class="django-template-wrapper">
+<table class="anexo-table">
+  <thead>
+    <tr>
+      <th style="width: 28%;">Acabado</th>
+      <th style="width: 48%;">Descripción</th>
+      <th class="col-precio" style="width: 24%;">Precio</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% load humanize %}
+    {% for sf in acabados %}
+    {% ifchanged sf.finish.category.name %}
+    <tr class="category-row">
+      <td colspan="3">{{ sf.finish.category.name|default:"Sin categoría" }}</td>
+    </tr>
+    {% endifchanged %}
+    <tr>
+      <td>{{ sf.finish.name }}{% if sf.finish.max_value_per_unit %}<br/><span style="color: #666; font-size: 8.5px; font-style: italic;">Valor tope: ${{ sf.finish.max_value_per_unit|floatformat:0|intcomma }}{% if sf.finish.unit %} / {{ sf.finish.unit }}{% endif %}</span>{% endif %}</td>
+      <td>{{ sf.finish.description|default:"—" }}</td>
+      <td class="col-precio">${{ sf.price_snapshot|floatformat:0|intcomma }}</td>
+    </tr>
+    {% empty %}
+    <tr>
+      <td colspan="3" style="text-align: center; color: #999; padding: 20px;">No se seleccionaron acabados adicionales.</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+  {% if acabados %}
+  <tfoot>
+    <tr>
+      <td colspan="2">TOTAL ACABADOS</td>
+      <td class="col-precio">${{ total_acabados|floatformat:0|intcomma }}</td>
+    </tr>
+  </tfoot>
+  {% endif %}
+</table>
+</div>
+
+<p class="anexo-note">Los valores aquí consignados corresponden a los vigentes a la fecha de suscripción del contrato. Cualquier modificación posterior deberá formalizarse mediante otrosí al contrato principal.</p>
+
+<!-- Firmas Anexo -->
+<div class="signatures-section">
+<div class="sig-block">
+  <div class="sig-line">
+    EDGAR ROBERT GALEANO ARANGO<br/>
+    C.C. 71.335.951<br/>
+    Rep. Legal — CONSTRUCTORA ROJOZ S.A.S.
+    <div class="sig-role">EL CONTRATISTA</div>
+  </div>
+</div>
+
+{% for cliente in clientes %}
+<div class="sig-block">
+  <div class="sig-line">
+    {{ cliente.full_name }}<br/>
+    C.C. {{ cliente.document_number }}{% if cliente.city_name or cliente.city or cliente.department or cliente.country %}<br/>
+    {{ cliente.city_name|default:cliente.city }}{% if cliente.department %}, {{ cliente.department }}{% endif %}{% if cliente.country %}, {{ cliente.country }}{% endif %}{% endif %}
+    <div class="sig-role">CONTRATANTE</div>
+  </div>
+</div>
+{% endfor %}
+</div>
+
+</div>
+
+<!-- PLANO_CASAS -->
+<!-- ANEXO2_START -->
+<!-- ═══════════ ANEXO No. 2 ═══════════ -->
+<div class="page-break no-append"></div>
+
+<table class="header-table">
+  <tbody>
+    <tr>
+      <td class="header-center">
+        <div class="anexo-title">ANEXO No. 2 — CRONOGRAMA Y CONDICIONES DE PAGO</div>
+        <div class="anexo-subtitle">Contrato Nro. {{ venta.contract_number }}</div>
+        <div class="anexo-ref">{{ venta.house_type.name }} — {{ venta.lot_metadata.id_inmueble|default:"" }}</div>
+      </td>
+      <td class="header-logo-right">
+        <img src="https://s3.2asoft.tech/construccion-media-public/document_assets/logo_rojoz.png" alt="Andina Conceptos"/>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<hr class="header-divider"/>
+<hr class="header-divider-accent"/>
+
+<div class="contract-body">
+  <p>El presente anexo forma parte integral del contrato de construcción Nro. <b>{{ venta.contract_number }}</b> y detalla el cronograma y condiciones de pago pactadas entre las partes.</p>
+
+  {% if payment_plan %}
+  <div class="clientes-list">
+    <li><span class="field-label">Valor total:</span> ${{ payment_plan.price_total|floatformat:0|intcomma }}</li>
+    <li><span class="field-label">Cuota inicial:</span> ${{ payment_plan.initial_amount|floatformat:0|intcomma }} ({% if payment_plan.initial_percent %}{{ payment_plan.initial_percent }}{% else %}{{ initial_percent_calc|floatformat:2 }}{% endif %}%) · {% if init_months %}{{ init_months }} meses{% else %}—{% endif %} · {{ payment_plan.get_initial_periodicity_display }}</li>
+    <li><span class="field-label">Financiación:</span> ${{ payment_plan.financed_amount|floatformat:0|intcomma }} · {% if finance_months %}{{ finance_months }} meses{% else %}—{% endif %} · {{ payment_plan.get_finance_periodicity_display }}</li>
+    <li><span class="field-label">Tasa mensual:</span> {{ payment_plan.finance_rate_monthly }}% · {{ payment_plan.get_amortization_type_display }}</li>
+  </div>
+  {% endif %}
+
+  <div class="django-template-wrapper">
+  <table class="anexo-table">
+    <thead>
+      <tr>
+        <th style="width: 5%;">#</th>
+        <th style="width: 13%;">Fecha</th>
+        <th style="width: 10%;">Concepto</th>
+        <th style="width: 18%;">Capital</th>
+        <th style="width: 12%;">Interés</th>
+        <th style="width: 18%;">Valor</th>
+        <th style="width: 24%;">Saldo</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% load humanize %}
+      {% for item in schedule_items %}
+      <tr>
+        <td>{{ item.numero_cuota|default:item.n }}</td>
+        <td>{{ item.fecha|date:"Y-m-d" }}</td>
+        <td>{{ item.concepto }}</td>
+        <td>${{ item.capital|floatformat:0|intcomma }}</td>
+        <td>${{ item.interes|floatformat:0|intcomma }}</td>
+        <td>${{ item.valor_total|floatformat:0|intcomma }}</td>
+        <td>${{ item.balance_contract|default:item.saldo|floatformat:0|intcomma }}</td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="7" style="text-align: center; color: #999; padding: 16px;">No hay cronograma registrado.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+
+  <p class="anexo-note">Los pagos se aplicarán conforme al cronograma. Cualquier modificación deberá formalizarse mediante otrosí al contrato principal.</p>
+
+  <!-- Firmas Anexo -->
+  <div class="signatures-section">
+  <div class="sig-block">
+    <div class="sig-line">
+      EDGAR ROBERT GALEANO ARANGO<br/>
+      C.C. 71.335.951<br/>
+      Rep. Legal — CONSTRUCTORA ROJOZ S.A.S.
+      <div class="sig-role">EL CONTRATISTA</div>
+    </div>
+  </div>
+
+  {% for cliente in clientes %}
+  <div class="sig-block">
+    <div class="sig-line">
+      {{ cliente.full_name }}<br/>
+      C.C. {{ cliente.document_number }}{% if cliente.city_name or cliente.city or cliente.department or cliente.country %}<br/>
+      {{ cliente.city_name|default:cliente.city }}{% if cliente.department %}, {{ cliente.department }}{% endif %}{% if cliente.country %}, {{ cliente.country }}{% endif %}{% endif %}
+      <div class="sig-role">CONTRATANTE</div>
+    </div>
+  </div>
+  {% endfor %}
+  </div>
+</div>
+<!-- ANEXO2_END -->
+
+</body>
+</html>

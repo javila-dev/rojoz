@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Versiones - {{ template.name }}{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.6.0/fonts/remixicon.css">
+{% endblock %}
+
+{% block content %}
+<div class="p-8 max-w-4xl mx-auto space-y-8">
+
+    <!-- Header -->
+    <div class="flex flex-wrap items-start justify-between gap-6">
+        <div class="flex items-center gap-4">
+            <a href="{% url 'documents:editor' pk=template.pk %}" class="btn btn-ghost btn-sm">
+                <i class="ri-arrow-left-line"></i>
+            </a>
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900" style="font-family: 'Playfair Display', serif;">
+                    Historial de Versiones
+                </h1>
+                <p class="text-gray-600 mt-1">{{ template.name }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de versiones -->
+    {% if versions %}
+    <div class="space-y-4">
+        {% for version in versions %}
+        <div class="card bg-white border border-gray-200 shadow-sm">
+            <div class="card-body">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <h3 class="font-semibold text-gray-900">
+                            Versión {{ version.version_number }}
+                        </h3>
+                        <p class="text-sm text-gray-600 mt-1">
+                            {{ version.created_at|naturaltime }}
+                            {% if version.created_by %}
+                            por {{ version.created_by.get_full_name|default:version.created_by.username }}
+                            {% endif %}
+                        </p>
+                        {% if version.change_description %}
+                        <p class="text-sm text-gray-500 mt-2">{{ version.change_description }}</p>
+                        {% endif %}
+                    </div>
+                    <form method="post" action="{% url 'documents:version_restore' pk=template.pk version=version.version_number %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline" onclick="return confirm('¿Restaurar esta versión? Se creará un respaldo de la versión actual.')">
+                            <i class="ri-history-line mr-1"></i>
+                            Restaurar
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="card bg-white border border-gray-200">
+        <div class="card-body items-center text-center py-16">
+            <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                <i class="ri-history-line text-gray-400 text-2xl"></i>
+            </div>
+            <h3 class="text-lg font-semibold text-gray-900">No hay versiones anteriores</h3>
+            <p class="text-gray-600 mt-2">
+                Las versiones se crean automáticamente al guardar cambios en el editor.
+            </p>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

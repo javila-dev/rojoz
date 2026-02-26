@@ -1,0 +1,261 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Solicitudes de recibo{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6">
+    <div class="flex items-start justify-between gap-4">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">Solicitudes de recibo</h1>
+            <p class="text-gray-600 mt-2">Bandeja operativa para asesores y tesorería.</p>
+        </div>
+        <button type="button" class="btn btn-primary" onclick="document.getElementById('create_request_modal').showModal()">
+            Nueva solicitud
+        </button>
+    </div>
+
+    {% if messages %}
+    <div class="space-y-2">
+        {% for message in messages %}
+        <div class="alert {% if message.tags == 'error' %}alert-error{% elif message.tags == 'warning' %}alert-warning{% else %}alert-success{% endif %}">
+            <span>{{ message }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div class="stat bg-white border border-gray-200 rounded-lg shadow-sm">
+            <div class="stat-title">Pendientes</div>
+            <div class="stat-value text-lg">{{ status_counts.PENDING }}</div>
+        </div>
+        <div class="stat bg-white border border-gray-200 rounded-lg shadow-sm">
+            <div class="stat-title">Validadas</div>
+            <div class="stat-value text-lg">{{ status_counts.VALIDATED }}</div>
+        </div>
+        <div class="stat bg-white border border-gray-200 rounded-lg shadow-sm">
+            <div class="stat-title">Manual</div>
+            <div class="stat-value text-lg">{{ status_counts.REQUIRES_MANUAL }}</div>
+        </div>
+        <div class="stat bg-white border border-gray-200 rounded-lg shadow-sm">
+            <div class="stat-title">Bloqueadas</div>
+            <div class="stat-value text-lg">{{ status_counts.BLOCKED }}</div>
+        </div>
+        <div class="stat bg-white border border-gray-200 rounded-lg shadow-sm">
+            <div class="stat-title">Con recibo</div>
+            <div class="stat-value text-lg">{{ status_counts.RECEIPT_CREATED }}</div>
+        </div>
+    </div>
+
+    <form method="get" class="card bg-white border border-gray-200 shadow-sm">
+        <div class="card-body grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+            <div class="md:col-span-2">
+                <label class="label"><span class="label-text">Buscar</span></label>
+                <input type="text" class="input input-bordered w-full" name="q" value="{{ filters.q }}" placeholder="ID, cliente, proyecto o contrato">
+            </div>
+            <div>
+                <label class="label"><span class="label-text">Estado</span></label>
+                <select name="status" class="select select-bordered w-full">
+                    <option value="">Todos</option>
+                    {% for value, label in status_choices %}
+                    <option value="{{ value }}" {% if filters.status == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button type="submit" class="btn btn-neutral-elegant w-full">Filtrar</button>
+                <a href="{% url 'finance:receipt_request_list' %}" class="btn btn-outline w-full">Limpiar</a>
+            </div>
+        </div>
+    </form>
+
+    <div class="card bg-white border border-gray-200 shadow-sm">
+        <div class="card-body">
+            <div class="overflow-x-auto">
+                <table class="table table-zebra table-sm w-full">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Contrato</th>
+                            <th>Cliente</th>
+                            <th>Proyecto</th>
+                            <th>Fecha pago</th>
+                            <th class="text-right">Valor</th>
+                            <th>Estado</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in requests %}
+                        <tr>
+                            <td>{{ item.external_request_id }}</td>
+                            <td>#{{ item.sale.contract_number|default:item.sale_id }}</td>
+                            <td>{{ item.client_name|default:"—" }}</td>
+                            <td>{{ item.project_name|default:"—" }}</td>
+                            <td>{{ item.payment_date|date:"d/m/Y"|default:"—" }}</td>
+                            <td class="text-right font-semibold">${{ item.amount_reported|floatformat:0|intcomma }}</td>
+                            <td>
+                                {% if item.status == "PENDING" %}
+                                <span class="badge badge-warning badge-sm">Pendiente</span>
+                                {% elif item.status == "VALIDATED" %}
+                                <span class="badge badge-info badge-sm">Validada</span>
+                                {% elif item.status == "REQUIRES_MANUAL" %}
+                                <span class="badge badge-warning badge-sm">Manual</span>
+                                {% elif item.status == "BLOCKED" %}
+                                <span class="badge badge-error badge-sm">Bloqueada</span>
+                                {% else %}
+                                <span class="badge badge-success badge-sm">Recibo emitido</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-right">
+                                <a href="{% url 'finance:receipt_request_detail' item.external_request_id %}" class="btn btn-xs btn-neutral-elegant">Abrir</a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center text-gray-500 py-8">No hay solicitudes registradas.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<dialog id="create_request_modal" class="modal">
+    <div class="modal-box max-w-3xl">
+        <h3 class="font-bold text-xl mb-1">Nueva solicitud de recibo</h3>
+        <p class="text-sm text-gray-500 mb-4">Carga del soporte para revisión de tesorería.</p>
+
+        <form method="post" enctype="multipart/form-data" class="space-y-4">
+            {% csrf_token %}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="md:col-span-2">
+                    <label class="label"><span class="label-text">Contrato</span></label>
+                    <div class="relative" id="sale-combobox-modal">
+                        <input
+                            id="sale-search-modal"
+                            type="text"
+                            class="input input-bordered w-full"
+                            placeholder="Contrato # + primer titular"
+                            value="{% if create_form.sale.value %}{% for opt in sale_choices %}{% if opt.id == create_form.sale.value|stringformat:'s' %}{{ opt.label }}{% endif %}{% endfor %}{% endif %}"
+                            autocomplete="off"
+                        >
+                        <div id="sale-list-modal" class="absolute z-50 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg hidden max-h-56 overflow-auto">
+                            {% for opt in sale_choices %}
+                            <button
+                                type="button"
+                                class="w-full px-3 py-2 text-left text-sm hover:bg-rojoz-50"
+                                data-id="{{ opt.id }}"
+                                data-label="{{ opt.label }}"
+                            >
+                                {{ opt.label }}
+                            </button>
+                            {% endfor %}
+                        </div>
+                        <input id="sale-id-modal" type="hidden" name="sale" value="{{ create_form.sale.value|default:'' }}">
+                    </div>
+                    {{ create_form.sale.errors }}
+                </div>
+                <div>
+                    <label class="label"><span class="label-text">Fecha pago reportada</span></label>
+                    {{ create_form.payment_date }}
+                    {{ create_form.payment_date.errors }}
+                </div>
+                <div>
+                    <label class="label"><span class="label-text">Valor reportado</span></label>
+                    {{ create_form.amount_reported }}
+                    {{ create_form.amount_reported.errors }}
+                </div>
+                <div class="md:col-span-2">
+                    <label class="label"><span class="label-text">Soporte (PDF)</span></label>
+                    {{ create_form.support_evidence }}
+                    {{ create_form.support_evidence.errors }}
+                </div>
+            </div>
+
+            <div class="flex flex-wrap gap-6">
+                <label class="label cursor-pointer justify-start gap-3">
+                    {{ create_form.abono_capital }}
+                    <span class="label-text">Posible abono a capital</span>
+                </label>
+                <label class="label cursor-pointer justify-start gap-3">
+                    {{ create_form.condonacion_mora }}
+                    <span class="label-text">Solicita condonación de mora</span>
+                </label>
+            </div>
+
+            <div class="modal-action">
+                <button type="button" class="btn btn-neutral-elegant" onclick="document.getElementById('create_request_modal').close()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Crear solicitud</button>
+            </div>
+        </form>
+    </div>
+</dialog>
+
+{% if show_create_modal %}
+<script>
+  window.addEventListener("load", function () {
+    const modal = document.getElementById("create_request_modal");
+    if (modal) modal.showModal();
+  });
+</script>
+{% endif %}
+<script>
+  (function () {
+    const input = document.getElementById("sale-search-modal");
+    const hidden = document.getElementById("sale-id-modal");
+    const box = document.getElementById("sale-combobox-modal");
+    const list = document.getElementById("sale-list-modal");
+    const options = list ? Array.from(list.querySelectorAll("button[data-id]")) : [];
+    if (!input || !hidden) return;
+
+    function showList() {
+      if (list) list.classList.remove("hidden");
+    }
+    function hideList() {
+      if (list) list.classList.add("hidden");
+    }
+    function filterOptions() {
+      const q = input.value.toLowerCase().trim();
+      options.forEach((opt) => {
+        const label = (opt.dataset.label || "").toLowerCase();
+        opt.classList.toggle("hidden", q && !label.includes(q));
+      });
+      hidden.value = "";
+      showList();
+    }
+
+    input.addEventListener("focus", showList);
+    input.addEventListener("input", filterOptions);
+    options.forEach((opt) => {
+      opt.addEventListener("click", () => {
+        input.value = opt.dataset.label || "";
+        hidden.value = opt.dataset.id || "";
+        hideList();
+      });
+    });
+    document.addEventListener("click", (ev) => {
+      if (!box || box.contains(ev.target)) return;
+      hideList();
+    });
+  })();
+</script>
+<script>
+  document.querySelectorAll("[data-money-mask]").forEach(function (input) {
+    function formatMoney(value) {
+      const digits = (value || "").replace(/\D/g, "");
+      if (!digits) return "";
+      return Number(digits).toLocaleString("es-CO");
+    }
+    input.addEventListener("input", function () {
+      const pos = this.selectionStart;
+      this.value = formatMoney(this.value);
+      if (pos !== null) this.setSelectionRange(this.value.length, this.value.length);
+    });
+    if (input.value) input.value = formatMoney(input.value);
+  });
+</script>
+{% endblock %}

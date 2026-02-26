@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Nuevo recibo – Venta {{ sale.contract_number|default:sale.id }}{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto space-y-6">
+    <div>
+        <h1 class="text-3xl font-bold text-gray-900">Registrar recibo de pago</h1>
+        <p class="text-gray-600 mt-2">
+            Contrato #{{ sale.contract_number|default:sale.id }} &middot;
+            {{ sale.project.name }}
+        </p>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" class="card bg-white border border-gray-200 shadow-sm">
+        {% csrf_token %}
+        <div class="card-body space-y-6">
+            <div>
+                <label class="label"><span class="label-text">Valor recibido</span></label>
+                <div class="relative">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">$</span>
+                    {{ form.amount }}
+                </div>
+                {{ form.amount.errors }}
+            </div>
+            <div>
+                <label class="label"><span class="label-text">Fecha real de pago</span></label>
+                {{ form.date_paid }}
+                {{ form.date_paid.errors }}
+            </div>
+            <div>
+                <label class="label"><span class="label-text">Forma de pago</span></label>
+                {{ form.payment_method }}
+                {{ form.payment_method.errors }}
+            </div>
+            <div>
+                <label class="label"><span class="label-text">Soporte PDF</span></label>
+                {{ form.evidence }}
+                {% if form.evidence.errors %}
+                <div class="mt-2">
+                    {% for error in form.evidence.errors %}
+                    <div class="alert alert-error text-sm py-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-5 w-5" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                        <span>{{ error }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            <div>
+                <label class="label"><span class="label-text">Observaciones</span></label>
+                {{ form.notes }}
+                {{ form.notes.errors }}
+            </div>
+
+            <div class="flex items-center justify-end gap-3">
+                <a href="{% url 'finance:receipt_list' sale.id %}" class="btn btn-neutral-elegant">Cancelar</a>
+                <button type="submit" class="btn btn-primary">Registrar pago</button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll("[data-money-mask]").forEach(function (input) {
+        // Agregar padding-left para el símbolo $
+        input.style.paddingLeft = "1.75rem";
+
+        function formatMoney(value) {
+            // Limpiar todo excepto dígitos
+            var digits = value.replace(/\D/g, "");
+            if (!digits) return "";
+            // Formatear con separador de miles (punto)
+            return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+        }
+
+        input.addEventListener("input", function () {
+            var pos = this.selectionStart;
+            var oldLen = this.value.length;
+            this.value = formatMoney(this.value);
+            var newLen = this.value.length;
+            // Ajustar posición del cursor
+            var newPos = pos + (newLen - oldLen);
+            this.setSelectionRange(newPos, newPos);
+        });
+
+        // Formatear valor inicial si existe
+        if (input.value) {
+            input.value = formatMoney(input.value);
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,37 @@
+# Usamos slim-bookworm (Debian 12) que es más estable y moderna
+FROM python:3.11-slim-bookworm
+
+# Variables de entorno
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+
+# Directorio de trabajo
+WORKDIR /app
+
+# 1. Instalar dependencias del sistema
+# - netcat-openbsd: Herramienta para esperar a la base de datos
+# - libpango...: Necesarios para WeasyPrint (PDFs)
+# - libpq-dev: Necesario para psycopg2 (Postgres)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    libpango-1.0-0 \
+    libpangoft2-1.0-0 \
+    libjpeg-dev \
+    libopenjp2-7-dev \
+    libffi-dev \
+    netcat-openbsd \
+    && rm -rf /var/lib/apt/lists/*
+
+# 2. Actualizar pip
+RUN pip install --upgrade pip
+
+# 3. Instalar dependencias de Python
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 4. Copiar el código
+COPY ./app .
+
+# Comando por defecto
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8008"]

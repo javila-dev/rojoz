@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}{% if is_create %}Nuevo cargo{% else %}Editar cargo{% endif %}{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto space-y-6">
+    <div>
+        <h1 class="text-3xl font-bold text-gray-900">{% if is_create %}Nuevo cargo{% else %}Editar cargo{% endif %}</h1>
+        <p class="text-gray-600 mt-2">Define cargos para comisiones.</p>
+    </div>
+
+    <form method="post" class="card bg-white border border-gray-200 shadow-sm">
+        {% csrf_token %}
+        <div class="card-body space-y-6">
+            <div>
+                <label class="label"><span class="label-text">Cargo</span></label>
+                {{ form.name }}
+                {{ form.name.errors }}
+            </div>
+            <div>
+                <label class="label"><span class="label-text">Descripción</span></label>
+                {{ form.description }}
+                {{ form.description.errors }}
+            </div>
+            <label class="label cursor-pointer justify-start gap-3">
+                {{ form.is_active }}
+                <span class="label-text">Activo</span>
+            </label>
+
+            <div class="flex items-center justify-end gap-3">
+                <a href="{% url 'finance:commission_role_list' %}" class="btn btn-neutral-elegant">Cancelar</a>
+                <button type="submit" class="btn btn-primary">Guardar</button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

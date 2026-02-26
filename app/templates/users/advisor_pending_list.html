@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}Aprobacion de asesores{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6">
+    <div class="flex items-start justify-between gap-6">
+        <div class="flex items-center gap-4">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">Aprobacion de asesores</h1>
+                <p class="text-gray-600 mt-2">Valida y aprueba los registros de nuevos asesores.</p>
+            </div>
+            {% if pending_count %}
+            <span class="badge badge-lg" style="background:linear-gradient(135deg,#A0372A,#C4574E);color:#fff;">
+                {{ pending_count }} pendiente{{ pending_count|pluralize:"s" }}
+            </span>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card bg-white border border-gray-200 shadow-sm">
+        <div class="card-body">
+            <div class="overflow-x-auto">
+                <table class="table table-zebra w-full text-sm">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Email</th>
+                            <th>Celular</th>
+                            <th>Banco</th>
+                            <th>Cuenta</th>
+                            <th>Fecha registro</th>
+                            <th class="text-right">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for advisor in pending %}
+                        <tr>
+                            <td class="font-semibold">{{ advisor.get_full_name|default:advisor.username }}</td>
+                            <td>{{ advisor.email|default:"\u2014" }}</td>
+                            <td>{{ advisor.phone|default:"\u2014" }}</td>
+                            <td>{{ advisor.get_bank_code_display|default:"\u2014" }}</td>
+                            <td>
+                                {% if advisor.account_number %}
+                                    {{ advisor.get_account_type_display }} &middot; {{ advisor.account_number }}
+                                {% else %}
+                                    <span class="text-gray-400">\u2014</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-gray-500">{{ advisor.date_joined|date:"d M Y, H:i" }}</td>
+                            <td class="text-right">
+                                <div class="flex items-center justify-end gap-2">
+                                    <form method="post" action="{% url 'users:advisor_approve' advisor.id %}">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-xs text-white" style="background:#16a34a;border:none;" title="Aprobar">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                            Aprobar
+                                        </button>
+                                    </form>
+                                    <form method="post" action="{% url 'users:advisor_reject' advisor.id %}" onsubmit="return confirm('Eliminar el registro de {{ advisor.get_full_name|default:advisor.username }}? Esta accion no se puede deshacer.')">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-xs btn-outline btn-error" title="Rechazar">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                                            Rechazar
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center py-12">
+                                <div class="flex flex-col items-center gap-3 text-gray-400">
+                                    <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    <p class="text-sm">No hay registros pendientes de aprobacion.</p>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

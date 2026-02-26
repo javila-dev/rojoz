@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Usuarios{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900" style="font-family:'Playfair Display',serif;">Usuarios</h1>
+            <p class="text-sm text-gray-500">Gestiona cuentas, roles y accesos.</p>
+        </div>
+        <a href="{% url 'users:user_create' %}" class="btn btn-primary">Nuevo usuario</a>
+    </div>
+
+    <div class="card bg-white border border-gray-200 shadow-sm">
+        <div class="card-body p-0">
+            <div class="overflow-x-auto">
+                <table class="table table-zebra w-full text-sm">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Usuario</th>
+                            <th>Rol</th>
+                            <th>Estado</th>
+                            <th class="text-right">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for u in users %}
+                            <tr>
+                                <td class="font-medium text-gray-800">
+                                    {% if u.get_full_name %}
+                                        {{ u.get_full_name }}
+                                    {% else %}
+                                        {{ u.username }}
+                                    {% endif %}
+                                    <div class="text-xs text-gray-500">{{ u.email|default:"" }}</div>
+                                </td>
+                                <td class="text-xs text-gray-500">{{ u.username }}</td>
+                                <td class="text-xs text-gray-700">{{ u.get_role_display }}</td>
+                                <td>
+                                    {% if u.is_active %}
+                                        <span class="badge badge-success badge-sm">Activo</span>
+                                    {% else %}
+                                        <span class="badge badge-ghost badge-sm">Inactivo</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-right">
+                                    <div class="flex items-center justify-end gap-2">
+                                        <a href="{% url 'users:user_edit' u.pk %}" class="btn btn-xs btn-outline">Editar</a>
+                                        <form method="post" action="{% url 'users:user_toggle_active' u.pk %}">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-xs btn-outline">
+                                                {% if u.is_active %}Desactivar{% else %}Activar{% endif %}
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center text-gray-500">No hay usuarios.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

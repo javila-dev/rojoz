@@ -1,0 +1,29 @@
+<form
+    method="post"
+    hx-post="{% url 'finance:sale_commission_scale_create' sale.id %}"
+    hx-target="#commission-scale-table"
+    hx-swap="outerHTML"
+    hx-on="htmx:afterRequest: document.getElementById('commission_scale_modal').checked = false"
+    class="space-y-4"
+>
+    {% csrf_token %}
+    <div>
+        <label class="label"><span class="label-text">Gestor</span></label>
+        {{ form.user }}
+        {{ form.user.errors }}
+    </div>
+    <div>
+        <label class="label"><span class="label-text">Cargo</span></label>
+        {{ form.role }}
+        {{ form.role.errors }}
+    </div>
+    <div>
+        <label class="label"><span class="label-text">Porcentaje</span></label>
+        {{ form.percentage }}
+        {{ form.percentage.errors }}
+    </div>
+    <div class="flex items-center justify-end gap-3">
+        <button type="button" class="btn btn-neutral-elegant" onclick="document.getElementById('commission_scale_modal').checked = false">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Guardar</button>
+    </div>
+</form>

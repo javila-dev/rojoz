@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}{% if is_create %}Nuevo asesor{% else %}Editar asesor{% endif %}{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-6">
+    <div>
+        <h1 class="text-3xl font-bold text-gray-900">{% if is_create %}Nuevo asesor{% else %}Editar asesor{% endif %}</h1>
+        <p class="text-gray-600 mt-2">Datos básicos y bancarios del gestor.</p>
+    </div>
+
+    <form method="post" class="card bg-white border border-gray-200 shadow-sm">
+        {% csrf_token %}
+        <div class="card-body space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {% if is_create %}
+                <div>
+                    <label class="label"><span class="label-text">Usuario</span></label>
+                    {{ form.username }}
+                    {{ form.username.errors }}
+                </div>
+                {% endif %}
+                <div>
+                    <label class="label"><span class="label-text">Nombres</span></label>
+                    {{ form.first_name }}
+                    {{ form.first_name.errors }}
+                </div>
+                <div>
+                    <label class="label"><span class="label-text">Apellidos</span></label>
+                    {{ form.last_name }}
+                    {{ form.last_name.errors }}
+                </div>
+                <div>
+                    <label class="label"><span class="label-text">Email</span></label>
+                    {{ form.email }}
+                    {{ form.email.errors }}
+                </div>
+                <div>
+                    <label class="label"><span class="label-text">Celular</span></label>
+                    {{ form.phone }}
+                    {{ form.phone.errors }}
+                </div>
+            </div>
+
+            <div class="divider">Datos bancarios</div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="label"><span class="label-text">Banco</span></label>
+                    {{ form.bank_code }}
+                    {{ form.bank_code.errors }}
+                </div>
+                <div>
+                    <label class="label"><span class="label-text">Tipo de cuenta</span></label>
+                    {{ form.account_type }}
+                    {{ form.account_type.errors }}
+                </div>
+                <div>
+                    <label class="label"><span class="label-text">Número de cuenta</span></label>
+                    {{ form.account_number }}
+                    {{ form.account_number.errors }}
+                </div>
+            </div>
+
+            {% if is_create %}
+            <div class="divider">Acceso</div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="label"><span class="label-text">Password</span></label>
+                    {{ form.password1 }}
+                    {{ form.password1.errors }}
+                </div>
+                <div>
+                    <label class="label"><span class="label-text">Confirmar Password</span></label>
+                    {{ form.password2 }}
+                    {{ form.password2.errors }}
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="flex items-center justify-end gap-3">
+                <a href="{% url 'finance:advisor_list' %}" class="btn btn-neutral-elegant">Cancelar</a>
+                <button type="submit" class="btn btn-primary">Guardar</button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

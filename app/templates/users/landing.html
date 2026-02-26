@@ -1,0 +1,107 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rojoz Constructora</title>
+    <link rel="icon" type="image/png" href="https://s3.2asoft.tech/construccion-media-public/document_assets/logo rojoz.png">
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.6.0/fonts/remixicon.css" rel="stylesheet" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Gudea:wght@400;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'rojoz': {
+                            50: '#fef2f2', 100: '#fee2e2', 200: '#fecaca', 300: '#fca5a5',
+                            400: '#f87171', 500: '#C4574E', 600: '#A0372A', 700: '#7A2518',
+                            800: '#5a1a0f', 900: '#3d100a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="min-h-screen bg-gray-50 flex flex-col" style="font-family: 'Gudea', system-ui, sans-serif;">
+
+<!-- Background decorations -->
+<div class="fixed inset-0 overflow-hidden pointer-events-none">
+    <div class="absolute -top-40 -right-40 w-96 h-96 bg-rojoz-100/40 rounded-full blur-3xl"></div>
+    <div class="absolute -bottom-40 -left-40 w-96 h-96 bg-rojoz-50/60 rounded-full blur-3xl"></div>
+</div>
+
+<div class="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 relative z-10">
+
+    <!-- Logo & Brand -->
+    <div class="text-center mb-12">
+        <div class="w-20 h-20 mx-auto mb-5 rounded-2xl bg-gradient-to-br from-rojoz-600 to-rojoz-500 flex items-center justify-center shadow-xl shadow-rojoz-500/20">
+            <img src="https://s3.2asoft.tech/construccion-media-public/document_assets/logo rojoz.png"
+                 alt="Rojoz" class="w-12 h-12 object-contain brightness-0 invert">
+        </div>
+        <h1 class="text-4xl font-bold text-gray-900" style="font-family: 'Playfair Display', serif;">
+            Rojoz
+        </h1>
+        <p class="text-gray-500 mt-2 text-lg">Constructora & Ventas</p>
+    </div>
+
+    <!-- Two paths -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 w-full max-w-2xl">
+
+        <!-- Cliente -->
+        <a href="{% url 'portal:login' %}"
+           class="group bg-white rounded-2xl p-8 border border-gray-200 hover:border-rojoz-300 hover:shadow-xl hover:shadow-rojoz-100/50 transition-all duration-300 text-center">
+            <div class="w-16 h-16 mx-auto mb-5 rounded-xl bg-rojoz-50 flex items-center justify-center group-hover:bg-rojoz-100 transition-colors">
+                <i class="ri-home-heart-line text-rojoz-600 text-3xl"></i>
+            </div>
+            <h2 class="text-xl font-bold text-gray-900 mb-2" style="font-family: 'Playfair Display', serif;">
+                Soy cliente
+            </h2>
+            <p class="text-gray-500 text-sm leading-relaxed">
+                Consulta tus contratos, pagos, cronograma y descarga documentos.
+            </p>
+            <div class="mt-5 inline-flex items-center gap-1 text-rojoz-600 font-semibold text-sm group-hover:gap-2 transition-all">
+                Acceder al portal <i class="ri-arrow-right-line"></i>
+            </div>
+        </a>
+
+        <!-- Staff -->
+        <a href="{% url 'users:login' %}"
+           class="group bg-white rounded-2xl p-8 border border-gray-200 hover:border-gray-300 hover:shadow-xl hover:shadow-gray-100/50 transition-all duration-300 text-center">
+            <div class="w-16 h-16 mx-auto mb-5 rounded-xl bg-gray-100 flex items-center justify-center group-hover:bg-gray-200 transition-colors">
+                <i class="ri-building-2-line text-gray-600 text-3xl"></i>
+            </div>
+            <h2 class="text-xl font-bold text-gray-900 mb-2" style="font-family: 'Playfair Display', serif;">
+                Equipo Rojoz
+            </h2>
+            <p class="text-gray-500 text-sm leading-relaxed">
+                Acceso para asesores, cartera, gerencia y administradores.
+            </p>
+            <div class="mt-5 inline-flex items-center gap-1 text-gray-600 font-semibold text-sm group-hover:gap-2 transition-all">
+                Iniciar sesion <i class="ri-arrow-right-line"></i>
+            </div>
+        </a>
+
+    </div>
+
+    <div class="mt-8 text-center">
+        <a href="{% url 'users:advisor_register' %}"
+           class="btn bg-gradient-to-r from-rojoz-600 to-rojoz-500 border-0 text-white hover:from-rojoz-700 hover:to-rojoz-600 shadow-lg shadow-rojoz-500/20">
+            <i class="ri-user-add-line"></i>
+            Registrarme como asesor
+        </a>
+    </div>
+</div>
+
+<!-- Footer -->
+<footer class="text-center py-6 text-gray-400 text-xs relative z-10">
+    &copy; 2026 Rojoz Constructora. Todos los derechos reservados.
+</footer>
+
+</body>
+</html>

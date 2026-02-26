@@ -1,0 +1,399 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Dashboard - Constructora Rojoz{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-8">
+
+    <!-- Header -->
+    <div>
+        <h1 class="text-3xl font-bold text-gray-900" style="font-family: 'Playfair Display', serif;">
+            Dashboard
+        </h1>
+        <p class="text-gray-500 mt-1">
+            Bienvenido, <span class="font-semibold text-gray-700">{{ request.user.get_full_name|default:request.user.username }}</span>
+            <span class="inline-block ml-2 px-2 py-0.5 text-xs font-medium rounded-full bg-rojoz-100 text-rojoz-700">{{ request.user.get_role_display }}</span>
+        </p>
+    </div>
+
+    {# ═══════════════════════════════════════════════════════════════ #}
+    {# VISTA CLIENTE — Mis contratos                                   #}
+    {# ═══════════════════════════════════════════════════════════════ #}
+    {% if is_cliente and not can_see_all %}
+    <div class="card bg-white rounded-xl overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-100">
+            <h3 class="font-bold text-gray-800">Mis contratos</h3>
+            <p class="text-xs text-gray-500 mt-1">{{ my_sales_count|default:"0" }} contrato{{ my_sales_count|pluralize:"s" }}</p>
+        </div>
+        {% if my_sales %}
+        <div class="divide-y divide-gray-50">
+            {% for sale in my_sales %}
+            <a href="{% url 'sales:contract_detail' sale.pk %}" class="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 transition-colors">
+                <div class="w-9 h-9 rounded-lg flex items-center justify-center
+                    {% if sale.status == 'APP' %}bg-emerald-100 text-emerald-700
+                    {% elif sale.status == 'PEND' %}bg-amber-100 text-amber-700
+                    {% else %}bg-gray-100 text-gray-600{% endif %}">
+                    {% if sale.status == 'APP' %}<i class="ri-check-line text-base"></i>
+                    {% elif sale.status == 'PEND' %}<i class="ri-time-line text-base"></i>
+                    {% else %}<i class="ri-file-line text-base"></i>{% endif %}
+                </div>
+                <div class="min-w-0 flex-1">
+                    <p class="text-sm font-medium text-gray-800 truncate">{{ sale.project.name }}</p>
+                    <p class="text-xs text-gray-500 truncate">{{ sale.house_type.name }} — {{ sale.get_status_display }}</p>
+                </div>
+                <div class="text-right flex-shrink-0">
+                    {% if sale.final_price %}
+                    <p class="text-sm font-semibold text-gray-800">${{ sale.final_price|floatformat:0|intcomma }}</p>
+                    {% endif %}
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="px-5 py-10 text-center">
+            <i class="ri-file-search-line text-4xl text-gray-300"></i>
+            <p class="text-sm text-gray-400 mt-2">Aun no tienes contratos asociados</p>
+        </div>
+        {% endif %}
+    </div>
+
+    {% else %}
+    {# ═══════════════════════════════════════════════════════════════ #}
+    {# VISTA STAFF — Stats, accesos rapidos, actividad                 #}
+    {# ═══════════════════════════════════════════════════════════════ #}
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+
+        {% if can_see_projects %}
+        <a href="{% url 'inventory:project_list' %}" class="card bg-white rounded-xl p-5 hover:shadow-lg transition-all duration-200 group cursor-pointer">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Proyectos</p>
+                    <p class="text-3xl font-bold text-gray-900 mt-1">{{ projects_count }}</p>
+                    <p class="text-xs text-gray-500 mt-1">registrados</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-rojoz-600 to-rojoz-500 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <i class="ri-building-2-line text-white text-xl"></i>
+                </div>
+            </div>
+        </a>
+        {% endif %}
+
+        {% if can_see_sales %}
+        <a href="{% url 'sales:contract_project_select' %}" class="card bg-white rounded-xl p-5 hover:shadow-lg transition-all duration-200 group cursor-pointer">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">{% if is_asesor and not can_see_all %}Mis ventas{% else %}Ventas{% endif %}</p>
+                    <p class="text-3xl font-bold text-gray-900 mt-1">{{ sales_total }}</p>
+                    <div class="flex items-center gap-2 mt-1">
+                        <span class="text-xs text-emerald-600 font-medium">+{{ sales_this_month }} este mes</span>
+                    </div>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-600 to-emerald-500 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <i class="ri-file-text-line text-white text-xl"></i>
+                </div>
+            </div>
+        </a>
+
+        <a href="{% url 'sales:contract_project_select' %}" class="card bg-white rounded-xl p-5 hover:shadow-lg transition-all duration-200 group cursor-pointer">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Pendientes</p>
+                    <p class="text-3xl font-bold text-gray-900 mt-1">{{ sales_pending }}</p>
+                    <p class="text-xs text-amber-600 font-medium mt-1">contratos por aprobar</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-600 to-rojoz-500 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <i class="ri-time-line text-white text-xl"></i>
+                </div>
+            </div>
+        </a>
+        {% endif %}
+
+        {% if can_see_finance %}
+        <a href="{% url 'finance:receipt_project_select' %}" class="card bg-white rounded-xl p-5 hover:shadow-lg transition-all duration-200 group cursor-pointer">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Recaudos del mes</p>
+                    <p class="text-3xl font-bold text-gray-900 mt-1">${{ receipts_this_month|floatformat:0|intcomma }}</p>
+                    <p class="text-xs text-gray-500 mt-1">{{ receipts_count_month }} recibos</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <i class="ri-money-dollar-circle-line text-white text-xl"></i>
+                </div>
+            </div>
+        </a>
+        {% endif %}
+
+    </div>
+
+    <!-- Alerta: asesores pendientes -->
+    {% if advisors_pending > 0 and can_see_users %}
+    <a href="{% url 'users:advisor_pending_list' %}" class="block card bg-amber-50 border border-amber-200 rounded-xl p-4 hover:bg-amber-100 transition-colors">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
+                <i class="ri-user-follow-line text-amber-600 text-lg"></i>
+            </div>
+            <div>
+                <p class="font-semibold text-amber-800">{{ advisors_pending }} asesor{{ advisors_pending|pluralize:"es" }} pendiente{{ advisors_pending|pluralize:"s" }} de aprobacion</p>
+                <p class="text-xs text-amber-600">Haz clic para revisar las solicitudes</p>
+            </div>
+            <i class="ri-arrow-right-s-line text-amber-400 text-xl ml-auto"></i>
+        </div>
+    </a>
+    {% endif %}
+
+    <!-- Acceso rapido -->
+    <div>
+        <h2 class="text-lg font-bold text-gray-800 mb-4">Acceso rapido</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+            {% if can_see_sales %}
+            <!-- Nueva Venta -->
+            <a href="{% url 'sales:sale_flow_project' %}" class="card bg-white rounded-xl p-5 hover:shadow-lg transition-all duration-200 group border-l-4 border-rojoz-500">
+                <div class="flex items-center gap-4">
+                    <div class="w-11 h-11 rounded-lg bg-rojoz-50 flex items-center justify-center group-hover:bg-rojoz-100 transition-colors">
+                        <i class="ri-add-circle-line text-rojoz-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <p class="font-semibold text-gray-800 group-hover:text-rojoz-700 transition-colors">Nueva venta</p>
+                        <p class="text-xs text-gray-500">Iniciar flujo de venta</p>
+                    </div>
+                </div>
+            </a>
+
+            <!-- Contratos -->
+            <a href="{% url 'sales:contract_project_select' %}" class="card bg-white rounded-xl p-5 hover:shadow-lg transition-all duration-200 group border-l-4 border-emerald-500">
+                <div class="flex items-center gap-4">
+                    <div class="w-11 h-11 rounded-lg bg-emerald-50 flex items-center justify-center group-hover:bg-emerald-100 transition-colors">
+                        <i class="ri-file-shield-2-line text-emerald-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <p class="font-semibold text-gray-800 group-hover:text-emerald-700 transition-colors">Contratos</p>
+                        <p class="text-xs text-gray-500">{{ sales_approved }} aprobados, {{ sales_pending }} pendientes</p>
+                    </div>
+                </div>
+            </a>
+            {% endif %}
+
+            {% if can_see_projects %}
+            <!-- Proyectos -->
+            <a href="{% url 'inventory:project_list' %}" class="card bg-white rounded-xl p-5 hover:shadow-lg transition-all duration-200 group border-l-4 border-blue-500">
+                <div class="flex items-center gap-4">
+                    <div class="w-11 h-11 rounded-lg bg-blue-50 flex items-center justify-center group-hover:bg-blue-100 transition-colors">
+                        <i class="ri-building-2-line text-blue-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <p class="font-semibold text-gray-800 group-hover:text-blue-700 transition-colors">Proyectos</p>
+                        <p class="text-xs text-gray-500">{{ projects_count }} proyectos registrados</p>
+                    </div>
+                </div>
+            </a>
+            {% endif %}
+
+            {% if can_see_finance %}
+            <!-- Recaudos -->
+            <a href="{% url 'finance:receipt_project_select' %}" class="card bg-white rounded-xl p-5 hover:shadow-lg transition-all duration-200 group border-l-4 border-amber-500">
+                <div class="flex items-center gap-4">
+                    <div class="w-11 h-11 rounded-lg bg-amber-50 flex items-center justify-center group-hover:bg-amber-100 transition-colors">
+                        <i class="ri-money-dollar-box-line text-amber-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <p class="font-semibold text-gray-800 group-hover:text-amber-700 transition-colors">Recaudos</p>
+                        <p class="text-xs text-gray-500">Recibos de caja y pagos</p>
+                    </div>
+                </div>
+            </a>
+
+            <!-- Cartera -->
+            <a href="{% url 'finance:payment_list' %}" class="card bg-white rounded-xl p-5 hover:shadow-lg transition-all duration-200 group border-l-4 border-violet-500">
+                <div class="flex items-center gap-4">
+                    <div class="w-11 h-11 rounded-lg bg-violet-50 flex items-center justify-center group-hover:bg-violet-100 transition-colors">
+                        <i class="ri-bank-card-2-line text-violet-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <p class="font-semibold text-gray-800 group-hover:text-violet-700 transition-colors">Cartera</p>
+                        <p class="text-xs text-gray-500">Estado de pagos y cuotas</p>
+                    </div>
+                </div>
+            </a>
+            {% endif %}
+
+            {% if can_see_commissions %}
+            <!-- Comisiones -->
+            <a href="{% url 'finance:commission_role_list' %}" class="card bg-white rounded-xl p-5 hover:shadow-lg transition-all duration-200 group border-l-4 border-pink-500">
+                <div class="flex items-center gap-4">
+                    <div class="w-11 h-11 rounded-lg bg-pink-50 flex items-center justify-center group-hover:bg-pink-100 transition-colors">
+                        <i class="ri-percent-line text-pink-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <p class="font-semibold text-gray-800 group-hover:text-pink-700 transition-colors">Comisiones</p>
+                        <p class="text-xs text-gray-500">Cargos y porcentajes</p>
+                    </div>
+                </div>
+            </a>
+            {% endif %}
+
+            {% if can_see_documents %}
+            <!-- Documentos -->
+            <a href="{% url 'documents:index' %}" class="card bg-white rounded-xl p-5 hover:shadow-lg transition-all duration-200 group border-l-4 border-cyan-500">
+                <div class="flex items-center gap-4">
+                    <div class="w-11 h-11 rounded-lg bg-cyan-50 flex items-center justify-center group-hover:bg-cyan-100 transition-colors">
+                        <i class="ri-file-pdf-2-line text-cyan-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <p class="font-semibold text-gray-800 group-hover:text-cyan-700 transition-colors">Documentos</p>
+                        <p class="text-xs text-gray-500">Plantillas y editor PDF</p>
+                    </div>
+                </div>
+            </a>
+            {% endif %}
+
+            {% if can_see_users %}
+            <!-- Usuarios -->
+            <a href="{% url 'users:user_list' %}" class="card bg-white rounded-xl p-5 hover:shadow-lg transition-all duration-200 group border-l-4 border-gray-400">
+                <div class="flex items-center gap-4">
+                    <div class="w-11 h-11 rounded-lg bg-gray-100 flex items-center justify-center group-hover:bg-gray-200 transition-colors">
+                        <i class="ri-team-line text-gray-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <p class="font-semibold text-gray-800 transition-colors">Usuarios</p>
+                        <p class="text-xs text-gray-500">{{ users_count }} activos</p>
+                    </div>
+                </div>
+            </a>
+            {% endif %}
+
+            {% if can_see_roles %}
+            <!-- Roles y Permisos -->
+            <a href="{% url 'users:role_permissions' %}" class="card bg-white rounded-xl p-5 hover:shadow-lg transition-all duration-200 group border-l-4 border-indigo-500">
+                <div class="flex items-center gap-4">
+                    <div class="w-11 h-11 rounded-lg bg-indigo-50 flex items-center justify-center group-hover:bg-indigo-100 transition-colors">
+                        <i class="ri-shield-keyhole-line text-indigo-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <p class="font-semibold text-gray-800 group-hover:text-indigo-700 transition-colors">Roles y permisos</p>
+                        <p class="text-xs text-gray-500">Control de acceso por rol</p>
+                    </div>
+                </div>
+            </a>
+            {% endif %}
+
+        </div>
+    </div>
+
+    <!-- Actividad Reciente -->
+    {% if can_see_sales or can_see_finance %}
+    <div class="grid grid-cols-1 {% if can_see_sales and can_see_finance %}lg:grid-cols-2{% endif %} gap-6">
+
+        {% if can_see_sales %}
+        <!-- Ultimas Ventas -->
+        <div class="card bg-white rounded-xl overflow-hidden">
+            <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                <h3 class="font-bold text-gray-800">{% if is_asesor and not can_see_all %}Mis ultimas ventas{% else %}Ultimas ventas{% endif %}</h3>
+                <a href="{% url 'sales:contract_project_select' %}" class="text-xs text-rojoz-600 hover:text-rojoz-700 font-medium">Ver todas</a>
+            </div>
+            {% if recent_sales %}
+            <div class="divide-y divide-gray-50">
+                {% for sale in recent_sales %}
+                <a href="{% url 'sales:contract_detail' sale.pk %}" class="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 transition-colors">
+                    <div class="w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold
+                        {% if sale.status == 'APP' %}bg-emerald-100 text-emerald-700
+                        {% elif sale.status == 'PEND' %}bg-amber-100 text-amber-700
+                        {% else %}bg-gray-100 text-gray-600{% endif %}">
+                        {% if sale.status == 'APP' %}<i class="ri-check-line text-base"></i>
+                        {% elif sale.status == 'PEND' %}<i class="ri-time-line text-base"></i>
+                        {% else %}<i class="ri-file-line text-base"></i>{% endif %}
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-sm font-medium text-gray-800 truncate">{{ sale.project.name }}</p>
+                        <p class="text-xs text-gray-500 truncate">{{ sale.house_type.name }} — {{ sale.get_status_display }}</p>
+                    </div>
+                    <div class="text-right flex-shrink-0">
+                        {% if sale.final_price %}
+                        <p class="text-sm font-semibold text-gray-800">${{ sale.final_price|floatformat:0|intcomma }}</p>
+                        {% endif %}
+                        <p class="text-xs text-gray-400">{{ sale.date_created|timesince }}</p>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="px-5 py-8 text-center">
+                <i class="ri-inbox-line text-3xl text-gray-300"></i>
+                <p class="text-sm text-gray-400 mt-2">No hay ventas registradas</p>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% if can_see_finance %}
+        <!-- Ultimos Recaudos -->
+        <div class="card bg-white rounded-xl overflow-hidden">
+            <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                <h3 class="font-bold text-gray-800">Ultimos recaudos</h3>
+                <a href="{% url 'finance:receipt_project_select' %}" class="text-xs text-rojoz-600 hover:text-rojoz-700 font-medium">Ver todos</a>
+            </div>
+            {% if recent_receipts %}
+            <div class="divide-y divide-gray-50">
+                {% for receipt in recent_receipts %}
+                <a href="{% url 'finance:receipt_detail' receipt.pk %}" class="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 transition-colors">
+                    <div class="w-9 h-9 rounded-lg bg-emerald-100 flex items-center justify-center">
+                        <i class="ri-money-dollar-circle-line text-emerald-600 text-base"></i>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-sm font-medium text-gray-800">Recibo #{{ receipt.pk }}</p>
+                        <p class="text-xs text-gray-500 truncate">{{ receipt.created_by.get_full_name|default:receipt.created_by.username }}</p>
+                    </div>
+                    <div class="text-right flex-shrink-0">
+                        <p class="text-sm font-semibold text-emerald-700">${{ receipt.amount|floatformat:0|intcomma }}</p>
+                        <p class="text-xs text-gray-400">{{ receipt.date_paid }}</p>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="px-5 py-8 text-center">
+                <i class="ri-inbox-line text-3xl text-gray-300"></i>
+                <p class="text-sm text-gray-400 mt-2">No hay recaudos registrados</p>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+    </div>
+    {% endif %}
+
+    <!-- Resumen general (solo admin/gerente) -->
+    {% if can_see_all %}
+    <div class="card bg-white rounded-xl p-5">
+        <div class="flex items-center gap-3 mb-4">
+            <i class="ri-bar-chart-box-line text-rojoz-600 text-lg"></i>
+            <h3 class="font-bold text-gray-800">Resumen general</h3>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div class="text-center p-3 rounded-lg bg-gray-50">
+                <p class="text-2xl font-bold text-gray-900">{{ sales_approved }}</p>
+                <p class="text-xs text-gray-500 mt-1">Contratos aprobados</p>
+            </div>
+            <div class="text-center p-3 rounded-lg bg-gray-50">
+                <p class="text-2xl font-bold text-gray-900">{{ sales_pending }}</p>
+                <p class="text-xs text-gray-500 mt-1">Contratos pendientes</p>
+            </div>
+            <div class="text-center p-3 rounded-lg bg-gray-50">
+                <p class="text-2xl font-bold text-gray-900">${{ receipts_total|floatformat:0|intcomma }}</p>
+                <p class="text-xs text-gray-500 mt-1">Total recaudado</p>
+            </div>
+            <div class="text-center p-3 rounded-lg bg-gray-50">
+                <p class="text-2xl font-bold text-gray-900">{{ users_count }}</p>
+                <p class="text-xs text-gray-500 mt-1">Usuarios activos</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% endif %}{# fin is_cliente / else #}
+
+</div>
+{% endblock %}

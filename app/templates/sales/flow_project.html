@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}Nueva Venta - Selección de Proyecto{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6">
+
+    <div class="rounded-2xl border border-gray-200 bg-white/80 backdrop-blur-xl shadow-sm p-6 lg:p-8 space-y-5">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+            <div>
+                <div class="flex items-center gap-2 text-sm text-gray-500 mb-3">
+                    <a href="{% url 'users:dashboard' %}" class="hover:text-rojoz-600 transition-colors">Dashboard</a>
+                    <i class="ri-arrow-right-s-line text-gray-400"></i>
+                    <span class="text-gray-800 font-medium">Nueva venta</span>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-900" style="font-family: 'Playfair Display', serif;">
+                    Selecciona el proyecto
+                </h1>
+                <p class="text-gray-500 mt-1 text-sm">Elige el proyecto para iniciar el flujo de venta.</p>
+            </div>
+        </div>
+
+        <ul class="steps steps-horizontal w-full text-sm flow-steps">
+            <li class="step step-primary">Proyecto</li>
+            <li class="step">Lote</li>
+            <li class="step">Contrato</li>
+            <li class="step">Pago</li>
+        </ul>
+    </div>
+
+    <!-- Proyectos -->
+    {% if projects %}
+    <div class="space-y-3">
+        {% for project in projects %}
+        <a href="{% url 'sales:sale_flow_lots' project.id %}"
+           class="card bg-white rounded-xl p-5 hover:shadow-lg transition-all duration-200 group block border border-gray-100 hover:border-rojoz-200">
+            <div class="flex items-center gap-4">
+                <!-- Logo / Avatar -->
+                <div class="flex-shrink-0">
+                    {% if project.logo %}
+                    <div class="w-14 h-14 rounded-xl overflow-hidden ring-2 ring-rojoz-100">
+                        <img src="{{ project.logo.url }}" alt="{{ project.name }}" class="w-full h-full object-cover">
+                    </div>
+                    {% else %}
+                    <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-rojoz-600 to-rojoz-500 flex items-center justify-center">
+                        <span class="text-white text-lg font-bold">{{ project.name|slice:":2"|upper }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Info -->
+                <div class="flex-1 min-w-0">
+                    <h2 class="text-lg font-bold text-gray-900 group-hover:text-rojoz-700 transition-colors">{{ project.name }}</h2>
+                    <div class="flex items-center gap-3 mt-1">
+                        <span class="text-sm text-gray-500 flex items-center gap-1">
+                            <i class="ri-map-pin-2-line text-gray-400"></i>
+                            {{ project.city }}
+                        </span>
+                        {% if project.house_type_count %}
+                        <span class="text-sm text-gray-500 flex items-center gap-1">
+                            <i class="ri-home-line text-gray-400"></i>
+                            {{ project.house_type_count }} tipo{{ project.house_type_count|pluralize:"s" }}
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Stats -->
+                <div class="flex items-center gap-4 flex-shrink-0">
+                    {% if project.total_sales > 0 %}
+                    <div class="text-center hidden sm:block">
+                        <p class="text-xl font-bold text-gray-900">{{ project.total_sales }}</p>
+                        <p class="text-xs text-gray-400">Ventas</p>
+                    </div>
+                    {% if project.pending_sales > 0 %}
+                    <div class="text-center hidden sm:block">
+                        <p class="text-xl font-bold text-amber-600">{{ project.pending_sales }}</p>
+                        <p class="text-xs text-gray-400">Pendientes</p>
+                    </div>
+                    {% endif %}
+                    {% endif %}
+                    <div class="w-9 h-9 rounded-lg bg-gray-100 group-hover:bg-rojoz-50 flex items-center justify-center transition-colors">
+                        <i class="ri-arrow-right-s-line text-gray-400 group-hover:text-rojoz-600 text-lg transition-colors"></i>
+                    </div>
+                </div>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="card bg-white rounded-xl p-10 text-center">
+        <i class="ri-building-2-line text-4xl text-gray-300"></i>
+        <p class="text-gray-500 mt-3">No hay proyectos registrados.</p>
+        <a href="{% url 'inventory:project_list' %}" class="btn btn-primary btn-sm mt-4">
+            <i class="ri-add-line"></i> Crear proyecto
+        </a>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

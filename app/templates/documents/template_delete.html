@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Eliminar Plantilla - Constructora Rojoz{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.6.0/fonts/remixicon.css">
+{% endblock %}
+
+{% block content %}
+<div class="p-8 max-w-lg mx-auto space-y-8">
+
+    <div class="card bg-white border border-gray-200 shadow-sm">
+        <div class="card-body items-center text-center">
+            <div class="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mb-4">
+                <i class="ri-delete-bin-line text-red-600 text-2xl"></i>
+            </div>
+
+            <h2 class="text-xl font-bold text-gray-900">Eliminar Plantilla</h2>
+            <p class="text-gray-600 mt-2">
+                ¿Estás seguro de eliminar la plantilla <strong>{{ template.name }}</strong>?
+            </p>
+
+            <div class="bg-gray-50 rounded-lg p-4 mt-4 w-full text-left">
+                <p class="text-sm text-gray-600">
+                    <strong>Ruta:</strong> {{ template.target_path }}<br>
+                    <strong>Versiones:</strong> {{ template.versions.count }}
+                </p>
+            </div>
+
+            <p class="text-sm text-red-600 mt-4">Esta acción eliminará la plantilla y todas sus versiones.</p>
+
+            <form method="post" class="flex gap-3 mt-6">
+                {% csrf_token %}
+                <a href="{% url 'documents:template_list' %}" class="btn btn-ghost">Cancelar</a>
+                <button type="submit" class="btn btn-error">
+                    <i class="ri-delete-bin-line mr-2"></i>
+                    Eliminar
+                </button>
+            </form>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

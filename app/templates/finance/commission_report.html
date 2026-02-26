@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Reporte de Comisiones{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-6">
+
+    <!-- Header -->
+    <div>
+        <div class="flex items-center gap-2 text-sm text-gray-500 mb-3">
+            <a href="{% url 'users:dashboard' %}" class="hover:text-rojoz-600 transition-colors">Dashboard</a>
+            <i class="ri-arrow-right-s-line text-gray-400"></i>
+            <a href="{% url 'finance:commission_liquidation_queue' %}" class="hover:text-rojoz-600 transition-colors">Comisiones</a>
+            <i class="ri-arrow-right-s-line text-gray-400"></i>
+            <span class="text-gray-800 font-medium">Reporte PDF</span>
+        </div>
+        <h1 class="text-2xl font-bold text-gray-900" style="font-family: 'Playfair Display', serif;">
+            Reporte de comisiones
+        </h1>
+        <p class="text-gray-500 mt-1 text-sm">Genera un PDF con las comisiones liquidadas agrupadas por asesor.</p>
+    </div>
+
+    <!-- Formulario -->
+    <div class="card bg-white rounded-xl p-6 space-y-5">
+        <div class="flex items-center gap-3 pb-4 border-b border-gray-100">
+            <div class="w-10 h-10 rounded-lg bg-rojoz-50 flex items-center justify-center">
+                <i class="ri-file-chart-line text-rojoz-600 text-lg"></i>
+            </div>
+            <div>
+                <h2 class="font-bold text-gray-800">Rango de fechas</h2>
+                <p class="text-xs text-gray-500">Selecciona el periodo para filtrar las comisiones liquidadas.</p>
+            </div>
+        </div>
+
+        <form id="reportForm" method="get" action="{% url 'finance:commission_report_pdf' %}" target="_blank" class="space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">Fecha desde</label>
+                    <input type="date" name="from" value="{{ date_from }}"
+                           class="input input-bordered w-full">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">Fecha hasta</label>
+                    <input type="date" name="to" value="{{ date_to }}"
+                           class="input input-bordered w-full">
+                </div>
+            </div>
+
+            <div class="bg-gray-50 rounded-lg p-4">
+                <div class="flex items-start gap-3">
+                    <i class="ri-information-line text-gray-400 text-lg mt-0.5"></i>
+                    <div class="text-sm text-gray-600">
+                        <p>El reporte incluye todos los pagos de comisiones registrados en el sistema.</p>
+                        <p class="mt-1">Si dejas los campos vacios, se generara el reporte con <strong>todas las fechas</strong>.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3 pt-2">
+                <button type="submit" class="btn btn-primary gap-2">
+                    <i class="ri-file-pdf-2-line"></i>
+                    Generar PDF
+                </button>
+                <a href="{% url 'finance:commission_liquidation_queue' %}" class="btn btn-neutral-elegant">
+                    Volver
+                </a>
+            </div>
+        </form>
+    </div>
+
+</div>
+{% endblock %}

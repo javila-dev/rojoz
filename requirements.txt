@@ -1,0 +1,21 @@
+Django>=5.0
+psycopg2-binary>=2.9
+
+# Core app
+Pillow
+python-dateutil
+
+# Frontend & Utils
+django-htmx
+django-widget-tweaks
+
+# PDF
+weasyprint>=60.0
+
+# Storage (MinIO / S3)
+django-storages
+boto3
+
+# Admin / Static
+django-unfold
+whitenoise>=6.6.0

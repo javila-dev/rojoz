@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}Contratos - {{ project.name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+    <div class="flex items-start justify-between gap-6">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">Contratos</h1>
+            <p class="text-gray-600 mt-2">Proyecto: <span class="font-semibold">{{ project.name }}</span> · {{ project.city }}</p>
+        </div>
+        <a href="{% url 'sales:contract_project_select' %}" class="btn btn-neutral-elegant">Cambiar proyecto</a>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <a href="{% url 'sales:contract_list_pending' project.id %}" class="card bg-white border border-gray-200 shadow-sm hover:shadow-md transition">
+            <div class="card-body">
+                <div class="text-lg font-semibold text-gray-900">Pendientes de aprobación</div>
+                <div class="text-sm text-gray-500">Revisar y aprobar contratos.</div>
+            </div>
+        </a>
+        <a href="{% url 'sales:contract_list_approved' project.id %}" class="card bg-white border border-gray-200 shadow-sm hover:shadow-md transition">
+            <div class="card-body">
+                <div class="text-lg font-semibold text-gray-900">Aprobados</div>
+                <div class="text-sm text-gray-500">Contratos ya aprobados.</div>
+            </div>
+        </a>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,650 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Flujo de Ventas - Contrato{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6">
+    <div class="rounded-2xl border border-gray-200 bg-white/80 backdrop-blur-xl shadow-sm p-6 lg:p-8 space-y-5">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+            <div>
+                <div class="flex items-center gap-2 text-sm text-gray-500 mb-3">
+                    <a href="{% url 'users:dashboard' %}" class="hover:text-rojoz-600 transition-colors">Dashboard</a>
+                    <i class="ri-arrow-right-s-line text-gray-400"></i>
+                    <a href="{% url 'sales:sale_flow_project' %}" class="hover:text-rojoz-600 transition-colors">Nueva venta</a>
+                    <i class="ri-arrow-right-s-line text-gray-400"></i>
+                    <span class="text-gray-800 font-medium">Contrato</span>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-900" style="font-family: 'Playfair Display', serif;">
+                    {% if is_edit %}
+                        Editar contrato {{ edit_sale.contract_number|default:edit_sale.id }}
+                    {% else %}
+                        Elaboración del contrato
+                    {% endif %}
+                </h1>
+                <p class="text-gray-500 mt-1 text-sm">
+                    Proyecto: <span class="font-semibold">{{ project.name }}</span> ({{ project.city }})
+                </p>
+            </div>
+            <div class="flex items-center gap-2 w-full sm:w-auto">
+                {% if is_edit %}
+                    <button type="button" class="btn btn-neutral-elegant btn-sm sm:btn-md flex-1 sm:flex-none" disabled>Paso anterior</button>
+                {% else %}
+                    <button type="button" class="btn btn-neutral-elegant btn-sm sm:btn-md flex-1 sm:flex-none" onclick="history.back()">Paso anterior</button>
+                {% endif %}
+                <a href="{% url 'sales:sale_flow_project' %}" class="btn btn-neutral-elegant btn-sm sm:btn-md flex-1 sm:flex-none">Cambiar proyecto</a>
+            </div>
+        </div>
+
+        <ul class="steps steps-horizontal w-full text-sm flow-steps">
+            <li class="step step-primary">Proyecto</li>
+            <li class="step step-primary">Lote</li>
+            <li class="step step-primary">Contrato</li>
+            <li class="step">Pago</li>
+        </ul>
+    </div>
+
+    {% if integration_error %}
+    <div class="alert alert-warning text-sm">
+        <span>{{ integration_error }}</span>
+    </div>
+    {% endif %}
+    {% if form_error %}
+    <div class="alert alert-error text-sm">
+        <span>{{ form_error }}</span>
+    </div>
+    {% endif %}
+
+    <form method="post" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {% csrf_token %}
+        <div class="lg:col-span-2 lg:order-1 space-y-6">
+            <div class="card bg-white border border-gray-200 shadow-sm">
+                <div class="card-body">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <h2 class="card-title">Titulares del contrato</h2>
+                            <p class="text-sm text-gray-600">Selecciona quiénes firmarán el contrato.</p>
+                        </div>
+                        <button type="button" id="open-external-party-modal" class="btn btn-sm btn-outline">
+                            Buscar tercero
+                        </button>
+                    </div>
+                    {% if adjudicacion.titulares %}
+                    <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {% for titular in adjudicacion.titulares %}
+                        <label class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:border-gray-300">
+                            <input
+                                type="checkbox"
+                                class="checkbox checkbox-sm"
+                                name="titulares"
+                                value="{{ titular.id }}"
+                                {% if titular_selection_initialized %}
+                                    {% if titular.id|stringformat:"s" in selected_titular_ids %}checked{% endif %}
+                                {% else %}checked{% endif %}
+                            />
+                            <span class="text-sm font-medium text-gray-900">{{ titular.nombre_completo|upper }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-sm text-gray-500 mt-3">No hay titulares disponibles.</p>
+                    {% endif %}
+
+                    <div class="divider my-4"></div>
+                    <div class="space-y-3">
+                        <h3 class="text-sm font-semibold text-gray-900">Agregar tercero diferente (AndinaSoft)</h3>
+                        <p class="text-xs text-gray-500">Abre el modal para buscar por nombre o documento.</p>
+                        <div>
+                            <span class="text-xs uppercase text-gray-400">Terceros seleccionados</span>
+                            <div id="external-party-selected" class="mt-2 space-y-2">
+                                {% for external_party in selected_external_parties %}
+                                <div class="flex items-center justify-between gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm" data-external-party-id="{{ external_party.id }}">
+                                    <span class="font-medium text-gray-800">{% if external_party.name %}{{ external_party.name|upper }}{% else %}Documento {{ external_party.id }}{% endif %}</span>
+                                    <button type="button" class="btn btn-ghost btn-xs text-red-600 external-party-remove">Quitar</button>
+                                    <input type="hidden" name="external_parties" value="{{ external_party.id }}" />
+                                    <input type="hidden" name="external_parties_display" value="{{ external_party.name }}" />
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card bg-white border border-gray-200 shadow-sm">
+                <div class="card-body space-y-4">
+                    <div>
+                        <h2 class="card-title">Tipo de casa</h2>
+                        <p class="text-sm text-gray-600">Selecciona el prototipo.</p>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {% for house_type in house_types %}
+                        <label class="flex items-start gap-3 p-3 border border-gray-200 rounded-lg hover:border-gray-300">
+                            <input
+                                type="radio"
+                                name="house_type"
+                                class="radio radio-sm"
+                                value="{{ house_type.id }}"
+                                data-base-price="{{ house_type.base_price }}"
+                                data-max-discount="{{ house_type.max_discount_percent|default:0 }}"
+                                {% if selected_house_type_id %}
+                                    {% if house_type.id|stringformat:"s" == selected_house_type_id %}checked{% endif %}
+                                {% elif forloop.first %}checked{% endif %}
+                            />
+                            <div class="flex items-start justify-between gap-3 w-full">
+                                <div>
+                                    <div class="text-sm font-semibold text-gray-900">{{ house_type.name }}</div>
+                                    <div class="text-xs text-gray-500">Base: ${{ house_type.base_price|floatformat:0|intcomma }}</div>
+                                </div>
+                                <div class="tooltip tooltip-top" data-tip="{{ house_type.description|default:'Sin descripción' }}">
+                                    <button type="button" class="btn btn-ghost btn-xs" aria-label="Descripción del tipo de casa">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <circle cx="12" cy="12" r="10"></circle>
+                                            <path d="M12 16v-4"></path>
+                                            <path d="M12 8h.01"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </label>
+                        {% empty %}
+                        <p class="text-sm text-gray-500">No hay tipos de casa configurados.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="card bg-white border border-gray-200 shadow-sm">
+                <div class="card-body space-y-4">
+                    <div>
+                        <h2 class="card-title">Acabados</h2>
+                        <p class="text-sm text-gray-600">Selecciona los acabados adicionales.</p>
+                    </div>
+                    {% for category in finish_categories %}
+                    <details class="border border-gray-100 rounded-lg bg-white group">
+                        <summary class="flex items-center justify-between gap-4 px-4 py-3 cursor-pointer select-none">
+                            <span class="text-sm font-semibold text-gray-900">{{ category.name }}</span>
+                            <div class="flex items-center gap-3">
+                                {% if category.is_required %}
+                                <span class="badge badge-warning badge-sm">Obligatoria</span>
+                                {% endif %}
+                                <span id="category-summary-{{ category.id }}" class="text-xs text-gray-500">Sin selección</span>
+                                <span class="transition-transform duration-200 group-open:rotate-180 text-gray-500">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M6 9l6 6 6-6"></path>
+                                    </svg>
+                                </span>
+                            </div>
+                        </summary>
+                        <div class="px-4 pb-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {% for option in category.options.all %}
+                            <label class="flex items-start gap-3 p-3 border border-gray-200 rounded-lg hover:border-gray-300">
+                                <input
+                                    type="checkbox"
+                                    class="checkbox checkbox-sm finish-option"
+                                    name="finish_options"
+                                    value="{{ option.id }}"
+                                    data-price="{{ option.price }}"
+                                    data-category-id="{{ category.id }}"
+                                    data-name="{{ option.name }}"
+                                    {% if option.id|stringformat:"s" in selected_finish_ids %}checked{% endif %}
+                                />
+                                <div>
+                                    <div class="text-sm font-medium text-gray-900">{{ option.name }}</div>
+                                    <div class="text-xs text-gray-500">+ ${{ option.price|floatformat:0|intcomma }}</div>
+                                </div>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </details>
+                    {% empty %}
+                    <p class="text-sm text-gray-500">No hay acabados configurados.</p>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="card bg-white border border-gray-200 shadow-sm">
+                <div class="card-body space-y-4">
+                    <div>
+                        <h2 class="card-title">Descuento</h2>
+                        <p class="text-sm text-gray-600">Máximo permitido: <span id="max-discount-label">0</span>%.</p>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label class="label"><span class="label-text">Descuento (%)</span></label>
+                            <input
+                                id="discount-percent"
+                                name="discount_percent"
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                class="input input-bordered w-full"
+                                value=""
+                            />
+                        </div>
+                        <div>
+                            <label class="label"><span class="label-text">Descuento (valor)</span></label>
+                            <input
+                                id="discount-amount"
+                                name="discount_amount"
+                                type="text"
+                                inputmode="numeric"
+                                class="input input-bordered w-full"
+                                data-currency="true"
+                                value="{% if discount_amount %}{{ discount_amount|floatformat:0|intcomma }}{% else %}0{% endif %}"
+                            />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <aside class="card bg-base-100 border border-gray-200 shadow-sm h-fit lg:order-2">
+            <div class="card-body space-y-4">
+                <div>
+                    <h3 class="card-title">Resumen de adjudicación</h3>
+                    <div class="text-sm text-gray-600 space-y-2 mt-3">
+                        <div class="flex items-center justify-between">
+                            <span>Adjudicación</span>
+                            <span class="font-semibold text-gray-900">{{ adjudicacion.id|default:"—" }}</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span>Inmueble</span>
+                            <span class="font-semibold text-gray-900">{{ adjudicacion.inmueble.id|default:"—" }}</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span>Fecha compra</span>
+                            <span class="font-semibold text-gray-900">
+                                {% if adjudicacion.fecha_contrato %}
+                                    {{ adjudicacion.fecha_contrato|slice:":10" }}
+                                {% elif adjudicacion.fecha %}
+                                    {{ adjudicacion.fecha|slice:":10" }}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span>Área lote</span>
+                            <span class="font-semibold text-gray-900">{{ adjudicacion.inmueble.area_lote|default:"—" }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="divider my-2"></div>
+
+                <h3 class="card-title">Resumen de valor</h3>
+                <div class="text-sm text-gray-600 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span>Base</span>
+                        <span id="base-price" class="font-semibold text-gray-900">$0</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span>Acabados</span>
+                        <span id="finishes-price" class="font-semibold text-gray-900">$0</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span>Descuento</span>
+                        <span id="discount-value" class="font-semibold text-gray-900">$0</span>
+                    </div>
+                    <div class="divider my-2"></div>
+                    <div class="flex items-center justify-between text-base">
+                        <span>Total</span>
+                        <span id="total-price" class="font-bold text-gray-900">$0</span>
+                    </div>
+                </div>
+                <button id="continue-step-3-btn" type="submit" class="btn btn-neutral-elegant w-full">
+                    <span class="continue-label">Continuar</span>
+                </button>
+            </div>
+        </aside>
+    </form>
+    <dialog id="external-party-modal" class="modal">
+        <div class="modal-box max-w-2xl">
+            <h3 class="font-bold text-lg">Buscar tercero (AndinaSoft)</h3>
+            <p class="text-sm text-gray-500 mt-1">Escribe nombre o documento para consultar terceros.</p>
+            <div class="flex gap-2 mt-4">
+                <input
+                    id="external-party-search"
+                    type="text"
+                    class="input input-bordered input-sm w-full"
+                    placeholder="Ej: 123456789 o Juan Perez"
+                />
+                <button type="button" id="external-party-search-btn" class="btn btn-sm btn-outline">Buscar</button>
+            </div>
+            <div id="external-party-results" class="space-y-2 mt-4 max-h-80 overflow-y-auto"></div>
+            <div class="flex items-center justify-between mt-3">
+                <button type="button" id="external-party-prev" class="btn btn-xs btn-ghost" disabled>Anterior</button>
+                <span id="external-party-page-info" class="text-xs text-gray-500">Página 1 de 1</span>
+                <button type="button" id="external-party-next" class="btn btn-xs btn-ghost" disabled>Siguiente</button>
+            </div>
+            <div class="modal-action">
+                <form method="dialog">
+                    <button class="btn btn-sm">Cerrar</button>
+                </form>
+            </div>
+        </div>
+        <form method="dialog" class="modal-backdrop">
+            <button>Cerrar</button>
+        </form>
+    </dialog>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    (function () {
+        const formatter = new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 });
+        const houseTypeInputs = Array.from(document.querySelectorAll('input[name="house_type"]'));
+        const finishInputs = Array.from(document.querySelectorAll(".finish-option"));
+        const baseEl = document.getElementById("base-price");
+        const finishesEl = document.getElementById("finishes-price");
+        const totalEl = document.getElementById("total-price");
+        const discountValueEl = document.getElementById("discount-value");
+        const discountPercentEl = document.getElementById("discount-percent");
+        const discountAmountEl = document.getElementById("discount-amount");
+        const maxDiscountLabelEl = document.getElementById("max-discount-label");
+        let lastDiscountSource = "amount";
+
+        const getMaxDiscount = () => {
+            const selected = houseTypeInputs.find((input) => input.checked);
+            if (!selected) return 0;
+            return parseFloat(selected.dataset.maxDiscount || "0") || 0;
+        };
+
+        const getBasePrice = () => {
+            const selected = houseTypeInputs.find((input) => input.checked);
+            if (!selected) return 0;
+            return parseFloat(selected.dataset.basePrice || "0") || 0;
+        };
+
+        const getFinishesPrice = () =>
+            finishInputs.reduce((sum, input) => {
+                if (!input.checked) return sum;
+                return sum + (parseFloat(input.dataset.price || "0") || 0);
+            }, 0);
+
+        const updateCategorySummaries = () => {
+            const byCategory = new Map();
+            finishInputs.forEach((input) => {
+                if (!input.checked) return;
+                const categoryId = input.dataset.categoryId;
+                if (!byCategory.has(categoryId)) {
+                    byCategory.set(categoryId, []);
+                }
+                byCategory.get(categoryId).push({
+                    name: input.dataset.name || "Opción",
+                    price: parseFloat(input.dataset.price || "0") || 0,
+                });
+            });
+
+            document.querySelectorAll('[id^="category-summary-"]').forEach((el) => {
+                const categoryId = el.id.replace("category-summary-", "");
+                const items = byCategory.get(categoryId) || [];
+                if (!items.length) {
+                    el.textContent = "Sin selección";
+                    return;
+                }
+                const total = items.reduce((sum, item) => sum + item.price, 0);
+                if (items.length === 1) {
+                    el.textContent = `${items[0].name} (${formatter.format(total)})`;
+                    return;
+                }
+                el.textContent = `${items.length} seleccionados (${formatter.format(total)})`;
+            });
+        };
+
+        const parseCurrency = (value) => {
+            if (!value) return 0;
+            const raw = value.toString().replace(/[^\d]/g, "");
+            return raw ? parseInt(raw, 10) : 0;
+        };
+
+        const formatCurrency = (value) => formatter.format(value || 0);
+
+        const getDiscountPercent = () => {
+            const value = parseFloat(discountPercentEl?.value || "0") || 0;
+            return Math.max(value, 0);
+        };
+
+        const getDiscountAmount = () => parseCurrency(discountAmountEl?.value || "0");
+
+        const updateTotals = () => {
+            const base = getBasePrice();
+            const finishes = getFinishesPrice();
+            const subtotal = base + finishes;
+            const maxDiscount = getMaxDiscount();
+            let discount = getDiscountAmount();
+            if (discountPercentEl && discountAmountEl) {
+                const percentActive = document.activeElement === discountPercentEl;
+                if (!percentActive) {
+                    let amount = getDiscountAmount();
+                    if (amount > subtotal) amount = subtotal;
+                    let percent = subtotal > 0 ? (amount / subtotal) * 100 : 0;
+                    if (maxDiscount && percent > maxDiscount) {
+                        percent = maxDiscount;
+                        amount = Math.round((subtotal * percent) / 100);
+                    }
+                    discountPercentEl.value = percent.toFixed(2);
+                    discountAmountEl.value = formatCurrency(amount);
+                    discount = amount;
+                } else {
+                    let percent = getDiscountPercent();
+                    if (maxDiscount && percent > maxDiscount) percent = maxDiscount;
+                    const amount = Math.round((subtotal * percent) / 100);
+                    discountPercentEl.value = percent.toFixed(2);
+                    discountAmountEl.value = formatCurrency(amount);
+                    discount = amount;
+                }
+            }
+            const total = Math.max(subtotal - discount, 0);
+            baseEl.textContent = formatter.format(base);
+            finishesEl.textContent = formatter.format(finishes);
+            if (discountValueEl) discountValueEl.textContent = formatter.format(discount);
+            if (maxDiscountLabelEl) maxDiscountLabelEl.textContent = Number.isInteger(maxDiscount) ? `${maxDiscount}` : maxDiscount.toFixed(2);
+            totalEl.textContent = formatter.format(total);
+            updateCategorySummaries();
+        };
+
+        houseTypeInputs.forEach((input) => input.addEventListener("change", updateTotals));
+        finishInputs.forEach((input) => input.addEventListener("change", updateTotals));
+        if (discountPercentEl) {
+            discountPercentEl.addEventListener("input", () => {
+                lastDiscountSource = "percent";
+                updateTotals();
+            });
+        }
+        if (discountAmountEl) {
+            discountAmountEl.addEventListener("input", () => {
+                lastDiscountSource = "amount";
+                updateTotals();
+            });
+        }
+        updateTotals();
+
+        if (discountPercentEl && discountAmountEl) {
+            const base = getBasePrice();
+            const finishes = getFinishesPrice();
+            const subtotal = base + finishes;
+            const initialAmount = getDiscountAmount();
+            if (subtotal > 0 && initialAmount > 0) {
+                lastDiscountSource = "amount";
+                const percent = (initialAmount / subtotal) * 100;
+                discountPercentEl.value = percent.toFixed(2);
+            }
+        }
+
+        const externalPartySearchInput = document.getElementById("external-party-search");
+        const externalPartySearchBtn = document.getElementById("external-party-search-btn");
+        const externalPartyResults = document.getElementById("external-party-results");
+        const externalPartySelected = document.getElementById("external-party-selected");
+        const externalPartyModal = document.getElementById("external-party-modal");
+        const openExternalPartyModalBtn = document.getElementById("open-external-party-modal");
+        const externalPartyPrevBtn = document.getElementById("external-party-prev");
+        const externalPartyNextBtn = document.getElementById("external-party-next");
+        const externalPartyPageInfo = document.getElementById("external-party-page-info");
+        const thirdPartySearchUrl = "{% url 'sales:sale_flow_third_party_search' %}";
+        const thirdPartySearchState = { query: "", page: 1, totalPages: 1 };
+
+        const selectedExternalIds = new Set(
+            Array.from(externalPartySelected?.querySelectorAll('input[name="external_parties"]') || [])
+                .map((input) => input.value)
+        );
+
+        const escapeHtml = (value) =>
+            (value || "")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#39;");
+
+        const createSelectedRow = (id, name = "") => {
+            const row = document.createElement("div");
+            row.className = "flex items-center justify-between gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm";
+            row.dataset.externalPartyId = id;
+            const displayName = (name || "").trim();
+            const displayLabel = displayName ? displayName.toUpperCase() : `Documento ${id}`;
+            row.innerHTML = `
+                <span class="font-medium text-gray-800">${escapeHtml(displayLabel)}</span>
+                <button type="button" class="btn btn-ghost btn-xs text-red-600 external-party-remove">Quitar</button>
+                <input type="hidden" name="external_parties" value="${id}" />
+                <input type="hidden" name="external_parties_display" value="${escapeHtml(displayName)}" />
+            `;
+            return row;
+        };
+
+        const renderSearchResults = (items) => {
+            if (!externalPartyResults) return;
+            externalPartyResults.innerHTML = "";
+            if (!items.length) {
+                externalPartyResults.innerHTML = '<div class="text-xs text-gray-500">Sin resultados.</div>';
+                return;
+            }
+            items.forEach((item) => {
+                const id = (item.id || "").toString().replace(/[^A-Za-z0-9]/g, "");
+                if (!id) return;
+                const wrapper = document.createElement("div");
+                wrapper.className = "rounded-lg border border-gray-200 px-3 py-2 text-sm";
+                wrapper.innerHTML = `
+                    <div class="flex items-start justify-between gap-2">
+                        <div>
+                            <div class="font-semibold text-gray-900">${item.nombre_completo || "Sin nombre"}</div>
+                            <div class="text-xs text-gray-500">Doc: ${id}${item.ciudad ? ` · ${item.ciudad}` : ""}</div>
+                        </div>
+                        <button type="button" class="btn btn-xs btn-outline external-party-add" data-id="${id}" data-name="${item.nombre_completo || ""}">
+                            Agregar
+                        </button>
+                    </div>
+                `;
+                externalPartyResults.appendChild(wrapper);
+            });
+        };
+
+        const runThirdPartySearch = async () => {
+            const query = (externalPartySearchInput?.value || "").trim();
+            if (query.length < 2) {
+                if (externalPartyResults) {
+                    externalPartyResults.innerHTML = '<div class="text-xs text-gray-500">Escribe al menos 2 caracteres.</div>';
+                }
+                if (externalPartyPageInfo) externalPartyPageInfo.textContent = "Página 1 de 1";
+                if (externalPartyPrevBtn) externalPartyPrevBtn.disabled = true;
+                if (externalPartyNextBtn) externalPartyNextBtn.disabled = true;
+                return;
+            }
+            thirdPartySearchState.query = query;
+            thirdPartySearchState.page = 1;
+            await fetchThirdPartyPage(1);
+        };
+
+        const fetchThirdPartyPage = async (page) => {
+            const query = (thirdPartySearchState.query || "").trim();
+            if (!query) return;
+            if (externalPartySearchBtn) externalPartySearchBtn.disabled = true;
+            if (externalPartyPrevBtn) externalPartyPrevBtn.disabled = true;
+            if (externalPartyNextBtn) externalPartyNextBtn.disabled = true;
+            try {
+                const url = `${thirdPartySearchUrl}?search=${encodeURIComponent(query)}&page=${encodeURIComponent(page || 1)}`;
+                const response = await fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } });
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.error || "No se pudo buscar terceros.");
+                }
+                renderSearchResults(data.terceros || []);
+                const pagination = data.pagination || {};
+                const currentPage = parseInt(pagination.page || page || 1, 10) || 1;
+                const totalPages = parseInt(pagination.total_pages || 1, 10) || 1;
+                thirdPartySearchState.page = currentPage;
+                thirdPartySearchState.totalPages = totalPages;
+                if (externalPartyPageInfo) {
+                    externalPartyPageInfo.textContent = `Página ${currentPage} de ${totalPages}`;
+                }
+                if (externalPartyPrevBtn) externalPartyPrevBtn.disabled = currentPage <= 1;
+                if (externalPartyNextBtn) externalPartyNextBtn.disabled = currentPage >= totalPages;
+            } catch (error) {
+                if (externalPartyResults) {
+                    externalPartyResults.innerHTML = `<div class="text-xs text-red-600">${error.message}</div>`;
+                }
+                if (externalPartyPageInfo) externalPartyPageInfo.textContent = "Página 1 de 1";
+            } finally {
+                if (externalPartySearchBtn) externalPartySearchBtn.disabled = false;
+            }
+        };
+
+        externalPartySearchBtn?.addEventListener("click", runThirdPartySearch);
+        openExternalPartyModalBtn?.addEventListener("click", () => {
+            if (externalPartyModal && typeof externalPartyModal.showModal === "function") {
+                externalPartyModal.showModal();
+            }
+        });
+        externalPartySearchInput?.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                runThirdPartySearch();
+            }
+        });
+        externalPartyPrevBtn?.addEventListener("click", () => {
+            const nextPage = Math.max((thirdPartySearchState.page || 1) - 1, 1);
+            fetchThirdPartyPage(nextPage);
+        });
+        externalPartyNextBtn?.addEventListener("click", () => {
+            const nextPage = Math.min(
+                (thirdPartySearchState.page || 1) + 1,
+                thirdPartySearchState.totalPages || 1
+            );
+            fetchThirdPartyPage(nextPage);
+        });
+
+        externalPartyResults?.addEventListener("click", (event) => {
+            const target = event.target.closest(".external-party-add");
+            if (!target || !externalPartySelected) return;
+            const id = target.dataset.id || "";
+            const name = target.dataset.name || "";
+            if (!id || selectedExternalIds.has(id)) return;
+            selectedExternalIds.add(id);
+            externalPartySelected.appendChild(createSelectedRow(id, name));
+            if (externalPartyModal && typeof externalPartyModal.close === "function") {
+                externalPartyModal.close();
+            }
+        });
+
+        externalPartySelected?.addEventListener("click", (event) => {
+            const target = event.target.closest(".external-party-remove");
+            if (!target) return;
+            const row = target.closest("[data-external-party-id]");
+            const id = row?.dataset.externalPartyId || "";
+            if (id) selectedExternalIds.delete(id);
+            row?.remove();
+        });
+
+        const flowForm = document.querySelector('form.grid.grid-cols-1.lg\\:grid-cols-3');
+        const continueBtn = document.getElementById("continue-step-3-btn");
+        if (flowForm && continueBtn) {
+            flowForm.addEventListener("submit", () => {
+                continueBtn.disabled = true;
+                continueBtn.classList.add("loading");
+                const label = continueBtn.querySelector(".continue-label");
+                if (label) label.textContent = "Guardando...";
+            });
+        }
+    })();
+</script>
+{% endblock %}

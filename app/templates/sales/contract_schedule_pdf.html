@@ -1,0 +1,145 @@
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Cronograma de pagos</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 20mm 18mm;
+        }
+        body {
+            font-family: "Gudea", "Helvetica Neue", Arial, sans-serif;
+            color: #1f2937;
+            font-size: 12px;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 12px;
+            margin-bottom: 16px;
+        }
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .logo {
+            width: 60px;
+            height: 60px;
+            object-fit: contain;
+        }
+        .title {
+            font-size: 18px;
+            font-weight: 700;
+        }
+        .muted {
+            color: #6b7280;
+            font-size: 11px;
+        }
+        .meta {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px 16px;
+            margin-bottom: 16px;
+        }
+        .meta-item {
+            font-size: 11px;
+            color: #374151;
+        }
+        .meta-item strong {
+            color: #111827;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 10.5px;
+        }
+        thead th {
+            text-align: left;
+            background: #f3f4f6;
+            padding: 8px 6px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        tbody td {
+            padding: 6px;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        .text-right {
+            text-align: right;
+        }
+        .footer {
+            margin-top: 12px;
+            font-size: 10px;
+            color: #9ca3af;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="brand">
+            <div>
+                <div class="title">Cronograma de pagos</div>
+                <div class="muted">{{ project.name }} · {{ project.city }}</div>
+            </div>
+        </div>
+        <div class="muted">Contrato #{{ contract.contract_number|default:contract.id }}</div>
+    </div>
+
+    <div class="meta">
+        <div class="meta-item"><strong>Proyecto:</strong> {{ project.name }}</div>
+        <div class="meta-item"><strong>Contrato:</strong> {{ contract.contract_number|default:"—" }}</div>
+        <div class="meta-item"><strong>Fecha:</strong> {{ contract.date_created|date:"Y-m-d" }}</div>
+        <div class="meta-item"><strong>Valor contrato:</strong> $ {{ contract.final_price|floatformat:0|intcomma }}</div>
+        <div class="meta-item">
+            <strong>Titulares:</strong>
+            {% if parties %}
+                {% for party in parties %}
+                    {{ party.full_name }}{% if not forloop.last %}, {% endif %}
+                {% endfor %}
+            {% else %}
+                —
+            {% endif %}
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Fecha</th>
+                <th>Concepto</th>
+                <th class="text-right">N° cuota</th>
+                <th class="text-right">Valor</th>
+                <th class="text-right">Capital</th>
+                <th class="text-right">Interés</th>
+                <th class="text-right">Saldo</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in schedule_items %}
+            <tr>
+                <td>{{ item.n }}</td>
+                <td>{{ item.fecha|date:"Y-m-d" }}</td>
+                <td>{{ item.concepto }}</td>
+                <td class="text-right">{{ item.numero_cuota|default:"—" }}</td>
+                <td class="text-right">$ {{ item.valor_total|floatformat:0|intcomma }}</td>
+                <td class="text-right">$ {{ item.capital|floatformat:0|intcomma }}</td>
+                <td class="text-right">$ {{ item.interes|floatformat:0|intcomma }}</td>
+                <td class="text-right">$ {{ item.saldo|floatformat:0|intcomma }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="8">Sin cronograma registrado.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="footer">Generado el {{ contract.date_created|date:"Y-m-d H:i" }}</div>
+</body>
+</html>

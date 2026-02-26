@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal del Cliente - Constructora Rojoz</title>
+    <link rel="icon" type="image/png" href="https://s3.2asoft.tech/construccion-media-public/document_assets/logo rojoz.png">
+
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Gudea:wght@400;700&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.6.0/fonts/remixicon.css" rel="stylesheet" />
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'rojoz': {
+                            50: '#fef2f2', 100: '#fee2e2', 200: '#fecaca', 300: '#fca5a5',
+                            400: '#f87171', 500: '#C4574E', 600: '#A0372A', 700: '#7A2518',
+                            800: '#5a1a0f', 900: '#3d100a',
+                        },
+                    },
+                }
+            }
+        }
+    </script>
+</head>
+<body style="font-family: 'Gudea', system-ui, sans-serif;">
+
+    <div class="min-h-screen flex">
+
+        <!-- Panel izquierdo: branding -->
+        <div class="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-rojoz-700 via-rojoz-600 to-rojoz-500 relative overflow-hidden">
+            <!-- Patron decorativo -->
+            <div class="absolute inset-0 opacity-10">
+                <div class="absolute top-20 left-20 w-64 h-64 bg-white rounded-full"></div>
+                <div class="absolute bottom-20 right-20 w-48 h-48 bg-white rounded-full"></div>
+                <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-white rounded-full opacity-50"></div>
+            </div>
+
+            <div class="relative z-10 flex flex-col justify-center px-16">
+                <div class="flex items-center gap-4 mb-8">
+                    <div class="w-14 h-14 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center overflow-hidden">
+                        <img src="https://s3.2asoft.tech/construccion-media-public/document_assets/logo rojoz.png"
+                             alt="Rojoz" class="w-full h-full object-contain brightness-0 invert p-2">
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-bold text-white tracking-tight" style="font-family: 'Playfair Display', serif;">Rojoz</h1>
+                        <p class="text-white/80 text-sm">Constructora & Ventas</p>
+                    </div>
+                </div>
+
+                <h2 class="text-4xl font-bold text-white leading-tight mb-4" style="font-family: 'Playfair Display', serif;">
+                    Portal del<br>Cliente
+                </h2>
+                <p class="text-white/80 text-lg max-w-md">
+                    Consulta el estado de tu contrato, cronograma de pagos y descarga tus documentos.
+                </p>
+
+                <div class="mt-12 space-y-4">
+                    <div class="flex items-center gap-3 text-white/70">
+                        <div class="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
+                            <i class="ri-file-text-line"></i>
+                        </div>
+                        <span class="text-sm">Revisa el detalle de tu contrato</span>
+                    </div>
+                    <div class="flex items-center gap-3 text-white/70">
+                        <div class="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
+                            <i class="ri-money-dollar-circle-line"></i>
+                        </div>
+                        <span class="text-sm">Consulta tu cronograma y pagos realizados</span>
+                    </div>
+                    <div class="flex items-center gap-3 text-white/70">
+                        <div class="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
+                            <i class="ri-download-2-line"></i>
+                        </div>
+                        <span class="text-sm">Descarga tu estado de cuenta y recibos</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel derecho: formulario -->
+        <div class="w-full lg:w-1/2 flex items-center justify-center p-6 bg-gradient-to-br from-gray-50 to-white">
+            <div class="w-full max-w-md">
+
+                <!-- Logo mobile -->
+                <div class="lg:hidden flex items-center gap-3 mb-8">
+                    <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-rojoz-600 to-rojoz-500 flex items-center justify-center overflow-hidden">
+                        <img src="https://s3.2asoft.tech/construccion-media-public/document_assets/logo rojoz.png"
+                             alt="Rojoz" class="w-full h-full object-contain brightness-0 invert p-1">
+                    </div>
+                    <span class="text-xl font-bold text-gray-900" style="font-family: 'Playfair Display', serif;">Rojoz</span>
+                </div>
+
+                <div class="mb-8">
+                    <h2 class="text-2xl font-bold text-gray-900" style="font-family: 'Playfair Display', serif;">
+                        Accede a tu portal
+                    </h2>
+                    <p class="text-gray-500 mt-2 text-sm">
+                        Ingresa tu numero de documento y fecha de nacimiento para consultar tus contratos.
+                    </p>
+                </div>
+
+                {% if error %}
+                <div class="mb-6 p-4 rounded-xl bg-red-50 border border-red-200">
+                    <div class="flex items-start gap-3">
+                        <i class="ri-error-warning-line text-red-500 text-lg mt-0.5"></i>
+                        <p class="text-sm text-red-700">{{ error }}</p>
+                    </div>
+                </div>
+                {% endif %}
+
+                <form method="post" class="space-y-5">
+                    {% csrf_token %}
+
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+                            Numero de documento
+                        </label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                                <i class="ri-id-card-line text-lg"></i>
+                            </span>
+                            <input type="text" name="document"
+                                   class="input input-bordered w-full pl-10"
+                                   placeholder="Ej: 1234567890"
+                                   inputmode="numeric"
+                                   pattern="[0-9]+"
+                                   oninput="this.value=this.value.replace(/[^0-9]/g,'')"
+                                   autocomplete="off"
+                                   required>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">Solo números, sin puntos, comas ni guiones.</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+                            Fecha de nacimiento
+                        </label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                                <i class="ri-calendar-line text-lg"></i>
+                            </span>
+                            <input type="date" name="birth_date"
+                                   class="input input-bordered w-full pl-10"
+                                   required>
+                        </div>
+                    </div>
+
+                    <button type="submit"
+                            class="w-full py-3 rounded-xl text-white font-semibold text-sm transition-all duration-300
+                                   hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
+                            style="background: linear-gradient(135deg, #A0372A 0%, #C4574E 100%);
+                                   box-shadow: 0 4px 14px rgba(160,55,42,0.3);">
+                        <i class="ri-login-box-line mr-2"></i>
+                        Consultar mis contratos
+                    </button>
+                </form>
+
+                <div class="mt-8 p-4 rounded-xl bg-gray-50 border border-gray-200">
+                    <div class="flex items-start gap-3">
+                        <i class="ri-shield-check-line text-gray-400 text-lg mt-0.5"></i>
+                        <div class="text-xs text-gray-500">
+                            <p class="font-semibold text-gray-600 mb-1">Acceso seguro</p>
+                            <p>Solo podras ver los contratos asociados a tu numero de documento. Si tienes dificultades, contacta a tu asesor comercial.</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+</body>
+</html>

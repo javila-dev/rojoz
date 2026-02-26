@@ -1,0 +1,336 @@
+{% extends "public_base.html" %}
+
+{% block title %}Registro de asesor{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-8">
+
+    {% if saved %}
+    {# ===== ESTADO DE EXITO ===== #}
+    <section class="lg:col-span-2 animate-fade-in-up">
+        <div class="card bg-white border border-green-200 shadow-lg overflow-hidden">
+            <div class="h-1.5 bg-gradient-to-r from-green-400 via-emerald-500 to-green-600"></div>
+            <div class="card-body items-center text-center py-14 space-y-5">
+                <div class="w-20 h-20 rounded-full bg-green-50 flex items-center justify-center">
+                    <i class="ri-check-double-line text-4xl text-green-600"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-900">Registro enviado correctamente</h1>
+                <p class="text-gray-600 max-w-md">Hemos recibido tu informacion. Tu registro esta <strong>pendiente de aprobacion</strong>. Te notificaremos cuando tu cuenta sea activada.</p>
+
+                <div class="divider max-w-xs mx-auto"></div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-lg w-full text-left">
+                    <div class="flex gap-3">
+                        <div class="section-badge mt-0.5">1</div>
+                        <div>
+                            <p class="text-sm font-semibold text-gray-800">Validacion</p>
+                            <p class="text-xs text-gray-500">Verificamos tus datos</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-3">
+                        <div class="section-badge mt-0.5">2</div>
+                        <div>
+                            <p class="text-sm font-semibold text-gray-800">Activacion</p>
+                            <p class="text-xs text-gray-500">Habilitamos tu perfil</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-3">
+                        <div class="section-badge mt-0.5">3</div>
+                        <div>
+                            <p class="text-sm font-semibold text-gray-800">Acceso</p>
+                            <p class="text-xs text-gray-500">Inicias sesion y operas</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    {% else %}
+    {# ===== FORMULARIO ===== #}
+    <section class="space-y-6">
+        {# Header #}
+        <div class="p-6 rounded-2xl bg-white border border-rojoz-100 shadow-sm animate-fade-in-up">
+            <div class="flex items-center gap-4">
+                <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-rojoz-600 via-rojoz-500 to-rojoz-400 flex items-center justify-center shadow-md overflow-hidden">
+                    <img
+                        src="https://s3.2asoft.tech/construccion-media-public/document_assets/logo rojoz.png"
+                        alt="Rojoz"
+                        class="w-10 h-10 object-contain brightness-0 invert"
+                    >
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900" style="font-family:'Playfair Display',serif;">Registro de asesores</h1>
+                    <p class="text-gray-500 text-sm mt-0.5">Completa tus datos para iniciar el proceso de autogestion.</p>
+                </div>
+            </div>
+        </div>
+
+        <form method="post" id="register-form" class="card bg-white border border-gray-200 shadow-sm animate-fade-in-up delay-100">
+            {% csrf_token %}
+            <div class="card-body space-y-7">
+
+                {% if form.non_field_errors %}
+                <div class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 flex items-start gap-2">
+                    <i class="ri-error-warning-line text-lg mt-0.5 flex-shrink-0"></i>
+                    <div>{{ form.non_field_errors.0 }}</div>
+                </div>
+                {% endif %}
+
+                {# --- Seccion 1: Datos Personales --- #}
+                <div>
+                    <div class="flex items-center gap-3 mb-4">
+                        <span class="section-badge">1</span>
+                        <div class="flex items-center gap-2">
+                            <i class="ri-user-line text-rojoz-500"></i>
+                            <h2 class="font-semibold text-gray-800">Datos personales</h2>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="label"><span class="label-text font-medium">Nombres</span></label>
+                            {{ form.first_name }}
+                            {% if form.first_name.errors %}<div class="field-error"><i class="ri-alert-line"></i> {{ form.first_name.errors.0 }}</div>{% endif %}
+                        </div>
+                        <div>
+                            <label class="label"><span class="label-text font-medium">Apellidos</span></label>
+                            {{ form.last_name }}
+                            {% if form.last_name.errors %}<div class="field-error"><i class="ri-alert-line"></i> {{ form.last_name.errors.0 }}</div>{% endif %}
+                        </div>
+                        <div>
+                            <label class="label"><span class="label-text font-medium">Email</span></label>
+                            {{ form.email }}
+                            {% if form.email.errors %}<div class="field-error"><i class="ri-alert-line"></i> {{ form.email.errors.0 }}</div>{% endif %}
+                        </div>
+                        <div>
+                            <label class="label"><span class="label-text font-medium">Celular</span></label>
+                            {{ form.phone }}
+                            {% if form.phone.errors %}<div class="field-error"><i class="ri-alert-line"></i> {{ form.phone.errors.0 }}</div>{% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                {# --- Seccion 2: Datos Bancarios --- #}
+                <div>
+                    <div class="flex items-center gap-3 mb-4">
+                        <span class="section-badge">2</span>
+                        <div class="flex items-center gap-2">
+                            <i class="ri-bank-line text-rojoz-500"></i>
+                            <h2 class="font-semibold text-gray-800">Datos bancarios</h2>
+                        </div>
+                        <span class="text-xs text-gray-400 ml-auto">Para pago de comisiones</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="label"><span class="label-text font-medium">Banco</span></label>
+                            {{ form.bank_code }}
+                            {% if form.bank_code.errors %}<div class="field-error"><i class="ri-alert-line"></i> {{ form.bank_code.errors.0 }}</div>{% endif %}
+                        </div>
+                        <div>
+                            <label class="label"><span class="label-text font-medium">Tipo de cuenta</span></label>
+                            {{ form.account_type }}
+                            {% if form.account_type.errors %}<div class="field-error"><i class="ri-alert-line"></i> {{ form.account_type.errors.0 }}</div>{% endif %}
+                        </div>
+                        <div>
+                            <label class="label"><span class="label-text font-medium">Numero de cuenta</span></label>
+                            {{ form.account_number }}
+                            {% if form.account_number.errors %}<div class="field-error"><i class="ri-alert-line"></i> {{ form.account_number.errors.0 }}</div>{% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                {# --- Seccion 3: Seguridad --- #}
+                <div>
+                    <div class="flex items-center gap-3 mb-4">
+                        <span class="section-badge">3</span>
+                        <div class="flex items-center gap-2">
+                            <i class="ri-lock-line text-rojoz-500"></i>
+                            <h2 class="font-semibold text-gray-800">Seguridad</h2>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="label"><span class="label-text font-medium">Contrasena</span></label>
+                            {{ form.password1 }}
+                            {% if form.password1.errors %}<div class="field-error"><i class="ri-alert-line"></i> {{ form.password1.errors.0 }}</div>{% endif %}
+                        </div>
+                        <div>
+                            <label class="label"><span class="label-text font-medium">Confirmar contrasena</span></label>
+                            {{ form.password2 }}
+                            {% if form.password2.errors %}<div class="field-error"><i class="ri-alert-line"></i> {{ form.password2.errors.0 }}</div>{% endif %}
+                        </div>
+                    </div>
+
+                    {# Indicadores de validacion de contrasena #}
+                    <div id="pw-rules" class="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-xs" style="display:none;">
+                        <div id="rule-length" class="flex items-center gap-1.5 text-gray-400">
+                            <i class="ri-circle-line text-[10px]"></i> Minimo 8 caracteres
+                        </div>
+                        <div id="rule-upper" class="flex items-center gap-1.5 text-gray-400">
+                            <i class="ri-circle-line text-[10px]"></i> Una mayuscula
+                        </div>
+                        <div id="rule-lower" class="flex items-center gap-1.5 text-gray-400">
+                            <i class="ri-circle-line text-[10px]"></i> Una minuscula
+                        </div>
+                        <div id="rule-number" class="flex items-center gap-1.5 text-gray-400">
+                            <i class="ri-circle-line text-[10px]"></i> Un numero
+                        </div>
+                        <div id="rule-match" class="flex items-center gap-1.5 text-gray-400 col-span-2">
+                            <i class="ri-circle-line text-[10px]"></i> Las contrasenas coinciden
+                        </div>
+                    </div>
+                </div>
+
+                {# --- Boton --- #}
+                <div class="flex items-center justify-end gap-3 pt-2 border-t border-gray-100">
+                    <button type="submit" id="btn-submit" class="btn btn-primary gap-2">
+                        <i class="ri-send-plane-line"></i>
+                        Enviar registro
+                    </button>
+                </div>
+            </div>
+        </form>
+    </section>
+
+    {# ===== SIDEBAR ===== #}
+    <aside class="space-y-6">
+        {# Card principal con gradiente #}
+        <div class="p-6 rounded-2xl bg-gradient-to-br from-rojoz-600 via-rojoz-500 to-rojoz-400 text-white shadow-xl animate-slide-in-right delay-100 relative overflow-hidden">
+            <div class="absolute -top-8 -right-8 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+            <h2 class="text-2xl font-semibold" style="font-family:'Playfair Display',serif;">Rojoz</h2>
+            <p class="text-sm text-white/85 mt-2 leading-relaxed">Comisiones claras, procesos simples y crecimiento continuo para nuestros asesores.</p>
+            <div class="grid grid-cols-2 gap-3 mt-5">
+                <div class="bg-white/15 backdrop-blur rounded-xl p-3 text-center">
+                    <i class="ri-money-dollar-circle-line text-xl"></i>
+                    <p class="text-xs mt-1 text-white/90">Comisiones competitivas</p>
+                </div>
+                <div class="bg-white/15 backdrop-blur rounded-xl p-3 text-center">
+                    <i class="ri-line-chart-line text-xl"></i>
+                    <p class="text-xs mt-1 text-white/90">Seguimiento en tiempo real</p>
+                </div>
+            </div>
+        </div>
+
+        {# Pasos del proceso #}
+        <div class="p-6 rounded-2xl bg-white border border-rojoz-100 shadow-sm space-y-4 animate-slide-in-right delay-200">
+            <h3 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <i class="ri-route-line text-rojoz-500"></i>
+                Que sigue
+            </h3>
+            <div class="space-y-4">
+                <div class="flex gap-3">
+                    <div class="flex flex-col items-center">
+                        <div class="w-8 h-8 rounded-full bg-rojoz-50 text-rojoz-600 flex items-center justify-center text-sm font-bold">1</div>
+                        <div class="w-px h-full bg-rojoz-100 mt-1"></div>
+                    </div>
+                    <div class="pb-4">
+                        <p class="text-sm font-semibold text-gray-800">Validacion de datos</p>
+                        <p class="text-xs text-gray-500 mt-0.5">Verificamos tu informacion bancaria y de contacto.</p>
+                    </div>
+                </div>
+                <div class="flex gap-3">
+                    <div class="flex flex-col items-center">
+                        <div class="w-8 h-8 rounded-full bg-rojoz-50 text-rojoz-600 flex items-center justify-center text-sm font-bold">2</div>
+                        <div class="w-px h-full bg-rojoz-100 mt-1"></div>
+                    </div>
+                    <div class="pb-4">
+                        <p class="text-sm font-semibold text-gray-800">Activacion de perfil</p>
+                        <p class="text-xs text-gray-500 mt-0.5">Te asignamos perfil y acceso de autogestion.</p>
+                    </div>
+                </div>
+                <div class="flex gap-3">
+                    <div class="flex flex-col items-center">
+                        <div class="w-8 h-8 rounded-full bg-rojoz-50 text-rojoz-600 flex items-center justify-center text-sm font-bold">3</div>
+                    </div>
+                    <div>
+                        <p class="text-sm font-semibold text-gray-800">Comienza a operar</p>
+                        <p class="text-xs text-gray-500 mt-0.5">Carga y haz seguimiento a tus ventas.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# Soporte #}
+        <div class="p-5 rounded-2xl bg-gray-50 border border-gray-200 animate-slide-in-right delay-300">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-gray-500">
+                    <i class="ri-question-line text-lg"></i>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-gray-700">Necesitas ayuda?</p>
+                    <p class="text-xs text-gray-500">Contactanos por WhatsApp o email.</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+    {% endif %}
+</div>
+
+{% if not saved %}
+<script>
+(function() {
+    const pw1 = document.getElementById('id_password1');
+    const pw2 = document.getElementById('id_password2');
+    const rulesBox = document.getElementById('pw-rules');
+    const form = document.getElementById('register-form');
+
+    const rules = {
+        length: { el: document.getElementById('rule-length'), test: v => v.length >= 8 },
+        upper:  { el: document.getElementById('rule-upper'),  test: v => /[A-Z]/.test(v) },
+        lower:  { el: document.getElementById('rule-lower'),  test: v => /[a-z]/.test(v) },
+        number: { el: document.getElementById('rule-number'), test: v => /[0-9]/.test(v) },
+        match:  { el: document.getElementById('rule-match'),  test: () => pw1.value.length > 0 && pw1.value === pw2.value },
+    };
+
+    function updateRule(key, passed) {
+        const el = rules[key].el;
+        const icon = el.querySelector('i');
+        if (passed) {
+            el.classList.remove('text-gray-400', 'text-red-500');
+            el.classList.add('text-green-600');
+            icon.className = 'ri-checkbox-circle-fill text-[10px]';
+        } else {
+            el.classList.remove('text-green-600');
+            el.classList.add('text-gray-400');
+            icon.className = 'ri-circle-line text-[10px]';
+        }
+    }
+
+    function validate() {
+        const val = pw1.value;
+        let allPass = true;
+        for (const [key, rule] of Object.entries(rules)) {
+            const passed = rule.test(val);
+            updateRule(key, passed);
+            if (!passed) allPass = false;
+        }
+        return allPass;
+    }
+
+    pw1.addEventListener('focus', () => { rulesBox.style.display = 'grid'; });
+    pw1.addEventListener('input', validate);
+    pw2.addEventListener('input', validate);
+    pw2.addEventListener('focus', () => { rulesBox.style.display = 'grid'; });
+
+    form.addEventListener('submit', function(e) {
+        if (!validate()) {
+            e.preventDefault();
+            // Marcar las reglas que fallan en rojo
+            for (const [key, rule] of Object.entries(rules)) {
+                if (!rule.test(pw1.value)) {
+                    rule.el.classList.remove('text-gray-400', 'text-green-600');
+                    rule.el.classList.add('text-red-500');
+                    rule.el.querySelector('i').className = 'ri-close-circle-fill text-[10px]';
+                }
+            }
+            rulesBox.style.display = 'grid';
+            pw1.focus();
+        }
+    });
+})();
+</script>
+{% endif %}
+{% endblock %}

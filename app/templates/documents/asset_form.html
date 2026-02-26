@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}{% if is_edit %}Editar{% else %}Subir{% endif %} Asset - Constructora Rojoz{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.6.0/fonts/remixicon.css">
+{% endblock %}
+
+{% block content %}
+<div class="p-8 max-w-2xl mx-auto space-y-8">
+
+    <!-- Header -->
+    <div class="flex items-center gap-4">
+        <a href="{% url 'documents:asset_list' %}" class="btn btn-ghost btn-sm">
+            <i class="ri-arrow-left-line"></i>
+        </a>
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900" style="font-family: 'Playfair Display', serif;">
+                {% if is_edit %}Editar Asset{% else %}Subir Asset{% endif %}
+            </h1>
+            <p class="text-gray-600 text-sm mt-1">
+                {% if is_edit %}Modifica los datos del asset{% else %}Sube una imagen para usar en plantillas{% endif %}
+            </p>
+        </div>
+    </div>
+
+    <!-- Preview si es edición -->
+    {% if asset %}
+    <div class="card bg-white border border-gray-200">
+        <div class="card-body items-center">
+            <div class="max-w-xs">
+                <img src="{{ asset.file.url }}" alt="{{ asset.name }}" class="rounded-lg border border-gray-200">
+            </div>
+            {% if asset.width and asset.height %}
+            <p class="text-sm text-gray-500 mt-2">{{ asset.width }}x{{ asset.height }}px</p>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Form -->
+    <form method="post" enctype="multipart/form-data" class="card bg-white border border-gray-200 shadow-sm">
+        {% csrf_token %}
+        <div class="card-body space-y-6">
+
+            <!-- Categoría -->
+            <div>
+                <label class="label"><span class="label-text font-medium">Categoría *</span></label>
+                <select name="category" class="select select-bordered w-full" required>
+                    <option value="">Seleccionar...</option>
+                    {% for category in categories %}
+                    <option value="{{ category.id }}" {% if form.category.value == category.id|stringformat:"i" or asset.category_id == category.id %}selected{% endif %}>
+                        {{ category.get_type_display }} - {{ category.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+                {% if form.category.errors %}
+                <span class="text-error text-sm">{{ form.category.errors.0 }}</span>
+                {% endif %}
+                <p class="text-xs text-gray-500 mt-1">
+                    <a href="{% url 'admin:documents_assetcategory_add' %}" target="_blank" class="text-rojoz-600 hover:underline">
+                        + Crear nueva categoría
+                    </a>
+                </p>
+            </div>
+
+            <!-- Nombre -->
+            <div>
+                <label class="label"><span class="label-text font-medium">Nombre *</span></label>
+                <input type="text" name="name" value="{{ form.name.value|default:'' }}" class="input input-bordered w-full" placeholder="Ej: Logo Empresa" required>
+                {% if form.name.errors %}
+                <span class="text-error text-sm">{{ form.name.errors.0 }}</span>
+                {% endif %}
+            </div>
+
+            <!-- Archivo -->
+            <div>
+                <label class="label"><span class="label-text font-medium">Archivo {% if not is_edit %}*{% endif %}</span></label>
+                <input type="file" name="file" class="file-input file-input-bordered w-full" accept="image/*" {% if not is_edit %}required{% endif %}>
+                {% if form.file.errors %}
+                <span class="text-error text-sm">{{ form.file.errors.0 }}</span>
+                {% endif %}
+                <p class="text-xs text-gray-500 mt-1">Formatos soportados: PNG, JPG, SVG. Máximo 5MB.</p>
+            </div>
+
+            <!-- Descripción -->
+            <div>
+                <label class="label"><span class="label-text font-medium">Descripción</span></label>
+                <textarea name="description" class="textarea textarea-bordered w-full" rows="2" placeholder="Descripción opcional">{{ form.description.value|default:'' }}</textarea>
+            </div>
+
+            <!-- Acciones -->
+            <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                <a href="{% url 'documents:asset_list' %}" class="btn btn-ghost">Cancelar</a>
+                <button type="submit" class="btn bg-rojoz-600 hover:bg-rojoz-700 text-white border-none">
+                    {% if is_edit %}
+                    <i class="ri-save-line mr-2"></i> Guardar Cambios
+                    {% else %}
+                    <i class="ri-upload-2-line mr-2"></i> Subir Asset
+                    {% endif %}
+                </button>
+            </div>
+
+        </div>
+    </form>
+
+</div>
+{% endblock %}

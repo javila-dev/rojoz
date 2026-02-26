@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Categorías de acabados - {{ project.name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6">
+    <div class="flex items-start justify-between gap-6">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">Categorías de acabados</h1>
+            <p class="text-gray-600 mt-2">Proyecto: {{ project.name }}</p>
+        </div>
+        <a href="{% url 'inventory:project_settings' project.id %}" class="btn btn-neutral-elegant">Volver</a>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-2 card bg-white border border-gray-200 shadow-sm">
+            <div class="card-body">
+                <h2 class="card-title">Listado</h2>
+                <div class="overflow-x-auto mt-4">
+                    <table class="table table-zebra w-full text-sm">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Orden</th>
+                                <th>Obligatoria</th>
+                                <th>Activa</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for category in categories %}
+                            <tr>
+                                <td class="font-semibold">{{ category.name }}</td>
+                                <td>{{ category.order }}</td>
+                                <td>
+                                    {% if category.is_required %}
+                                    <span class="badge badge-warning badge-sm">Obligatoria</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if category.is_active %}
+                                    <span class="badge badge-success badge-sm">Sí</span>
+                                    {% else %}
+                                    <span class="badge badge-ghost badge-sm">No</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-right">
+                                    <a href="{% url 'inventory:finish_category_edit' project.id category.id %}" class="btn btn-xs btn-neutral-elegant">Editar</a>
+                                    <a href="{% url 'inventory:finish_category_delete' project.id category.id %}" class="btn btn-xs btn-outline">Eliminar</a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center text-gray-500 py-6">No hay categorías.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card bg-white border border-gray-200 shadow-sm">
+            <div class="card-body space-y-4">
+                <h2 class="card-title">Nueva categoría</h2>
+                <form method="post" class="space-y-3">
+                    {% csrf_token %}
+                    {{ form.non_field_errors }}
+                    <div>
+                        <label class="label"><span class="label-text">Nombre</span></label>
+                        {{ form.name }}
+                    </div>
+                    <div>
+                        <label class="label"><span class="label-text">Orden</span></label>
+                        {{ form.order }}
+                    </div>
+                    <label class="label cursor-pointer justify-start gap-3">
+                        {{ form.is_required }}
+                        <span class="label-text">Obligatoria</span>
+                    </label>
+                    <label class="label cursor-pointer justify-start gap-3">
+                        {{ form.is_active }}
+                        <span class="label-text">Activa</span>
+                    </label>
+                    <button type="submit" class="btn btn-neutral-elegant w-full">Guardar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

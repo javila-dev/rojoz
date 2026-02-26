@@ -1,0 +1,27 @@
+services:
+  web:
+    build: .
+    env_file:
+      - .env
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=dokploy-network"
+      - "traefik.http.routers.rojoz-secure.rule=Host(`rojoz.2asoft.tech`)"
+      - "traefik.http.routers.rojoz-secure.entrypoints=websecure"
+      - "traefik.http.routers.rojoz-secure.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.rojoz-secure.service=rojoz"
+      - "traefik.http.services.rojoz.loadbalancer.server.port=8000"
+      - "traefik.http.routers.rojoz.rule=Host(`rojoz.2asoft.tech`)"
+      - "traefik.http.routers.rojoz.entrypoints=web"
+      - "traefik.http.routers.rojoz.middlewares=rojoz-redirect"
+      - "traefik.http.middlewares.rojoz-redirect.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.rojoz-redirect.redirectscheme.permanent=true"
+    networks:
+      - dokploy-network
+      - shared-services
+
+networks:
+  dokploy-network:
+    external: true
+  shared-services:
+    external: true

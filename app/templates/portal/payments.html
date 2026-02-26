@@ -1,0 +1,185 @@
+{% extends "portal/base_portal.html" %}
+{% load humanize %}
+
+{% block title %}Pagos - Contrato #{{ sale.contract_number|default:sale.id }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Breadcrumb -->
+    <div class="flex items-center gap-2 text-sm text-gray-500 flex-wrap">
+        <a href="{% url 'portal:dashboard' %}" class="hover:text-rojoz-600 transition-colors">Mis contratos</a>
+        <i class="ri-arrow-right-s-line text-gray-400"></i>
+        <a href="{% url 'portal:contract_detail' sale.pk %}" class="hover:text-rojoz-600 transition-colors">
+            Contrato #{{ sale.contract_number|default:sale.id }}
+        </a>
+        <i class="ri-arrow-right-s-line text-gray-400"></i>
+        <span class="text-gray-800 font-medium">Pagos</span>
+    </div>
+
+    <!-- Header -->
+    <div class="flex flex-wrap items-start justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900" style="font-family: 'Playfair Display', serif;">
+                Estado de pagos
+            </h1>
+            <p class="text-gray-500 text-sm mt-1">
+                {{ sale.project.name }} &middot; {{ sale.house_type.name }}
+                {% if sale.contract_number %} &middot; #{{ sale.contract_number }}{% endif %}
+            </p>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="{% url 'portal:account_statement_pdf' sale.pk %}" target="_blank" class="btn btn-sm btn-primary gap-1">
+                <i class="ri-file-pdf-2-line"></i> Estado de cuenta PDF
+            </a>
+            <a href="{% url 'portal:contract_detail' sale.pk %}" class="btn btn-sm btn-neutral-elegant">Volver al contrato</a>
+        </div>
+    </div>
+
+    <!-- Resumen financiero -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="card rounded-xl p-4 text-center">
+            <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Valor contrato</p>
+            <p class="text-xl font-bold text-gray-900 mt-1">${{ final_price|floatformat:0|intcomma }}</p>
+        </div>
+        <div class="card rounded-xl p-4 text-center border-emerald-200">
+            <p class="text-xs text-emerald-600 font-medium uppercase tracking-wide">Total pagado</p>
+            <p class="text-xl font-bold text-emerald-700 mt-1">${{ total_paid|floatformat:0|intcomma }}</p>
+        </div>
+        <div class="card rounded-xl p-4 text-center border-amber-200">
+            <p class="text-xs text-amber-600 font-medium uppercase tracking-wide">Saldo pendiente</p>
+            <p class="text-xl font-bold text-amber-700 mt-1">${{ pending|floatformat:0|intcomma }}</p>
+        </div>
+        <div class="card rounded-xl p-4 text-center border-blue-200">
+            <p class="text-xs text-blue-600 font-medium uppercase tracking-wide">Saldo a favor</p>
+            <p class="text-xl font-bold text-blue-700 mt-1">${{ total_surplus|floatformat:0|intcomma }}</p>
+        </div>
+    </div>
+
+    <!-- Cronograma de cuotas -->
+    {% if schedule_items %}
+    <div class="card bg-white rounded-xl overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+            <i class="ri-calendar-schedule-line text-rojoz-600"></i>
+            <h2 class="font-bold text-gray-800">Cronograma de cuotas</h2>
+            {% if plan %}
+            <span class="text-xs text-gray-400 ml-auto">{{ plan.get_amortization_type_display }}</span>
+            {% endif %}
+        </div>
+        <div class="overflow-x-auto">
+            <table class="table w-full text-sm">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Fecha</th>
+                        <th>Concepto</th>
+                        <th class="text-right">Capital</th>
+                        <th class="text-right">Interes</th>
+                        <th class="text-right">Total cuota</th>
+                        <th class="text-right">Saldo</th>
+                        <th class="text-center">Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in schedule_items %}
+                    <tr class="{% if item.n == next_n %}bg-rojoz-50/60 border-l-4 border-l-rojoz-500{% endif %}">
+                        <td class="font-mono text-gray-500">{{ item.numero_cuota|default:item.n }}</td>
+                        <td>{{ item.fecha|date:"d/m/Y" }}</td>
+                        <td>
+                            {% if item.concepto == 'CI' %}
+                            <span class="badge badge-sm bg-blue-100 text-blue-700 border-0">Inicial</span>
+                            {% elif item.concepto == 'FN' %}
+                            <span class="badge badge-sm bg-violet-100 text-violet-700 border-0">Financiacion</span>
+                            {% else %}
+                            <span class="badge badge-sm bg-gray-100 text-gray-600 border-0">{{ item.concepto }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-right">${{ item.capital|floatformat:0|intcomma }}</td>
+                        <td class="text-right">${{ item.interes|floatformat:0|intcomma }}</td>
+                        <td class="text-right font-semibold">${{ item.valor_total|floatformat:0|intcomma }}</td>
+                        <td class="text-right text-gray-500">${{ item.saldo|floatformat:0|intcomma }}</td>
+                        <td class="text-center">
+                            {% if item.is_fully_paid %}
+                            <span class="badge badge-sm bg-emerald-100 text-emerald-700 border-0 gap-1">
+                                <i class="ri-check-line"></i> Pagada
+                            </span>
+                            {% elif item.n == next_n %}
+                            <span class="badge badge-sm bg-rojoz-100 text-rojoz-700 border-0 gap-1">
+                                <i class="ri-arrow-right-line"></i> Proxima
+                            </span>
+                            {% else %}
+                            <span class="badge badge-sm bg-gray-100 text-gray-500 border-0">Pendiente</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Historial de recibos -->
+    <div class="card bg-white rounded-xl overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+            <i class="ri-receipt-line text-rojoz-600"></i>
+            <h2 class="font-bold text-gray-800">Historial de pagos recibidos</h2>
+            <span class="text-xs text-gray-400 ml-auto">{{ receipts.count }} recibo{{ receipts.count|pluralize:"s" }}</span>
+        </div>
+        {% if receipts %}
+        <div class="divide-y divide-gray-50">
+            {% for receipt in receipts %}
+            <div class="px-5 py-4">
+                <div class="flex items-start justify-between gap-4">
+                    <!-- Info principal -->
+                    <div class="flex items-start gap-3 min-w-0">
+                        <div class="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <i class="ri-money-dollar-circle-line text-emerald-600 text-lg"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <p class="text-sm font-bold text-gray-800">Recibo #{{ receipt.pk }}</p>
+                                <span class="text-xs text-gray-400">{{ receipt.date_paid|date:"d/m/Y" }}</span>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-0.5">{{ receipt.payment_method.name }}</p>
+                            {% if receipt.notes %}
+                            <p class="text-xs text-gray-400 mt-1 truncate">{{ receipt.notes }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Monto -->
+                    <div class="text-right flex-shrink-0">
+                        <p class="text-base font-bold text-emerald-700">${{ receipt.amount|floatformat:0|intcomma }}</p>
+                        {% if receipt.surplus > 0 %}
+                        <p class="text-xs text-blue-600">Saldo a favor: ${{ receipt.surplus|floatformat:0|intcomma }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Acciones -->
+                <div class="flex items-center gap-2 mt-3 ml-13 pl-13">
+                    <a href="{% url 'portal:receipt_pdf' sale.pk receipt.pk %}" target="_blank"
+                       class="btn btn-xs btn-neutral-elegant gap-1">
+                        <i class="ri-file-pdf-2-line text-red-500"></i> Recibo PDF
+                    </a>
+                    {% if receipt.evidence %}
+                    <a href="{% url 'portal:receipt_evidence' sale.pk receipt.pk %}" target="_blank"
+                       class="btn btn-xs btn-neutral-elegant gap-1">
+                        <i class="ri-attachment-2 text-blue-500"></i> Ver soporte
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="p-8 text-center">
+            <i class="ri-inbox-line text-3xl text-gray-300"></i>
+            <p class="text-sm text-gray-400 mt-2">Aun no hay pagos registrados para este contrato.</p>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

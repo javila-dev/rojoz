@@ -1,0 +1,222 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar sesion — Rojoz</title>
+    <link rel="icon" type="image/png" href="https://s3.2asoft.tech/construccion-media-public/document_assets/logo rojoz.png">
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.6.0/fonts/remixicon.css" rel="stylesheet" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Gudea:wght@400;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'rojoz': {
+                            50: '#fef2f2', 100: '#fee2e2', 200: '#fecaca', 300: '#fca5a5',
+                            400: '#f87171', 500: '#C4574E', 600: '#A0372A', 700: '#7A2518',
+                            800: '#5a1a0f', 900: '#3d100a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="min-h-screen bg-gray-50" style="font-family: 'Gudea', system-ui, sans-serif;">
+
+<div class="min-h-screen flex">
+
+    <!-- Panel izquierdo — Branding -->
+    <div class="hidden lg:flex lg:w-[45%] relative overflow-hidden bg-gradient-to-br from-rojoz-700 via-rojoz-600 to-rojoz-500">
+        <!-- Decoraciones -->
+        <div class="absolute inset-0">
+            <div class="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.1)_0%,transparent_50%)]"></div>
+            <div class="absolute bottom-0 right-0 w-full h-full bg-[radial-gradient(circle_at_70%_80%,rgba(0,0,0,0.15)_0%,transparent_50%)]"></div>
+            <div class="absolute top-20 -left-10 w-64 h-64 bg-white/5 rounded-full blur-3xl"></div>
+            <div class="absolute bottom-20 -right-10 w-80 h-80 bg-black/10 rounded-full blur-3xl"></div>
+        </div>
+
+        <!-- Contenido -->
+        <div class="relative z-10 flex flex-col justify-between p-12 w-full">
+            <!-- Logo -->
+            <div>
+                <div class="w-16 h-16 mb-6">
+                    <img src="https://s3.2asoft.tech/construccion-media-public/document_assets/logo rojoz.png"
+                         alt="Rojoz" class="w-full h-full object-contain brightness-0 invert drop-shadow-lg">
+                </div>
+                <h1 class="text-4xl font-bold text-white leading-tight" style="font-family: 'Playfair Display', serif;">
+                    Rojoz
+                </h1>
+                <p class="text-white/70 text-lg mt-1">Constructora & Ventas</p>
+            </div>
+
+            <!-- Features -->
+            <div class="space-y-5">
+                <div class="flex items-start gap-4">
+                    <div class="w-10 h-10 rounded-lg bg-white/10 backdrop-blur-sm flex items-center justify-center flex-shrink-0 border border-white/10">
+                        <i class="ri-pie-chart-2-line text-white/90 text-lg"></i>
+                    </div>
+                    <div>
+                        <p class="text-white font-semibold text-sm">Panel en tiempo real</p>
+                        <p class="text-white/50 text-sm">Metricas de ventas, inventario y comisiones al instante.</p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-4">
+                    <div class="w-10 h-10 rounded-lg bg-white/10 backdrop-blur-sm flex items-center justify-center flex-shrink-0 border border-white/10">
+                        <i class="ri-file-shield-2-line text-white/90 text-lg"></i>
+                    </div>
+                    <div>
+                        <p class="text-white font-semibold text-sm">Documentos centralizados</p>
+                        <p class="text-white/50 text-sm">Contratos y pagares generados automaticamente.</p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-4">
+                    <div class="w-10 h-10 rounded-lg bg-white/10 backdrop-blur-sm flex items-center justify-center flex-shrink-0 border border-white/10">
+                        <i class="ri-shield-keyhole-line text-white/90 text-lg"></i>
+                    </div>
+                    <div>
+                        <p class="text-white font-semibold text-sm">Acceso por roles</p>
+                        <p class="text-white/50 text-sm">Cada usuario ve solo lo que necesita.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <p class="text-white/30 text-xs">&copy; 2026 Rojoz Constructora. Todos los derechos reservados.</p>
+        </div>
+    </div>
+
+    <!-- Panel derecho — Formulario -->
+    <div class="flex-1 flex items-center justify-center p-6 sm:p-12">
+        <div class="w-full max-w-md">
+
+            <!-- Logo mobile -->
+            <div class="lg:hidden flex items-center gap-3 mb-10">
+                <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-rojoz-600 to-rojoz-500 flex items-center justify-center shadow-md">
+                    <img src="https://s3.2asoft.tech/construccion-media-public/document_assets/logo rojoz.png"
+                         alt="Rojoz" class="w-7 h-7 object-contain brightness-0 invert">
+                </div>
+                <span class="text-xl font-bold text-gray-900" style="font-family: 'Playfair Display', serif;">Rojoz</span>
+            </div>
+
+            <!-- Header -->
+            <div class="mb-8">
+                <h2 class="text-3xl font-bold text-gray-900" style="font-family: 'Playfair Display', serif;">
+                    Bienvenido
+                </h2>
+                <p class="text-gray-500 mt-2">Ingresa tus credenciales para acceder al sistema.</p>
+            </div>
+
+            <!-- Error -->
+            {% if form.non_field_errors %}
+            <div class="mb-6 flex items-start gap-3 p-4 rounded-xl bg-red-50 border border-red-100 animate-shake">
+                <i class="ri-error-warning-fill text-red-500 text-xl mt-0.5 flex-shrink-0"></i>
+                <div>
+                    <p class="text-red-700 text-sm font-medium">{{ form.non_field_errors.0 }}</p>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Form -->
+            <form method="post" class="space-y-5">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ next }}">
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Usuario o correo</label>
+                    <div class="relative">
+                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                            <i class="ri-user-3-line text-lg"></i>
+                        </span>
+                        {{ form.identifier }}
+                    </div>
+                    {% if form.identifier.errors %}
+                    <p class="text-red-500 text-xs mt-1.5 flex items-center gap-1">
+                        <i class="ri-alert-line"></i> {{ form.identifier.errors.0 }}
+                    </p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Contrasena</label>
+                    <div class="relative">
+                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                            <i class="ri-lock-2-line text-lg"></i>
+                        </span>
+                        {{ form.password }}
+                    </div>
+                    {% if form.password.errors %}
+                    <p class="text-red-500 text-xs mt-1.5 flex items-center gap-1">
+                        <i class="ri-alert-line"></i> {{ form.password.errors.0 }}
+                    </p>
+                    {% endif %}
+                </div>
+
+                <button type="submit"
+                    class="w-full h-12 rounded-xl text-white font-semibold text-sm
+                           bg-gradient-to-r from-rojoz-600 to-rojoz-500
+                           hover:from-rojoz-700 hover:to-rojoz-600
+                           shadow-lg shadow-rojoz-500/25 hover:shadow-xl hover:shadow-rojoz-600/30
+                           transform hover:-translate-y-0.5
+                           transition-all duration-200 ease-out
+                           flex items-center justify-center gap-2">
+                    Iniciar sesion
+                    <i class="ri-arrow-right-line"></i>
+                </button>
+            </form>
+
+            <!-- Footer -->
+            <div class="mt-8 pt-6 border-t border-gray-100 text-center">
+                <p class="text-gray-500 text-sm">
+                    ¿No tienes cuenta?
+                    <a href="{% url 'users:advisor_register' %}" class="text-rojoz-600 font-semibold hover:text-rojoz-700 transition-colors">
+                        Registro de asesor
+                    </a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Input styling — override DaisyUI defaults */
+    form input[type="text"],
+    form input[type="email"],
+    form input[type="password"],
+    form .input {
+        width: 100%;
+        height: 48px;
+        padding: 0 16px 0 48px;
+        border: 1.5px solid #e5e7eb;
+        border-radius: 12px;
+        background: #f9fafb;
+        font-size: 0.95rem;
+        transition: all 0.2s ease;
+        outline: none;
+    }
+    form input[type="text"]:focus,
+    form input[type="email"]:focus,
+    form input[type="password"]:focus,
+    form .input:focus {
+        border-color: #C4574E;
+        background: #fff;
+        box-shadow: 0 0 0 4px rgba(196, 87, 78, 0.08);
+    }
+
+    /* Animations */
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        20%, 60% { transform: translateX(-6px); }
+        40%, 80% { transform: translateX(6px); }
+    }
+    .animate-shake { animation: shake 0.4s ease; }
+</style>
+
+</body>
+</html>

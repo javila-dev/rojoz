@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}Nueva solicitud de recibo{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-6">
+    <div>
+        <h1 class="text-3xl font-bold text-gray-900">Nueva solicitud de recibo</h1>
+        <p class="text-gray-600 mt-2">Carga del soporte para revisión de tesorería.</p>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" class="card bg-white border border-gray-200 shadow-sm">
+        {% csrf_token %}
+        <div class="card-body space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="md:col-span-2">
+                    <label class="label"><span class="label-text">Contrato</span></label>
+                    <div class="relative" id="sale-combobox-page">
+                        <input
+                            id="sale-search-page"
+                            type="text"
+                            class="input input-bordered w-full"
+                            placeholder="Contrato # + primer titular"
+                            value="{% if form.sale.value %}{% for opt in sale_choices %}{% if opt.id == form.sale.value|stringformat:'s' %}{{ opt.label }}{% endif %}{% endfor %}{% endif %}"
+                            autocomplete="off"
+                        >
+                        <div id="sale-list-page" class="absolute z-50 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg hidden max-h-56 overflow-auto">
+                            {% for opt in sale_choices %}
+                            <button
+                                type="button"
+                                class="w-full px-3 py-2 text-left text-sm hover:bg-rojoz-50"
+                                data-id="{{ opt.id }}"
+                                data-label="{{ opt.label }}"
+                            >
+                                {{ opt.label }}
+                            </button>
+                            {% endfor %}
+                        </div>
+                        <input id="sale-id-page" type="hidden" name="sale" value="{{ form.sale.value|default:'' }}">
+                    </div>
+                    {{ form.sale.errors }}
+                </div>
+                <div>
+                    <label class="label"><span class="label-text">Fecha pago reportada</span></label>
+                    {{ form.payment_date }}
+                    {{ form.payment_date.errors }}
+                </div>
+                <div>
+                    <label class="label"><span class="label-text">Valor reportado</span></label>
+                    {{ form.amount_reported }}
+                    {{ form.amount_reported.errors }}
+                </div>
+                <div class="md:col-span-2">
+                    <label class="label"><span class="label-text">Soporte (PDF)</span></label>
+                    {{ form.support_evidence }}
+                    {{ form.support_evidence.errors }}
+                </div>
+            </div>
+
+            <div class="flex flex-wrap gap-6">
+                <label class="label cursor-pointer justify-start gap-3">
+                    {{ form.abono_capital }}
+                    <span class="label-text">Posible abono a capital</span>
+                </label>
+                <label class="label cursor-pointer justify-start gap-3">
+                    {{ form.condonacion_mora }}
+                    <span class="label-text">Solicita condonación de mora</span>
+                </label>
+            </div>
+
+            <div class="flex items-center justify-end gap-3">
+                <a href="{% url 'finance:receipt_request_list' %}" class="btn btn-neutral-elegant">Cancelar</a>
+                <button type="submit" class="btn btn-primary">Crear solicitud</button>
+            </div>
+        </div>
+    </form>
+</div>
+<script>
+  (function () {
+    const input = document.getElementById("sale-search-page");
+    const hidden = document.getElementById("sale-id-page");
+    const box = document.getElementById("sale-combobox-page");
+    const list = document.getElementById("sale-list-page");
+    const options = list ? Array.from(list.querySelectorAll("button[data-id]")) : [];
+    if (!input || !hidden) return;
+
+    function showList() {
+      if (list) list.classList.remove("hidden");
+    }
+    function hideList() {
+      if (list) list.classList.add("hidden");
+    }
+    function filterOptions() {
+      const q = input.value.toLowerCase().trim();
+      options.forEach((opt) => {
+        const label = (opt.dataset.label || "").toLowerCase();
+        opt.classList.toggle("hidden", q && !label.includes(q));
+      });
+      hidden.value = "";
+      showList();
+    }
+
+    input.addEventListener("focus", showList);
+    input.addEventListener("input", filterOptions);
+    options.forEach((opt) => {
+      opt.addEventListener("click", () => {
+        input.value = opt.dataset.label || "";
+        hidden.value = opt.dataset.id || "";
+        hideList();
+      });
+    });
+    document.addEventListener("click", (ev) => {
+      if (!box || box.contains(ev.target)) return;
+      hideList();
+    });
+  })();
+</script>
+<script>
+  document.querySelectorAll("[data-money-mask]").forEach(function (input) {
+    function formatMoney(value) {
+      const digits = (value || "").replace(/\D/g, "");
+      if (!digits) return "";
+      return Number(digits).toLocaleString("es-CO");
+    }
+    input.addEventListener("input", function () {
+      const pos = this.selectionStart;
+      this.value = formatMoney(this.value);
+      if (pos !== null) this.setSelectionRange(this.value.length, this.value.length);
+    });
+    if (input.value) input.value = formatMoney(input.value);
+  });
+</script>
+{% endblock %}

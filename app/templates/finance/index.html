@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}Finanzas{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6">
+    <div>
+        <h1 class="text-3xl font-bold text-gray-900">Finanzas</h1>
+        <p class="text-gray-600 mt-2">Recaudos, formas de pago, asesores y comisiones.</p>
+    </div>
+
+    <!-- Recaudos -->
+    <div>
+        <h2 class="text-lg font-semibold text-gray-800 mb-3">Recaudos</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <a href="{% url 'finance:receipt_request_list' %}" class="card bg-white border border-gray-200 shadow-sm hover:border-rojoz-300 transition">
+                <div class="card-body space-y-2">
+                    <h3 class="text-xl font-semibold text-gray-900">Solicitudes de recibo</h3>
+                    <p class="text-sm text-gray-600">Bandeja humana para validar soportes, alertas y generar recibos.</p>
+                </div>
+            </a>
+            <a href="{% url 'finance:receipt_project_select' %}" class="card bg-white border border-gray-200 shadow-sm hover:border-rojoz-300 transition">
+                <div class="card-body space-y-2">
+                    <h3 class="text-xl font-semibold text-gray-900">Recibos de caja</h3>
+                    <p class="text-sm text-gray-600">Los recaudos se registran desde el detalle de cada contrato aprobado.</p>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- Comisiones -->
+    <div>
+        <h2 class="text-lg font-semibold text-gray-800 mb-3">Comisiones</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <a href="{% url 'users:advisor_pending_list' %}" class="card bg-white border border-gray-200 shadow-sm hover:border-rojoz-300 transition">
+                <div class="card-body space-y-2">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-xl font-semibold text-gray-900">Aprobacion de registros</h3>
+                        {% if pending_advisors_count %}
+                        <span class="badge text-white" style="background:linear-gradient(135deg,#A0372A,#C4574E);">{{ pending_advisors_count }} pendiente{{ pending_advisors_count|pluralize:"s" }}</span>
+                        {% endif %}
+                    </div>
+                    <p class="text-sm text-gray-600">Valida y aprueba registros de nuevos asesores.</p>
+                </div>
+            </a>
+            <a href="{% url 'finance:advisor_list' %}" class="card bg-white border border-gray-200 shadow-sm hover:border-rojoz-300 transition">
+                <div class="card-body space-y-2">
+                    <h3 class="text-xl font-semibold text-gray-900">Asesores</h3>
+                    <p class="text-sm text-gray-600">Datos basicos y bancarios de gestores.</p>
+                </div>
+            </a>
+            <a href="{% url 'finance:commission_role_list' %}" class="card bg-white border border-gray-200 shadow-sm hover:border-rojoz-300 transition">
+                <div class="card-body space-y-2">
+                    <h3 class="text-xl font-semibold text-gray-900">Cargos</h3>
+                    <p class="text-sm text-gray-600">Catalogo de cargos para comisiones.</p>
+                </div>
+            </a>
+            <a href="{% url 'finance:commission_liquidation_queue' %}" class="card bg-white border border-gray-200 shadow-sm hover:border-rojoz-300 transition">
+                <div class="card-body space-y-2">
+                    <h3 class="text-xl font-semibold text-gray-900">Liquidacion</h3>
+                    <p class="text-sm text-gray-600">Ventas listas para liquidar comisiones y registrar el pago.</p>
+                </div>
+            </a>
+            <a href="{% url 'finance:commission_report' %}" class="card bg-white border border-gray-200 shadow-sm hover:border-rojoz-300 transition">
+                <div class="card-body space-y-2">
+                    <h3 class="text-xl font-semibold text-gray-900">Reporte de comisiones</h3>
+                    <p class="text-sm text-gray-600">Genera un PDF con las comisiones liquidadas por asesor y rango de fechas.</p>
+                </div>
+            </a>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,1196 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Flujo de Ventas - Forma de pago{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6">
+    <div class="rounded-2xl border border-gray-200 bg-white/80 backdrop-blur-xl shadow-sm p-6 lg:p-8 space-y-5">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+            <div>
+                <div class="flex items-center gap-2 text-sm text-gray-500 mb-3">
+                    <a href="{% url 'users:dashboard' %}" class="hover:text-rojoz-600 transition-colors">Dashboard</a>
+                    <i class="ri-arrow-right-s-line text-gray-400"></i>
+                    <a href="{% url 'sales:sale_flow_project' %}" class="hover:text-rojoz-600 transition-colors">Nueva venta</a>
+                    <i class="ri-arrow-right-s-line text-gray-400"></i>
+                    <span class="text-gray-800 font-medium">Pago</span>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-900" style="font-family: 'Playfair Display', serif;">
+                    {% if edit_sale %}
+                        Editar contrato {{ edit_sale.contract_number|default:edit_sale.id }}
+                    {% else %}
+                        Forma de pago
+                    {% endif %}
+                </h1>
+                <p class="text-gray-500 mt-1 text-sm">
+                    Proyecto: <span class="font-semibold">{{ project.name }}</span> ({{ project.city }})
+                </p>
+            </div>
+            <div class="flex items-center gap-2 w-full sm:w-auto">
+                <button type="button" class="btn btn-neutral-elegant btn-sm sm:btn-md flex-1 sm:flex-none" onclick="history.back()">Paso anterior</button>
+                <a href="{% url 'sales:sale_flow_project' %}" class="btn btn-neutral-elegant btn-sm sm:btn-md flex-1 sm:flex-none">Cambiar proyecto</a>
+            </div>
+        </div>
+
+        <ul class="steps steps-horizontal w-full text-sm flow-steps">
+            <li class="step step-primary">Proyecto</li>
+            <li class="step step-primary">Lote</li>
+            <li class="step step-primary">Contrato</li>
+            <li class="step step-primary">Pago</li>
+        </ul>
+    </div>
+
+    {% if integration_error %}
+    <div class="alert alert-warning text-sm">
+        <span>{{ integration_error }}</span>
+    </div>
+    {% endif %}
+    {% if schedule_invalidated %}
+    <div class="alert alert-warning text-sm">
+        <span>El valor cambió. Debes previsualizar el cronograma nuevamente.</span>
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-2 space-y-6">
+            <div class="card bg-white border border-gray-200 shadow-sm">
+                <div class="card-body space-y-4">
+                    <div>
+                        <h2 class="card-title">Forma de pago</h2>
+                        <p class="text-sm text-gray-600">Define el plan de pago para la adjudicación.</p>
+                    </div>
+                    <details class="border border-gray-100 rounded-lg bg-white"
+                        data-max-initial-months="{{ project.max_initial_months|default:0 }}"
+                        data-max-finance-months="{{ project.max_finance_months|default:0 }}"
+                    >
+                        <summary class="flex items-center justify-between gap-4 px-4 py-3 cursor-pointer select-none text-sm font-semibold text-gray-900">
+                            Parámetros del proyecto
+                            <span class="text-xs text-gray-500">solo lectura</span>
+                        </summary>
+                        <div class="px-4 pb-4 text-xs text-gray-600 grid grid-cols-2 gap-3">
+                            <div>
+                                <div class="text-gray-400 uppercase">Máx. meses cuota inicial</div>
+                                <div class="font-semibold text-gray-800">{{ project.max_initial_months|default:"—" }}</div>
+                            </div>
+                            <div>
+                                <div class="text-gray-400 uppercase">Máx. meses financiación</div>
+                                <div class="font-semibold text-gray-800">{{ project.max_finance_months|default:"—" }}</div>
+                            </div>
+                            <div>
+                                <div class="text-gray-400 uppercase">Tasa mensual</div>
+                                <div class="font-semibold text-gray-800">{{ project.finance_rate_monthly|default:"—" }}</div>
+                            </div>
+                            <div>
+                                <div class="text-gray-400 uppercase">Amortización</div>
+                                <div class="font-semibold text-gray-800">{{ project.amortization_type|default:"—" }}</div>
+                            </div>
+                        </div>
+                    </details>
+                    <div class="space-y-3 text-sm">
+                        <div class="flex items-center gap-3">
+                            <input
+                                id="payment-type-cash"
+                                type="radio"
+                                name="payment_type"
+                                value="CASH"
+                                class="radio radio-sm"
+                                {% if not finance_amount %}checked{% endif %}
+                            />
+                            <span class="text-gray-700">Contado</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <input
+                                id="payment-type-credit"
+                                type="radio"
+                                name="payment_type"
+                                value="CREDIT"
+                                class="radio radio-sm"
+                                {% if finance_amount %}checked{% endif %}
+                            />
+                            <span class="text-gray-700">Crédito</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="label"><span class="label-text">Cuota inicial (valor)</span></label>
+                                <input id="initial-amount" type="text" class="input input-bordered w-full" placeholder="$0" inputmode="numeric" data-currency="true" value="{% if initial_amount %}{{ initial_amount|floatformat:0|intcomma }}{% endif %}" />
+                            </div>
+                            <div id="finance-amount-wrapper">
+                                <label class="label"><span class="label-text">Financiación (valor)</span></label>
+                                <input id="finance-amount" type="text" class="input input-bordered w-full" placeholder="$0" inputmode="numeric" data-currency="true" readonly value="{% if finance_amount %}{{ finance_amount|floatformat:0|intcomma }}{% endif %}" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="pt-2">
+                        <label class="label"><span class="label-text">Descrpcion forma de pago cuota inicial</span></label>
+                        <textarea id="ai-prompt-initial" class="textarea textarea-bordered w-full" rows="3" placeholder="Describe el cronograma de la cuota inicial...">{{ prompt_initial }}</textarea>
+                        <p class="text-xs text-gray-500 mt-1">Describe cómo se paga la cuota inicial dentro del plazo permitido.</p>
+                    </div>
+                    <div id="finance-prompt-section">
+                        <label class="label"><span class="label-text">Descrpcion forma de pago financiación</span></label>
+                        <textarea id="ai-prompt-finance" class="textarea textarea-bordered w-full" rows="3" placeholder="Describe el cronograma de la financiación...">{{ prompt_finance }}</textarea>
+                        <p class="text-xs text-gray-500 mt-1">Describe cómo se paga la financiación dentro del plazo permitido.</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button id="preview-plan" type="button" class="btn btn-neutral-elegant">Previsualizar plan IA</button>
+                        <button id="open-manual-plan-modal" type="button" class="btn btn-primary">Plan manual</button>
+                        <button id="clear-plan" type="button" class="btn btn-outline">Limpiar</button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <aside class="card bg-base-100 border border-gray-200 shadow-sm h-fit">
+            <div class="card-body space-y-4">
+                <div>
+                    <h3 class="card-title">Resumen de adjudicación</h3>
+                    <div class="text-sm text-gray-600 space-y-2 mt-3">
+                        <div class="flex items-center justify-between">
+                            <span>Adjudicación</span>
+                            <span class="font-semibold text-gray-900">{{ adjudicacion.id|default:"—" }}</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span>Inmueble</span>
+                            <span class="font-semibold text-gray-900">{{ adjudicacion.inmueble.id|default:"—" }}</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span>Fecha compra</span>
+                            <span class="font-semibold text-gray-900">
+                                {% if adjudicacion.fecha_contrato %}
+                                    {{ adjudicacion.fecha_contrato|slice:":10" }}
+                                {% elif adjudicacion.fecha %}
+                                    {{ adjudicacion.fecha|slice:":10" }}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span>Área lote</span>
+                            <span class="font-semibold text-gray-900">{{ adjudicacion.inmueble.area_lote|default:"—" }}</span>
+                        </div>
+                        <div class="pt-2">
+                            <span class="text-xs uppercase text-gray-400">Titulares</span>
+                            {% if selected_titulares %}
+                            <div class="mt-2 space-y-1">
+                                {% for titular in selected_titulares %}
+                                <div class="text-sm text-gray-700">
+                                    {{ titular.nombre_completo|default:titular.nombres|default:titular.apellidos|default:"—"|upper }}
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <div class="text-sm text-gray-500 mt-1">Sin titulares seleccionados.</div>
+                            {% endif %}
+                        </div>
+                        <div class="pt-2">
+                            <span class="text-xs uppercase text-gray-400">Terceros adicionales</span>
+                            {% if selected_external_parties %}
+                            <div class="mt-2 space-y-1">
+                                {% for external_party in selected_external_parties %}
+                                <div class="text-sm text-gray-700">
+                                    {% if external_party.name %}
+                                        {{ external_party.name|upper }}
+                                    {% else %}
+                                        DOCUMENTO {{ external_party.id }}
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <div class="text-sm text-gray-500 mt-1">Sin terceros adicionales.</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="divider my-2"></div>
+
+                <h3 class="card-title">Resumen de valor</h3>
+                <div class="text-sm text-gray-600 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span>Base</span>
+                        <span class="font-semibold text-gray-900">$ {{ base_price|floatformat:0|intcomma }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span>Acabados</span>
+                        <span class="font-semibold text-gray-900">$ {{ finishes_total|floatformat:0|intcomma }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span>Descuento</span>
+                        <span class="font-semibold text-gray-900">- $ {{ discount_amount|floatformat:0|intcomma }}</span>
+                    </div>
+                    <div class="divider my-2"></div>
+                    <div class="flex items-center justify-between text-base">
+                        <span>Total</span>
+                        <span id="total-price" class="font-bold text-gray-900">$ {{ total_price|floatformat:0|intcomma }}</span>
+                    </div>
+                </div>
+                <form method="post" action="{% url 'sales:sale_flow_payment_confirm' project.id adjudicacion_id %}">
+                    {% csrf_token %}
+                    <input type="hidden" id="edited-schedule" name="edited_schedule" value="" />
+                    <button id="confirm-plan" class="btn btn-neutral-elegant w-full" type="submit" disabled>
+                        <span class="confirm-plan-label">Confirmar plan</span>
+                    </button>
+                </form>
+            </div>
+        </aside>
+    </div>
+
+            <div class="card bg-white border border-gray-200 shadow-sm mt-6">
+                <div class="card-body space-y-4">
+                    <div>
+                        <h2 class="card-title">Previsualización del cronograma</h2>
+                        <p class="text-sm text-gray-600">Resultado generado por IA antes de guardar.</p>
+                    </div>
+                    <div id="preview-summary" class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs text-gray-600 hidden">
+                        <div>
+                            <div class="text-gray-400 uppercase">Tiempo total (meses)</div>
+                            <div id="summary-total-months" class="font-semibold text-gray-800">—</div>
+                        </div>
+                        <div>
+                            <div class="text-gray-400 uppercase">Meses cuota inicial</div>
+                            <div id="summary-initial-months" class="font-semibold text-gray-800">—</div>
+                        </div>
+                        <div>
+                            <div class="text-gray-400 uppercase">Meses financiación</div>
+                            <div id="summary-finance-months" class="font-semibold text-gray-800">—</div>
+                        </div>
+                        <div>
+                            <div class="text-gray-400 uppercase">Total cuotas</div>
+                            <div id="summary-total-quotas" class="font-semibold text-gray-800">—</div>
+                        </div>
+                        <div>
+                            <div class="text-gray-400 uppercase">Cuota regular FN</div>
+                            <div id="summary-regular-fn" class="font-semibold text-gray-800">—</div>
+                        </div>
+                        <div>
+                            <div class="text-gray-400 uppercase">Tasa mensual</div>
+                            <div id="summary-rate" class="font-semibold text-gray-800">—</div>
+                        </div>
+                    </div>
+            <div class="overflow-x-auto max-h-80 overflow-y-auto">
+                <table class="table table-zebra w-full text-sm">
+                    <thead>
+                        <tr class="sticky top-0 bg-base-100 z-10">
+                            <th class="w-10">#</th>
+                            <th class="w-32">Fecha</th>
+                            <th class="w-20">Concepto</th>
+                            <th class="text-right w-20">N° cuota</th>
+                            <th class="text-right w-28">Valor</th>
+                            <th class="text-right w-28">Capital</th>
+                            <th class="text-right w-28">Interés</th>
+                            <th class="text-right w-32">Saldo</th>
+                            <th class="w-16"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr id="preview-empty">
+                            <td colspan="9" class="text-center text-gray-500 py-6">Sin previsualización aún.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+                    <div id="preview-error" class="text-sm text-red-600 hidden"></div>
+                </div>
+            </div>
+        </div>
+
+        <dialog id="preview-error-modal" class="modal">
+            <div class="modal-box">
+                <h3 class="font-bold text-lg">Error en previsualización</h3>
+                <p id="preview-error-message" class="py-4 text-sm text-gray-700"></p>
+                <pre id="preview-error-details" class="text-xs bg-gray-50 p-3 rounded-lg border border-gray-100 hidden"></pre>
+                <div class="modal-action">
+                    <form method="dialog">
+                        <button class="btn btn-neutral-elegant">Cerrar</button>
+                    </form>
+                </div>
+            </div>
+        </dialog>
+
+        <dialog id="quota-date-modal" class="modal">
+            <div class="modal-box">
+                <h3 class="font-bold text-lg">Modificar fecha de cuota</h3>
+                <div class="space-y-4 mt-4">
+                    <div>
+                        <label class="label"><span class="label-text">Nueva fecha</span></label>
+                        <input id="quota-date-input" type="date" class="input input-bordered w-full" />
+                    </div>
+                    <div class="space-y-2 text-sm">
+                        <label class="flex items-center gap-2">
+                            <input type="radio" name="quota-date-scope" value="single" class="radio radio-sm" checked />
+                            <span>Solo esta cuota (reordenar por fecha)</span>
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input type="radio" name="quota-date-scope" value="forward" class="radio radio-sm" />
+                            <span>Esta y las siguientes (ajustar misma proporción)</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-action">
+                    <button id="quota-date-apply" class="btn btn-neutral-elegant">Aplicar</button>
+                    <form method="dialog">
+                        <button class="btn btn-outline">Cancelar</button>
+                    </form>
+                </div>
+            </div>
+        </dialog>
+
+        <dialog id="manual-plan-modal" class="modal">
+            <div class="modal-box max-w-5xl">
+                <div class="flex items-center justify-between gap-3">
+                    <h3 class="font-bold text-lg">Constructor manual</h3>
+                    <div class="text-xs text-gray-500">Llena pagos y luego guarda</div>
+                </div>
+                <div class="space-y-4 mt-4">
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                        <div class="rounded border border-gray-200 bg-gray-50 p-2">
+                            <div class="text-gray-500">Max CI meses</div>
+                            <div class="font-semibold text-gray-800">{{ project.max_initial_months|default:"—" }}</div>
+                        </div>
+                        <div class="rounded border border-gray-200 bg-gray-50 p-2">
+                            <div class="text-gray-500">Max FN meses</div>
+                            <div class="font-semibold text-gray-800">{{ project.max_finance_months|default:"—" }}</div>
+                        </div>
+                        <div class="rounded border border-gray-200 bg-gray-50 p-2">
+                            <div class="text-gray-500">Tasa mensual</div>
+                            <div class="font-semibold text-gray-800">{{ project.finance_rate_monthly|default:"—" }}</div>
+                        </div>
+                        <div class="rounded border border-gray-200 bg-gray-50 p-2">
+                            <div class="text-gray-500">Amortización</div>
+                            <div class="font-semibold text-gray-800">{{ project.amortization_type|default:"—" }}</div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label class="label"><span class="label-text">Fecha inicio plan</span></label>
+                            <input id="manual-start-date" type="date" class="input input-bordered w-full" />
+                        </div>
+                        <div>
+                            <label class="label"><span class="label-text">Periodicidad días</span></label>
+                            <input id="manual-periodicity-days" type="number" min="1" step="1" class="input input-bordered w-full" value="30" />
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button id="add-irregular-payment" type="button" class="btn btn-sm btn-neutral-elegant">+ Pago puntual</button>
+                        <button id="add-regular-payment" type="button" class="btn btn-sm btn-neutral-elegant">+ Bloque de cuotas</button>
+                    </div>
+                    <div class="overflow-x-auto max-h-72">
+                        <table class="table table-xs w-full">
+                            <thead>
+                                <tr>
+                                    <th class="w-8 text-right">#</th>
+                                    <th>Tipo</th>
+                                    <th>Descripción</th>
+                                    <th>Fecha</th>
+                                    <th class="text-right">Monto</th>
+                                    <th class="text-right">Cantidad</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="manual-payments-body"></tbody>
+                        </table>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
+                        <div class="rounded border border-gray-200 bg-gray-50 p-2">
+                            <div class="text-gray-500">Objetivo cuota inicial</div>
+                            <div id="manual-target-initial" class="font-semibold text-gray-800">$0</div>
+                        </div>
+                        <div class="rounded border border-gray-200 bg-gray-50 p-2">
+                            <div class="text-gray-500">Total cargado</div>
+                            <div id="manual-initial-sum" class="font-semibold text-gray-800">$0</div>
+                        </div>
+                        <div class="rounded border border-gray-200 bg-gray-50 p-2">
+                            <div class="text-gray-500">Diferencia</div>
+                            <div id="manual-initial-difference" class="font-semibold text-amber-700">$0</div>
+                        </div>
+                    </div>
+                    <div class="text-xs text-gray-500">
+                        Método y tasa de financiación se toman automáticamente del proyecto.
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label class="label"><span class="label-text">Cantidad cuotas financiación</span></label>
+                            <input id="manual-finance-count" type="number" min="1" step="1" class="input input-bordered w-full" value="1" />
+                        </div>
+                        <div>
+                            <label class="label"><span class="label-text">Fecha inicio financiación</span></label>
+                            <input id="manual-finance-start-date" type="date" class="input input-bordered w-full" />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-action">
+                    <button id="save-manual-plan" type="button" class="btn btn-primary">Guardar manual</button>
+                    <form method="dialog">
+                        <button class="btn btn-outline">Cerrar</button>
+                    </form>
+                </div>
+            </div>
+        </dialog>
+{% endblock %}
+
+{% block extra_scripts %}
+{% if preview_payload %}
+{{ preview_payload|json_script:"existing-preview-payload" }}
+{% else %}
+<script id="existing-preview-payload" type="application/json"></script>
+{% endif %}
+<script>
+    (function () {
+        const inputs = document.querySelectorAll('input[data-currency="true"]');
+        const toNumber = (value) => value.replace(/[^\d]/g, "");
+        const format = (value) => {
+            if (!value) return "";
+            return new Intl.NumberFormat("es-CO").format(parseInt(value, 10));
+        };
+        inputs.forEach((input) => {
+            input.addEventListener("input", () => {
+                const raw = toNumber(input.value);
+                input.value = format(raw);
+            });
+            input.addEventListener("blur", () => {
+                const raw = toNumber(input.value);
+                input.value = format(raw);
+            });
+        });
+    })();
+
+    (function () {
+        const previewButton = document.getElementById("preview-plan");
+        const openManualModalButton = document.getElementById("open-manual-plan-modal");
+        const saveManualButton = document.getElementById("save-manual-plan");
+        const clearButton = document.getElementById("clear-plan");
+        const confirmButton = document.getElementById("confirm-plan");
+        const paymentTypeCashField = document.getElementById("payment-type-cash");
+        const paymentTypeCreditField = document.getElementById("payment-type-credit");
+        const promptInitialField = document.getElementById("ai-prompt-initial");
+        const promptFinanceField = document.getElementById("ai-prompt-finance");
+        const initialAmountField = document.getElementById("initial-amount");
+        const financeAmountField = document.getElementById("finance-amount");
+        const financeAmountWrapper = document.getElementById("finance-amount-wrapper");
+        const financePromptSection = document.getElementById("finance-prompt-section");
+        const emptyRow = document.getElementById("preview-empty");
+        const errorEl = document.getElementById("preview-error");
+        const errorModal = document.getElementById("preview-error-modal");
+        const errorMessage = document.getElementById("preview-error-message");
+        const errorDetails = document.getElementById("preview-error-details");
+        const summaryEl = document.getElementById("preview-summary");
+        const summaryTotalMonths = document.getElementById("summary-total-months");
+        const summaryInitialMonths = document.getElementById("summary-initial-months");
+        const summaryFinanceMonths = document.getElementById("summary-finance-months");
+        const summaryTotalQuotas = document.getElementById("summary-total-quotas");
+        const summaryRegularFn = document.getElementById("summary-regular-fn");
+        const summaryRate = document.getElementById("summary-rate");
+        const policyDetails = document.querySelector('details[data-max-initial-months]');
+        const editedScheduleInput = document.getElementById("edited-schedule");
+        const tableBody = emptyRow ? emptyRow.parentElement : null;
+        const quotaDateModal = document.getElementById("quota-date-modal");
+        const quotaDateInput = document.getElementById("quota-date-input");
+        const quotaDateApply = document.getElementById("quota-date-apply");
+        const manualPlanModal = document.getElementById("manual-plan-modal");
+        const manualStartDateField = document.getElementById("manual-start-date");
+        const manualPeriodicityDaysField = document.getElementById("manual-periodicity-days");
+        const manualPaymentsBody = document.getElementById("manual-payments-body");
+        const manualTargetInitialEl = document.getElementById("manual-target-initial");
+        const manualInitialSumEl = document.getElementById("manual-initial-sum");
+        const manualInitialDifferenceEl = document.getElementById("manual-initial-difference");
+        const addIrregularPaymentButton = document.getElementById("add-irregular-payment");
+        const addRegularPaymentButton = document.getElementById("add-regular-payment");
+        const manualFinanceCountField = document.getElementById("manual-finance-count");
+        const manualFinanceStartDateField = document.getElementById("manual-finance-start-date");
+        let previewItems = [];
+        let editingIndex = null;
+        const formatter = new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 });
+
+        const getCookie = (name) => {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(";").shift();
+            return "";
+        };
+
+        const parseCurrency = (value) => {
+            if (!value) return 0;
+            const raw = value.replace(/[^\d]/g, "");
+            return raw ? parseInt(raw, 10) : 0;
+        };
+
+        const formatCurrency = (value) => {
+            if (!value) return "";
+            return new Intl.NumberFormat("es-CO").format(value);
+        };
+
+        const getTotal = () => {
+            const totalText = document.querySelector("#total-price")?.textContent || "";
+            return parseCurrency(totalText);
+        };
+
+        const updateFinanceAmount = () => {
+            if (!financeAmountField || !initialAmountField) return;
+            const total = getTotal();
+            const isCash = paymentTypeCashField ? paymentTypeCashField.checked : false;
+            if (isCash) {
+                initialAmountField.value = formatCurrency(total);
+                financeAmountField.value = formatCurrency(0);
+                if (promptFinanceField) {
+                    promptFinanceField.value = "";
+                    promptFinanceField.setAttribute("readonly", "readonly");
+                }
+                return;
+            }
+            let initial = parseCurrency(initialAmountField.value || "");
+            if (total > 0 && initial > total) {
+                initial = total;
+                initialAmountField.value = formatCurrency(initial);
+            }
+            const finance = Math.max(total - initial, 0);
+            financeAmountField.value = formatCurrency(finance);
+
+            if (promptFinanceField) {
+                if (finance === 0) {
+                    promptFinanceField.value = "";
+                    promptFinanceField.setAttribute("readonly", "readonly");
+                } else {
+                    promptFinanceField.removeAttribute("readonly");
+                }
+            }
+        };
+
+        const applyPaymentTypeMode = () => {
+            const isCash = paymentTypeCashField ? paymentTypeCashField.checked : false;
+            if (!initialAmountField || !financeAmountField) return;
+            if (isCash) {
+                initialAmountField.setAttribute("readonly", "readonly");
+                initialAmountField.classList.add("input-disabled");
+                financeAmountField.setAttribute("readonly", "readonly");
+                financeAmountField.classList.add("input-disabled");
+                if (financeAmountWrapper) financeAmountWrapper.classList.add("hidden");
+                if (financePromptSection) financePromptSection.classList.add("hidden");
+                updateFinanceAmount();
+                return;
+            }
+            initialAmountField.removeAttribute("readonly");
+            initialAmountField.classList.remove("input-disabled");
+            financeAmountField.setAttribute("readonly", "readonly");
+            financeAmountField.classList.remove("input-disabled");
+            if (financeAmountWrapper) financeAmountWrapper.classList.remove("hidden");
+            if (financePromptSection) financePromptSection.classList.remove("hidden");
+            if (promptFinanceField) promptFinanceField.removeAttribute("readonly");
+            updateFinanceAmount();
+        };
+
+        const clearPreviewForPaymentTypeChange = () => {
+            renderEmpty("Sin previsualización aún.");
+            if (editedScheduleInput) editedScheduleInput.value = "";
+            if (confirmButton) confirmButton.setAttribute("disabled", "disabled");
+            if (errorEl) {
+                errorEl.classList.add("hidden");
+                errorEl.textContent = "";
+            }
+        };
+
+        const renderEmpty = (message) => {
+            if (!tableBody) return;
+            tableBody.innerHTML = "";
+            const row = document.createElement("tr");
+            const cell = document.createElement("td");
+            cell.colSpan = 9;
+            cell.className = "text-center text-gray-500 py-6";
+            cell.textContent = message || "Sin previsualización aún.";
+            row.appendChild(cell);
+            tableBody.appendChild(row);
+            if (summaryEl) summaryEl.classList.add("hidden");
+            previewItems = [];
+        };
+
+        const renderItems = (items) => {
+            if (!tableBody) return;
+            tableBody.innerHTML = "";
+            previewItems = items.map((item) => ({ ...item }));
+            items.forEach((item) => {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>${item.n}</td>
+                    <td>${item.fecha}</td>
+                    <td>${item.concepto}</td>
+                    <td class="text-right">${item.numero_cuota ?? "-"}</td>
+                    <td class="text-right">${formatter.format(item.valor_total)}</td>
+                    <td class="text-right">${formatter.format(item.capital)}</td>
+                    <td class="text-right">${formatter.format(item.interes)}</td>
+                    <td class="text-right">${formatter.format(item.saldo)}</td>
+                    <td class="text-right">
+                        <button type="button" class="btn btn-xs btn-outline edit-quota-date" data-index="${item.n}">Fecha</button>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+            if (editedScheduleInput) {
+                editedScheduleInput.value = JSON.stringify(previewItems);
+            }
+        };
+
+        const renderSummary = (summary) => {
+            if (!summaryEl) return;
+            if (!summary) {
+                summaryEl.classList.add("hidden");
+                return;
+            }
+            summaryTotalMonths.textContent = summary.tiempo_total_meses ?? "—";
+            summaryInitialMonths.textContent = summary.meses_cuota_inicial ?? "—";
+            summaryFinanceMonths.textContent = summary.meses_financiacion ?? "—";
+            summaryTotalQuotas.textContent = summary.total_cuotas ?? "—";
+            summaryRegularFn.textContent = summary.cuota_regular_fn ? formatter.format(summary.cuota_regular_fn) : "—";
+            summaryRate.textContent = summary.tasa_mensual_porcentaje ?? "—";
+            summaryEl.classList.remove("hidden");
+        };
+
+        const validateSummaryMonths = (summary) => {
+            if (!policyDetails || !summary) return true;
+            const maxInitial = parseInt(policyDetails.dataset.maxInitialMonths || "0", 10);
+            const maxFinance = parseInt(policyDetails.dataset.maxFinanceMonths || "0", 10);
+            const initialMonths = parseInt(summary.meses_cuota_inicial || "0", 10);
+            const financeMonths = parseInt(summary.meses_financiacion || "0", 10);
+
+            const errors = [];
+            if (maxInitial && initialMonths > maxInitial) {
+                errors.push(`Meses cuota inicial (${initialMonths}) supera el máximo permitido (${maxInitial}).`);
+            }
+            if (maxFinance && financeMonths > maxFinance) {
+                errors.push(`Meses financiación (${financeMonths}) supera el máximo permitido (${maxFinance}).`);
+            }
+            if (errors.length) {
+                showError({
+                    mensaje: errors.join(" "),
+                    detalles: {
+                        tipo_error: "parametros_proyecto",
+                        max_initial_months: maxInitial,
+                        max_finance_months: maxFinance,
+                        meses_cuota_inicial: initialMonths,
+                        meses_financiacion: financeMonths,
+                    },
+                });
+                return false;
+            }
+            return true;
+        };
+
+        const buildPayload = () => ({
+            payment_parameters: {
+                initial_amount: parseCurrency(document.getElementById("initial-amount")?.value || ""),
+                finance_amount: parseCurrency(document.getElementById("finance-amount")?.value || ""),
+            },
+            semantic_schedule: {
+                initial: promptInitialField ? promptInitialField.value.trim() : "",
+                finance: promptFinanceField ? promptFinanceField.value.trim() : "",
+            },
+        });
+
+        const previewUrl = "{% url 'sales:sale_flow_payment_preview' project.id adjudicacion_id %}";
+        const manualPreviewUrl = "{% url 'sales:sale_flow_payment_manual_preview' project.id adjudicacion_id %}";
+
+        const buildManualPayload = () => {
+            const paymentParameters = {
+                initial_amount: parseCurrency(initialAmountField?.value || ""),
+                finance_amount: parseCurrency(financeAmountField?.value || ""),
+            };
+            const rows = readManualRows();
+            const normalizedRows = rows.map((row) => ({
+                ...row,
+                description: row.description || (row.type === "regular" ? `${row.quantity} cuotas de ${row.amount}` : `Pago puntual ${row.date || ""}`.trim()),
+            }));
+            const irregularRows = normalizedRows
+                .filter((row) => row.type === "irregular")
+                .sort((a, b) => new Date(a.date) - new Date(b.date));
+            const regularRows = normalizedRows.filter((row) => row.type === "regular");
+            const orderedRows = [...irregularRows, ...regularRows];
+            const cuotaInicialTotal = paymentParameters.initial_amount;
+            const totalRows = orderedRows.reduce((acc, row) => acc + (row.amount * row.quantity), 0);
+            if (!orderedRows.length) {
+                throw new Error("Agrega al menos un pago en el constructor manual.");
+            }
+            orderedRows.forEach((row, index) => {
+                if (row.amount <= 0) {
+                    throw new Error(`El monto de la fila ${index + 1} debe ser mayor a cero.`);
+                }
+                if (row.quantity <= 0) {
+                    throw new Error(`La cantidad de la fila ${index + 1} debe ser mayor a cero.`);
+                }
+                if (row.type === "irregular" && !row.date) {
+                    throw new Error(`La fecha de la fila ${index + 1} es obligatoria para pagos puntuales.`);
+                }
+            });
+            if (totalRows !== cuotaInicialTotal) {
+                throw new Error("La suma manual de cuota inicial no coincide con el valor de cuota inicial.");
+            }
+
+            const manualPlan = {
+                cuota_inicial: {
+                    total: cuotaInicialTotal,
+                    pagos: orderedRows.map((row) => ({
+                        tipo: row.type,
+                        descripcion: row.description,
+                        monto: row.amount,
+                        cantidad: row.quantity,
+                        fecha_especifica: row.type === "irregular" ? row.date : null,
+                    })),
+                },
+                financiacion: {
+                    saldo_inicial: paymentParameters.finance_amount,
+                    tasa_mensual: parseFloat("{{ project.finance_rate_monthly|default:0 }}") || 0,
+                    metodo: "{{ project.amortization_type|default:'FRENCH' }}".toUpperCase(),
+                    cuotas_regulares: {
+                        cantidad: parseInt(manualFinanceCountField?.value || "1", 10) || 1,
+                        fecha_inicio: manualFinanceStartDateField?.value || todayISO(),
+                    },
+                },
+                parametros: {
+                    fecha_inicio: manualStartDateField?.value || todayISO(),
+                    periodicidad_dias: parseInt(manualPeriodicityDaysField?.value || "30", 10) || 30,
+                },
+            };
+
+            return {
+                payment_parameters: paymentParameters,
+                manual_plan: manualPlan,
+            };
+        };
+
+        const showError = (payload) => {
+            const message = payload?.mensaje || payload?.notas || payload?.error || "No se pudo generar la previsualización.";
+            if (errorMessage) {
+                errorMessage.textContent = message;
+            }
+            if (errorDetails) {
+                const details = payload?.detalles || payload?.details || null;
+                if (details) {
+                    errorDetails.textContent = JSON.stringify(details, null, 2);
+                    errorDetails.classList.remove("hidden");
+                } else {
+                    errorDetails.textContent = "";
+                    errorDetails.classList.add("hidden");
+                }
+            }
+            if (errorModal && typeof errorModal.showModal === "function") {
+                errorModal.showModal();
+            }
+        };
+
+        if (initialAmountField) {
+            initialAmountField.addEventListener("input", updateFinanceAmount);
+            initialAmountField.addEventListener("change", updateFinanceAmount);
+            initialAmountField.addEventListener("keyup", updateFinanceAmount);
+            initialAmountField.addEventListener("blur", updateFinanceAmount);
+        }
+        paymentTypeCashField?.addEventListener("change", () => {
+            applyPaymentTypeMode();
+            clearPreviewForPaymentTypeChange();
+        });
+        paymentTypeCreditField?.addEventListener("change", () => {
+            applyPaymentTypeMode();
+            clearPreviewForPaymentTypeChange();
+        });
+        applyPaymentTypeMode();
+
+        const setLoading = (isLoading) => {
+            if (isLoading) {
+                if (previewButton) {
+                    previewButton.setAttribute("disabled", "disabled");
+                    previewButton.classList.add("loading");
+                }
+                if (saveManualButton) {
+                    saveManualButton.setAttribute("disabled", "disabled");
+                    saveManualButton.classList.add("loading");
+                }
+                if (clearButton) clearButton.setAttribute("disabled", "disabled");
+                if (confirmButton) confirmButton.setAttribute("disabled", "disabled");
+            } else {
+                if (previewButton) {
+                    previewButton.removeAttribute("disabled");
+                    previewButton.classList.remove("loading");
+                }
+                if (saveManualButton) {
+                    saveManualButton.removeAttribute("disabled");
+                    saveManualButton.classList.remove("loading");
+                }
+                if (clearButton) clearButton.removeAttribute("disabled");
+            }
+        };
+
+        const existingPayloadEl = document.getElementById("existing-preview-payload");
+        if (existingPayloadEl && existingPayloadEl.textContent.trim()) {
+            try {
+                const existing = JSON.parse(existingPayloadEl.textContent);
+                const payload = Array.isArray(existing) ? existing[0] : existing;
+                if (payload && payload.items && payload.items.length) {
+                    renderItems(payload.items);
+                    renderSummary(payload.resumen || null);
+                    if (confirmButton) confirmButton.removeAttribute("disabled");
+                }
+            } catch (error) {
+                // ignore parsing errors
+            }
+        }
+
+        if (tableBody) {
+            tableBody.addEventListener("click", (event) => {
+                const target = event.target;
+                if (!(target instanceof HTMLElement)) return;
+                if (!target.classList.contains("edit-quota-date")) return;
+                const index = parseInt(target.dataset.index || "", 10);
+                if (!index) return;
+                editingIndex = previewItems.findIndex((item) => item.n === index);
+                if (editingIndex < 0) return;
+                if (quotaDateInput) quotaDateInput.value = previewItems[editingIndex].fecha;
+                if (quotaDateModal && typeof quotaDateModal.showModal === "function") {
+                    quotaDateModal.showModal();
+                }
+            });
+        }
+
+        const addDays = (date, days) => {
+            const next = new Date(date);
+            next.setDate(next.getDate() + days);
+            return next;
+        };
+
+        const formatDate = (date) => date.toISOString().slice(0, 10);
+        const todayISO = () => new Date().toISOString().slice(0, 10);
+
+        const getPeriodicDays = () => parseInt(manualPeriodicityDaysField?.value || "30", 10) || 30;
+        const getInitialTarget = () => parseCurrency(initialAmountField?.value || "");
+
+        const readManualRows = () => {
+            if (!manualPaymentsBody) return [];
+            const rows = [...manualPaymentsBody.querySelectorAll("tr.manual-payment-row")];
+            return rows.map((row) => {
+                const type = row.dataset.type || "irregular";
+                const description = (row.querySelector('[data-field="descripcion"]')?.value || "").trim();
+                const date = row.querySelector('[data-field="fecha"]')?.value || "";
+                const amount = parseCurrency(row.querySelector('[data-field="monto"]')?.value || "");
+                const quantity = parseInt(row.querySelector('[data-field="cantidad"]')?.value || "0", 10) || 0;
+                return { type, description, date, amount, quantity };
+            });
+        };
+
+        const renumberManualRows = () => {
+            if (!manualPaymentsBody) return;
+            [...manualPaymentsBody.querySelectorAll("tr.manual-payment-row")].forEach((row, idx) => {
+                const seqCell = row.querySelector('[data-field="seq"]');
+                if (seqCell) seqCell.textContent = String(idx + 1);
+            });
+        };
+
+        const suggestFinanceStartDate = () => {
+            if (!manualFinanceStartDateField) return;
+            if (manualFinanceStartDateField.dataset.auto !== "1") return;
+            const start = manualStartDateField?.value || todayISO();
+            const periodicity = getPeriodicDays();
+            const rows = readManualRows();
+            const totalQuotas = rows.reduce((acc, row) => acc + row.quantity, 0);
+            const projectedLast = addDays(new Date(start), Math.max(totalQuotas - 1, 0) * periodicity);
+            const irregularMax = rows
+                .filter((row) => row.type === "irregular" && row.date)
+                .map((row) => new Date(row.date))
+                .sort((a, b) => a - b)
+                .pop();
+            const lastDate = irregularMax && irregularMax > projectedLast ? irregularMax : projectedLast;
+            manualFinanceStartDateField.value = formatDate(addDays(lastDate, periodicity));
+        };
+
+        const updateManualInitialSum = () => {
+            const rows = readManualRows();
+            const total = rows.reduce((acc, row) => acc + (row.amount * row.quantity), 0);
+            const target = getInitialTarget();
+            const diff = target - total;
+            if (manualTargetInitialEl) {
+                manualTargetInitialEl.textContent = formatter.format(target);
+            }
+            if (manualInitialSumEl) {
+                manualInitialSumEl.textContent = formatter.format(total);
+            }
+            if (manualInitialDifferenceEl) {
+                manualInitialDifferenceEl.textContent = formatter.format(Math.abs(diff));
+                manualInitialDifferenceEl.classList.remove("text-amber-700", "text-red-700", "text-emerald-700");
+                if (diff === 0) {
+                    manualInitialDifferenceEl.classList.add("text-emerald-700");
+                } else if (diff > 0) {
+                    manualInitialDifferenceEl.classList.add("text-amber-700");
+                } else {
+                    manualInitialDifferenceEl.classList.add("text-red-700");
+                }
+            }
+            suggestFinanceStartDate();
+            return total;
+        };
+
+        const addManualRow = (type) => {
+            if (!manualPaymentsBody) return;
+            const row = document.createElement("tr");
+            row.className = "manual-payment-row";
+            row.dataset.type = type;
+            const isRegular = type === "regular";
+            const description = isRegular ? "Bloque de cuotas" : "Pago puntual";
+            const periodicity = getPeriodicDays();
+            const irregularDates = readManualRows()
+                .filter((item) => item.type === "irregular" && item.date)
+                .map((item) => new Date(item.date))
+                .sort((a, b) => a - b);
+            const seedDate = irregularDates.length ? formatDate(addDays(irregularDates[irregularDates.length - 1], periodicity)) : (manualStartDateField?.value || todayISO());
+            row.innerHTML = `
+                <td class="text-right font-semibold text-gray-500" data-field="seq"></td>
+                <td>
+                    <span class="badge badge-sm ${isRegular ? "bg-slate-100 text-slate-700" : "bg-blue-100 text-blue-700"} border-0">${isRegular ? "regular" : "puntual"}</span>
+                </td>
+                <td><input data-field="descripcion" type="text" class="input input-bordered input-xs w-full" value="${description}" /></td>
+                <td>${isRegular ? '<span class="text-gray-400 text-xs">No aplica</span>' : `<input data-field="fecha" type="date" class="input input-bordered input-xs w-full" value="${seedDate}" />`}</td>
+                <td><input data-field="monto" type="text" inputmode="numeric" class="input input-bordered input-xs w-full text-right" value="" placeholder="0" /></td>
+                <td><input data-field="cantidad" type="number" min="1" step="1" class="input input-bordered input-xs w-full text-right" value="1" /></td>
+                <td><button type="button" class="btn btn-xs btn-outline text-red-600 manual-remove-row">Quitar</button></td>
+            `;
+            manualPaymentsBody.appendChild(row);
+            renumberManualRows();
+        };
+
+        if (manualStartDateField && !manualStartDateField.value) manualStartDateField.value = todayISO();
+        if (manualFinanceStartDateField) {
+            if (!manualFinanceStartDateField.value) {
+                manualFinanceStartDateField.value = todayISO();
+            }
+            manualFinanceStartDateField.dataset.auto = "1";
+            manualFinanceStartDateField.addEventListener("change", () => {
+                manualFinanceStartDateField.dataset.auto = "0";
+            });
+        }
+        initialAmountField?.addEventListener("input", updateManualInitialSum);
+        manualStartDateField?.addEventListener("change", updateManualInitialSum);
+        manualPeriodicityDaysField?.addEventListener("input", updateManualInitialSum);
+        if (manualPaymentsBody) {
+            manualPaymentsBody.addEventListener("input", (event) => {
+                const target = event.target;
+                if (!(target instanceof HTMLElement)) return;
+                if (target instanceof HTMLInputElement && target.dataset.field === "monto") {
+                    target.value = formatCurrency(parseCurrency(target.value));
+                }
+                updateManualInitialSum();
+            });
+            manualPaymentsBody.addEventListener("click", (event) => {
+                const target = event.target;
+                if (!(target instanceof HTMLElement)) return;
+                if (!target.classList.contains("manual-remove-row")) return;
+                const row = target.closest("tr");
+                if (row) row.remove();
+                renumberManualRows();
+                updateManualInitialSum();
+            });
+        }
+        addIrregularPaymentButton?.addEventListener("click", () => {
+            addManualRow("irregular");
+            updateManualInitialSum();
+        });
+        addRegularPaymentButton?.addEventListener("click", () => {
+            addManualRow("regular");
+            updateManualInitialSum();
+        });
+        if (manualPaymentsBody && !manualPaymentsBody.children.length) {
+            addManualRow("irregular");
+            updateManualInitialSum();
+        }
+
+        if (quotaDateApply) {
+            quotaDateApply.addEventListener("click", () => {
+                if (editingIndex === null || editingIndex < 0) return;
+                const newDateValue = quotaDateInput?.value;
+                if (!newDateValue) return;
+                const scope = document.querySelector('input[name="quota-date-scope"]:checked')?.value || "single";
+                const oldDate = new Date(previewItems[editingIndex].fecha);
+                const newDate = new Date(newDateValue);
+                const deltaDays = Math.round((newDate - oldDate) / 86400000);
+
+                if (scope === "single") {
+                    previewItems[editingIndex].fecha = newDateValue;
+                    previewItems = previewItems
+                        .slice()
+                        .sort((a, b) => new Date(a.fecha) - new Date(b.fecha))
+                        .map((item, idx) => ({ ...item, n: idx + 1 }));
+                } else {
+                    previewItems = previewItems.map((item, idx) => {
+                        if (idx < editingIndex) return item;
+                        const date = new Date(item.fecha);
+                        return { ...item, fecha: formatDate(addDays(date, deltaDays)) };
+                    });
+                }
+
+                renderItems(previewItems);
+                if (quotaDateModal && typeof quotaDateModal.close === "function") {
+                    quotaDateModal.close();
+                }
+            });
+        }
+
+        if (previewButton) {
+            previewButton.addEventListener("click", async () => {
+                if (errorEl) {
+                    errorEl.classList.add("hidden");
+                    errorEl.textContent = "";
+                }
+                try {
+                    setLoading(true);
+                    const response = await fetch(previewUrl, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-CSRFToken": getCookie("csrftoken"),
+                        },
+                        body: JSON.stringify(buildPayload()),
+                    });
+                    let data;
+                    const contentType = response.headers.get("content-type") || "";
+                    if (contentType.includes("application/json")) {
+                        data = await response.json();
+                    } else {
+                        const text = await response.text();
+                        showError({
+                            mensaje: "Respuesta inválida del servidor (no JSON).",
+                            detalles: { status: response.status, body: text.slice(0, 500) },
+                        });
+                        renderEmpty("Sin previsualización aún.");
+                        return;
+                    }
+                    const payload = Array.isArray(data) ? data[0] : data;
+                    if (!response.ok || payload?.error) {
+                        showError(payload || {});
+                        renderEmpty(payload?.notas || "Sin previsualización aún.");
+                        return;
+                    }
+                    if (!payload || !payload.items || !payload.items.length) {
+                        renderEmpty(payload?.notas || "Sin previsualización aún.");
+                        if (confirmButton) confirmButton.setAttribute("disabled", "disabled");
+                        return;
+                    }
+                    if (!validateSummaryMonths(payload.resumen || null)) {
+                        renderEmpty("Sin previsualización aún.");
+                        if (confirmButton) confirmButton.setAttribute("disabled", "disabled");
+                        return;
+                    }
+                    renderItems(payload.items);
+                    renderSummary(payload.resumen || null);
+                    if (confirmButton) confirmButton.removeAttribute("disabled");
+                } catch (error) {
+                    if (errorEl) {
+                        errorEl.textContent = error.message || "Ocurrió un error al generar la previsualización.";
+                        errorEl.classList.remove("hidden");
+                    }
+                    renderEmpty("Sin previsualización aún.");
+                    if (confirmButton) confirmButton.setAttribute("disabled", "disabled");
+                } finally {
+                    setLoading(false);
+                }
+            });
+        }
+
+        openManualModalButton?.addEventListener("click", () => {
+            if (manualPlanModal && typeof manualPlanModal.showModal === "function") {
+                if (manualFinanceStartDateField && !manualFinanceStartDateField.value) {
+                    manualFinanceStartDateField.dataset.auto = "1";
+                }
+                updateManualInitialSum();
+                manualPlanModal.showModal();
+            }
+        });
+
+        if (saveManualButton) {
+            saveManualButton.addEventListener("click", async () => {
+                if (errorEl) {
+                    errorEl.classList.add("hidden");
+                    errorEl.textContent = "";
+                }
+                try {
+                    const payloadToSend = buildManualPayload();
+                    setLoading(true);
+                    const response = await fetch(manualPreviewUrl, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-CSRFToken": getCookie("csrftoken"),
+                        },
+                        body: JSON.stringify(payloadToSend),
+                    });
+                    let data;
+                    const contentType = response.headers.get("content-type") || "";
+                    if (contentType.includes("application/json")) {
+                        data = await response.json();
+                    } else {
+                        const text = await response.text();
+                        showError({
+                            error: "Respuesta inválida del servidor (no JSON).",
+                            detalles: { status: response.status, body: text.slice(0, 500) },
+                        });
+                        renderEmpty("Sin previsualización aún.");
+                        return;
+                    }
+                    const payload = Array.isArray(data) ? data[0] : data;
+                    if (!response.ok || payload?.error) {
+                        showError(payload || {});
+                        renderEmpty(payload?.notas || "Sin previsualización aún.");
+                        return;
+                    }
+                    if (!payload || !payload.items || !payload.items.length) {
+                        renderEmpty(payload?.notas || "Sin previsualización aún.");
+                        if (confirmButton) confirmButton.setAttribute("disabled", "disabled");
+                        return;
+                    }
+                    if (!validateSummaryMonths(payload.resumen || null)) {
+                        renderEmpty("Sin previsualización aún.");
+                        if (confirmButton) confirmButton.setAttribute("disabled", "disabled");
+                        return;
+                    }
+                    renderItems(payload.items);
+                    renderSummary(payload.resumen || null);
+                    if (confirmButton) confirmButton.removeAttribute("disabled");
+                    if (manualPlanModal && typeof manualPlanModal.close === "function") {
+                        manualPlanModal.close();
+                    }
+                } catch (error) {
+                    showError({ mensaje: error.message || "No se pudo guardar el plan manual." });
+                    renderEmpty("Sin previsualización aún.");
+                    if (confirmButton) confirmButton.setAttribute("disabled", "disabled");
+                } finally {
+                    setLoading(false);
+                }
+            });
+        }
+
+        if (clearButton) {
+            clearButton.addEventListener("click", () => {
+                if (promptInitialField) {
+                    promptInitialField.value = "";
+                }
+                if (promptFinanceField) {
+                    promptFinanceField.value = "";
+                }
+                if (manualPaymentsBody) {
+                    manualPaymentsBody.innerHTML = "";
+                    updateManualInitialSum();
+                }
+                renderEmpty("Sin previsualización aún.");
+                if (confirmButton) confirmButton.setAttribute("disabled", "disabled");
+                if (errorEl) {
+                    errorEl.classList.add("hidden");
+                    errorEl.textContent = "";
+                }
+            });
+        }
+
+        const confirmForm = document.querySelector('form[action$="/confirm/"]');
+        if (confirmForm && confirmButton) {
+            confirmForm.addEventListener("submit", () => {
+                confirmButton.disabled = true;
+                confirmButton.classList.add("loading");
+                const label = confirmButton.querySelector(".confirm-plan-label");
+                if (label) label.textContent = "Confirmando...";
+            });
+        }
+    })();
+</script>
+{% endblock %}

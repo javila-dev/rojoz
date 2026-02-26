@@ -1,0 +1,57 @@
+# ==============================
+# Python
+# ==============================
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtualenv
+venv/
+env/
+.venv/
+
+# ==============================
+# Django (dentro de /app)
+# ==============================
+
+# Static compilado (Whitenoise)
+app/staticfiles/
+
+# Media local (por si existe)
+app/media/
+
+# SQLite (aunque usas Postgres)
+app/db.sqlite3
+
+# Migrations cache
+app/**/migrations/__pycache__/
+
+# ==============================
+# Environment / Secrets
+# ==============================
+.env
+.env.*
+!.env.example
+
+# ==============================
+# IDE / OS
+# ==============================
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ==============================
+# Tests / coverage
+# ==============================
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ==============================
+# Misc
+# ==============================
+*.log
+*.bak
+*.tmp
+*.orig

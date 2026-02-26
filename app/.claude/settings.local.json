@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c:*)",
+      "Bash(python:*)",
+      "Bash(xargs cat:*)",
+      "Bash(ls:*)",
+      "WebFetch(domain:localhost)",
+      "WebFetch(domain:docs.v3.localpayment.com)",
+      "Bash(python3:*)",
+      "Bash(DJANGO_SETTINGS_MODULE=config.settings python:*)",
+      "Bash(DJANGO_SETTINGS_MODULE=core.settings python:*)",
+      "Bash(pip install:*)",
+      "Bash(curl:*)"
+    ]
+  }
+}

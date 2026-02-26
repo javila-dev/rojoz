@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Recaudos – Venta {{ sale.contract_number|default:sale.id }}{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6">
+    <div class="flex items-start justify-between gap-6">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">Recaudos</h1>
+            <p class="text-gray-600 mt-2">
+                Contrato #{{ sale.contract_number|default:sale.id }} &middot;
+                {{ sale.project.name }}
+            </p>
+        </div>
+        <div class="flex items-center gap-3">
+            <a href="{% url 'sales:contract_detail' sale.id %}" class="btn btn-neutral-elegant">Volver al contrato</a>
+            <a href="{% url 'finance:account_statement_pdf' sale.id %}" class="btn btn-neutral-elegant" data-no-loading target="_blank">Estado de cuenta</a>
+            <a href="{% url 'finance:receipt_create' sale.id %}" class="btn btn-primary">Nuevo recibo</a>
+        </div>
+    </div>
+
+    <!-- Resumen de cartera -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="stat bg-white border border-gray-200 rounded-lg shadow-sm">
+            <div class="stat-title">Precio total</div>
+            <div class="stat-value text-lg">${{ sale.final_price|floatformat:0|intcomma|default:"—" }}</div>
+        </div>
+        <div class="stat bg-white border border-gray-200 rounded-lg shadow-sm">
+            <div class="stat-title">Total recaudado</div>
+            <div class="stat-value text-lg text-success">${{ total_paid|floatformat:0|intcomma }}</div>
+        </div>
+        <div class="stat bg-white border border-gray-200 rounded-lg shadow-sm">
+            <div class="stat-title">Saldo a favor acumulado</div>
+            <div class="stat-value text-lg text-info">${{ total_surplus|floatformat:0|intcomma }}</div>
+        </div>
+    </div>
+
+    <!-- 1. Recibos registrados -->
+    <div class="card bg-white border border-gray-200 shadow-sm">
+        <div class="card-body">
+            <h2 class="card-title text-lg mb-4">Recibos registrados</h2>
+            <div class="overflow-x-auto max-h-80 overflow-y-auto">
+                <table class="table table-zebra w-full text-sm">
+                    <thead>
+                        <tr class="sticky top-0 bg-base-100 z-10">
+                            <th>#</th>
+                            <th>Fecha pago</th>
+                            <th>Forma de pago</th>
+                            <th class="text-right">Valor</th>
+                            <th class="text-right">Saldo a favor</th>
+                            <th>Elaborado por</th>
+                            <th>Registro</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in receipts %}
+                        <tr>
+                            <td>{{ r.pk }}</td>
+                            <td>{{ r.date_paid|date:"d/m/Y" }}</td>
+                            <td>{{ r.payment_method.name }}</td>
+                            <td class="text-right font-semibold">${{ r.amount|floatformat:0|intcomma }}</td>
+                            <td class="text-right">${{ r.surplus|floatformat:0|intcomma }}</td>
+                            <td>{{ r.created_by.get_full_name|default:r.created_by.username }}</td>
+                            <td>{{ r.date_registered|date:"d/m/Y H:i" }}</td>
+                            <td class="text-right">
+                                <a href="{% url 'finance:receipt_detail' r.pk %}" class="btn btn-xs btn-neutral-elegant">Ver</a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center text-gray-500 py-8">No hay recibos registrados.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Cronograma con estado -->
+    {% if schedule_items %}
+    <div class="card bg-white border border-gray-200 shadow-sm">
+        <div class="card-body">
+            <h2 class="card-title text-lg mb-4">Estado del cronograma</h2>
+            <div class="overflow-x-auto max-h-96 overflow-y-auto">
+                <table class="table table-zebra table-sm w-full">
+                    <thead>
+                        <tr class="sticky top-0 bg-base-100 z-10">
+                            <th>#</th>
+                            <th>Fecha</th>
+                            <th>Concepto</th>
+                            <th class="text-right">Capital</th>
+                            <th class="text-right">Interés</th>
+                            <th class="text-right">Total</th>
+                            <th class="text-right">Pagado cap.</th>
+                            <th class="text-right">Pagado int.</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in schedule_items %}
+                        <tr>
+                            <td>{{ item.numero_cuota|default:item.n }}</td>
+                            <td>{{ item.fecha|date:"d/m/Y" }}</td>
+                            <td>{{ item.concepto }}</td>
+                            <td class="text-right">${{ item.capital|floatformat:0|intcomma }}</td>
+                            <td class="text-right">${{ item.interes|floatformat:0|intcomma }}</td>
+                            <td class="text-right font-semibold">${{ item.valor_total|floatformat:0|intcomma }}</td>
+                            <td class="text-right">${{ item.paid_capital|floatformat:0|intcomma }}</td>
+                            <td class="text-right">${{ item.paid_interes|floatformat:0|intcomma }}</td>
+                            <td>
+                                {% if item.is_fully_paid %}
+                                    <span class="badge badge-success badge-sm">Pagada</span>
+                                {% else %}
+                                    <span class="badge badge-warning badge-sm">Pendiente</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 3. Recaudo aplicado -->
+    <div class="card bg-white border border-gray-200 shadow-sm">
+        <div class="card-body">
+            <h2 class="card-title text-lg mb-4">Recaudo aplicado</h2>
+            <div class="overflow-x-auto max-h-96 overflow-y-auto">
+                <table class="table table-zebra table-sm w-full">
+                    <thead>
+                        <tr class="sticky top-0 bg-base-100 z-10">
+                            <th>Recibo #</th>
+                            <th>Fecha pago</th>
+                            <th>Cuota #</th>
+                            <th>Fecha cuota</th>
+                            <th class="text-right">Capital</th>
+                            <th class="text-right">Interés cte.</th>
+                            <th class="text-right">Mora</th>
+                            <th class="text-right">Total aplicado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in applications %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'finance:receipt_detail' row.receipt.pk %}" class="link link-primary">{{ row.receipt.pk }}</a>
+                            </td>
+                            <td>{{ row.receipt.date_paid|date:"d/m/Y" }}</td>
+                            <td>{{ row.schedule_item.numero_cuota|default:row.schedule_item.n }}</td>
+                            <td>{{ row.schedule_item.fecha|date:"d/m/Y" }}</td>
+                            <td class="text-right">${{ row.capital|floatformat:0|intcomma }}</td>
+                            <td class="text-right">${{ row.interes|floatformat:0|intcomma }}</td>
+                            <td class="text-right">${{ row.mora|floatformat:0|intcomma }}</td>
+                            <td class="text-right font-semibold">${{ row.total|floatformat:0|intcomma }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center text-gray-500 py-8">No hay aplicaciones registradas.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

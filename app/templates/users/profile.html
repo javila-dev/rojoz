@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Mi perfil{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-6">
+
+    <!-- Header -->
+    <div class="flex flex-wrap items-start justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900" style="font-family: 'Playfair Display', serif;">
+                Mi perfil
+            </h1>
+            <p class="text-gray-500 mt-1 text-sm">
+                Gestiona tu informacion personal, datos bancarios y contrasena.
+            </p>
+        </div>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+    {% for message in messages %}
+    <div class="flex items-center gap-3 p-4 rounded-xl {% if message.tags == 'success' %}bg-emerald-50 border border-emerald-200{% else %}bg-red-50 border border-red-100{% endif %}">
+        <i class="{% if message.tags == 'success' %}ri-check-line text-emerald-600{% else %}ri-error-warning-line text-red-500{% endif %} text-xl flex-shrink-0"></i>
+        <p class="text-sm {% if message.tags == 'success' %}text-emerald-700{% else %}text-red-700{% endif %} font-medium">{{ message }}</p>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <!-- Tabs -->
+    <div class="flex gap-1 border-b border-gray-200">
+        <button onclick="switchTab('profile')" id="tab-profile"
+                class="px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors border-b-2 -mb-px
+                       {% if active_tab == 'profile' %}text-rojoz-700 border-rojoz-500 bg-rojoz-50/50{% else %}text-gray-500 border-transparent hover:text-gray-700{% endif %}">
+            <i class="ri-user-3-line mr-1"></i> Datos personales
+        </button>
+        <button onclick="switchTab('banking')" id="tab-banking"
+                class="px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors border-b-2 -mb-px text-gray-500 border-transparent hover:text-gray-700">
+            <i class="ri-bank-line mr-1"></i> Datos bancarios
+        </button>
+        <button onclick="switchTab('password')" id="tab-password"
+                class="px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors border-b-2 -mb-px
+                       {% if active_tab == 'password' %}text-rojoz-700 border-rojoz-500 bg-rojoz-50/50{% else %}text-gray-500 border-transparent hover:text-gray-700{% endif %}">
+            <i class="ri-lock-line mr-1"></i> Contrasena
+        </button>
+    </div>
+
+    <!-- Tab: Datos personales -->
+    <div id="panel-profile" class="{% if active_tab != 'profile' %}hidden{% endif %}">
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="update_profile">
+            <input type="hidden" name="active_tab" value="profile">
+
+            <div class="card bg-white rounded-xl overflow-hidden">
+                <div class="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+                    <i class="ri-user-3-line text-rojoz-600"></i>
+                    <h2 class="font-bold text-gray-800">Informacion personal</h2>
+                </div>
+                <div class="p-5 space-y-5">
+
+                    <!-- Avatar + info basica -->
+                    <div class="flex items-center gap-5">
+                        <div class="relative">
+                            {% if request.user.photo %}
+                            <img src="{{ request.user.photo.url }}" alt="Foto"
+                                 class="w-20 h-20 rounded-full object-cover border-2 border-rojoz-200">
+                            {% else %}
+                            <div class="w-20 h-20 rounded-full bg-gradient-to-br from-rojoz-600 to-rojoz-400 text-white flex items-center justify-center text-2xl font-bold">
+                                {{ request.user.first_name|default:request.user.username|slice:":1"|upper }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <p class="text-lg font-bold text-gray-900">{{ request.user.get_full_name|default:request.user.username }}</p>
+                            <p class="text-sm text-gray-500">{{ request.user.get_role_display }} &middot; @{{ request.user.username }}</p>
+                        </div>
+                    </div>
+
+                    <!-- Foto -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1.5">Foto de perfil</label>
+                        {{ profile_form.photo }}
+                    </div>
+
+                    <!-- Nombre y Apellido -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Nombre</label>
+                            {{ profile_form.first_name }}
+                            {% if profile_form.first_name.errors %}
+                            <p class="text-red-500 text-xs mt-1">{{ profile_form.first_name.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Apellido</label>
+                            {{ profile_form.last_name }}
+                            {% if profile_form.last_name.errors %}
+                            <p class="text-red-500 text-xs mt-1">{{ profile_form.last_name.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Email y Telefono -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Correo electronico</label>
+                            {{ profile_form.email }}
+                            {% if profile_form.email.errors %}
+                            <p class="text-red-500 text-xs mt-1">{{ profile_form.email.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Celular</label>
+                            {{ profile_form.phone }}
+                            {% if profile_form.phone.errors %}
+                            <p class="text-red-500 text-xs mt-1">{{ profile_form.phone.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="px-5 py-4 border-t border-gray-100 flex justify-end">
+                    <button type="submit" class="btn btn-primary gap-1">
+                        <i class="ri-save-line"></i> Guardar cambios
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Tab: Datos bancarios -->
+    <div id="panel-banking" class="hidden">
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="update_profile">
+            <input type="hidden" name="active_tab" value="banking">
+
+            <div class="card bg-white rounded-xl overflow-hidden">
+                <div class="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+                    <i class="ri-bank-line text-rojoz-600"></i>
+                    <h2 class="font-bold text-gray-800">Datos bancarios</h2>
+                </div>
+                <div class="p-5 space-y-5">
+                    <p class="text-sm text-gray-500">
+                        Estos datos se usan para la dispersion de comisiones. Asegurate de que sean correctos.
+                    </p>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1.5">Banco</label>
+                        {{ profile_form.bank_code }}
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Tipo de cuenta</label>
+                            {{ profile_form.account_type }}
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Numero de cuenta</label>
+                            {{ profile_form.account_number }}
+                            {% if profile_form.account_number.errors %}
+                            <p class="text-red-500 text-xs mt-1">{{ profile_form.account_number.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="px-5 py-4 border-t border-gray-100 flex justify-end">
+                    <button type="submit" class="btn btn-primary gap-1">
+                        <i class="ri-save-line"></i> Guardar datos bancarios
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Tab: Contrasena -->
+    <div id="panel-password" class="{% if active_tab != 'password' %}hidden{% endif %}">
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="change_password">
+
+            <div class="card bg-white rounded-xl overflow-hidden">
+                <div class="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+                    <i class="ri-lock-line text-rojoz-600"></i>
+                    <h2 class="font-bold text-gray-800">Cambiar contrasena</h2>
+                </div>
+                <div class="p-5 space-y-5">
+
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1.5">Contrasena actual</label>
+                        {{ password_form.current_password }}
+                        {% if password_form.current_password.errors %}
+                        <p class="text-red-500 text-xs mt-1">{{ password_form.current_password.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Nueva contrasena</label>
+                            {{ password_form.new_password1 }}
+                            {% if password_form.new_password1.errors %}
+                            <p class="text-red-500 text-xs mt-1">{{ password_form.new_password1.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Confirmar nueva contrasena</label>
+                            {{ password_form.new_password2 }}
+                            {% if password_form.new_password2.errors %}
+                            <p class="text-red-500 text-xs mt-1">{{ password_form.new_password2.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="px-5 py-4 border-t border-gray-100 flex justify-end">
+                    <button type="submit" class="btn btn-primary gap-1">
+                        <i class="ri-lock-line"></i> Cambiar contrasena
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+</div>
+
+<script>
+function switchTab(tab) {
+    // Hide all panels
+    document.querySelectorAll('[id^="panel-"]').forEach(el => el.classList.add('hidden'));
+    // Reset all tabs
+    document.querySelectorAll('[id^="tab-"]').forEach(el => {
+        el.classList.remove('text-rojoz-700', 'border-rojoz-500', 'bg-rojoz-50/50');
+        el.classList.add('text-gray-500', 'border-transparent');
+    });
+    // Show selected panel
+    document.getElementById('panel-' + tab).classList.remove('hidden');
+    // Activate selected tab
+    const activeTab = document.getElementById('tab-' + tab);
+    activeTab.classList.remove('text-gray-500', 'border-transparent');
+    activeTab.classList.add('text-rojoz-700', 'border-rojoz-500', 'bg-rojoz-50/50');
+}
+</script>
+{% endblock %}

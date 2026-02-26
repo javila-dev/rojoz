@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Estilos personalizados para Constructora Rojoz */
+@layer components {
+
+  /* Sidebar activo */
+  .sidebar-link-active {
+    @apply bg-blue-50 text-blue-600;
+  }
+
+  /* Cards con sombra suave */
+  .card-soft {
+    @apply bg-white rounded-lg shadow-sm border border-gray-200;
+  }
+
+  /* Botones personalizados */
+  .btn-rojoz {
+    @apply bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-2.5 rounded-lg transition-colors;
+  }
+
+}
+
+/* Animaciones suaves */
+@layer utilities {
+  .transition-smooth {
+    @apply transition-all duration-200 ease-in-out;
+  }
+}

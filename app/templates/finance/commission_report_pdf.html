@@ -1,0 +1,210 @@
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Reporte de Comisiones</title>
+    <style>
+        @page {
+            size: letter;
+            margin: 2cm 1.5cm;
+            @bottom-center {
+                content: "Página " counter(page) " de " counter(pages);
+                font-size: 9px;
+                color: #888;
+            }
+        }
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 11px;
+            color: #222;
+            line-height: 1.4;
+        }
+        .header {
+            border-bottom: 3px solid #A0372A;
+            padding-bottom: 10px;
+            margin-bottom: 16px;
+        }
+        .header h1 {
+            font-size: 20px;
+            color: #A0372A;
+            margin: 0 0 4px 0;
+        }
+        .header .meta {
+            font-size: 11px;
+            color: #555;
+        }
+        .summary-bar {
+            display: flex;
+            gap: 30px;
+            background: #f8f8f8;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            padding: 10px 16px;
+            margin-bottom: 20px;
+        }
+        .summary-bar .item {
+            display: inline-block;
+            margin-right: 30px;
+        }
+        .summary-bar .item .label {
+            font-size: 9px;
+            text-transform: uppercase;
+            color: #888;
+            letter-spacing: 0.5px;
+        }
+        .summary-bar .item .value {
+            font-size: 14px;
+            font-weight: bold;
+            color: #222;
+        }
+        .advisor-section {
+            margin-bottom: 20px;
+            page-break-inside: avoid;
+        }
+        .advisor-header {
+            background: #A0372A;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px 4px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .advisor-header .name {
+            font-size: 13px;
+            font-weight: bold;
+        }
+        .advisor-header .total {
+            font-size: 13px;
+            font-weight: bold;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th {
+            background: #f5f5f5;
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #666;
+            padding: 6px 8px;
+            text-align: left;
+            border-bottom: 2px solid #ddd;
+        }
+        td {
+            padding: 5px 8px;
+            border-bottom: 1px solid #eee;
+            font-size: 10px;
+        }
+        tr:last-child td {
+            border-bottom: none;
+        }
+        .right { text-align: right; }
+        .subtotal-row {
+            background: #fafafa;
+            font-weight: bold;
+        }
+        .subtotal-row td {
+            border-top: 2px solid #ddd;
+            padding-top: 6px;
+        }
+        .grand-total {
+            margin-top: 20px;
+            padding: 12px 16px;
+            background: #A0372A;
+            color: white;
+            border-radius: 4px;
+            text-align: right;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .empty-msg {
+            text-align: center;
+            color: #888;
+            padding: 40px 0;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header" style="display: flex; align-items: center; gap: 16px;">
+        <img src="https://s3.2asoft.tech/construccion-media-public/document_assets/logo rojoz.png"
+             alt="Rojoz" style="height: 50px; width: auto;">
+        <div>
+            <h1>Reporte de Comisiones Liquidadas</h1>
+            <div class="meta">
+                Constructora Rojoz
+            {% if date_from or date_to %}
+                &middot; Periodo: {{ date_from|default:"Inicio" }} a {{ date_to|default:"Hoy" }}
+            {% else %}
+                &middot; Todas las fechas
+            {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="summary-bar">
+        <span class="item">
+            <span class="label">Asesores</span><br>
+            <span class="value">{{ advisors_count }}</span>
+        </span>
+        <span class="item">
+            <span class="label">Pagos</span><br>
+            <span class="value">{{ payments_count }}</span>
+        </span>
+        <span class="item">
+            <span class="label">Total liquidado</span><br>
+            <span class="value">${{ grand_total|floatformat:0|intcomma }}</span>
+        </span>
+    </div>
+
+    {% if advisors %}
+        {% for advisor in advisors %}
+        <div class="advisor-section">
+            <div class="advisor-header">
+                <span class="name">{{ advisor.user.get_full_name|default:advisor.user.username }}</span>
+                <span class="total">${{ advisor.total|floatformat:0|intcomma }}</span>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Contrato</th>
+                        <th>Proyecto</th>
+                        <th>Cargo</th>
+                        <th>%</th>
+                        <th>Motivo</th>
+                        <th class="right">Valor pagado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for payment in advisor.payments %}
+                    <tr>
+                        <td>{{ payment.date_paid|date:"Y-m-d" }}</td>
+                        <td>#{{ payment.participant.sale.contract_number|default:payment.participant.sale.id }}</td>
+                        <td>{{ payment.participant.sale.project.name }}</td>
+                        <td>{{ payment.participant.role }}</td>
+                        <td>{{ payment.participant.percentage }}%</td>
+                        <td>{{ payment.trigger }}</td>
+                        <td class="right">${{ payment.amount_paid|floatformat:0|intcomma }}</td>
+                    </tr>
+                    {% endfor %}
+                    <tr class="subtotal-row">
+                        <td colspan="6">Subtotal {{ advisor.user.get_full_name|default:advisor.user.username }}</td>
+                        <td class="right">${{ advisor.total|floatformat:0|intcomma }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        {% endfor %}
+
+        <div class="grand-total">
+            Total General: ${{ grand_total|floatformat:0|intcomma }}
+        </div>
+    {% else %}
+        <div class="empty-msg">No se encontraron comisiones liquidadas en el rango seleccionado.</div>
+    {% endif %}
+</body>
+</html>

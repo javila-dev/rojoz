@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}Recibo #{{ receipt.pk }}{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-6">
+    <div class="flex items-start justify-between gap-6">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">Recibo #{{ receipt.pk }}</h1>
+            <p class="text-gray-600 mt-2">
+                Contrato #{{ receipt.sale.contract_number|default:receipt.sale.id }} &middot;
+                {{ receipt.sale.project.name }}
+            </p>
+        </div>
+        <div class="flex items-center gap-3">
+            <a href="{% url 'finance:receipt_list' receipt.sale.id %}" class="btn btn-neutral-elegant">Volver</a>
+            <a href="{% url 'finance:receipt_pdf' receipt.pk %}" class="btn btn-neutral-elegant" data-no-loading target="_blank">Imprimir recibo</a>
+        </div>
+    </div>
+
+    <!-- Datos del recibo -->
+    <div class="card bg-white border border-gray-200 shadow-sm">
+        <div class="card-body">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <span class="text-sm text-gray-500">Valor recibido</span>
+                    <p class="text-xl font-bold">${{ receipt.amount|floatformat:0 }}</p>
+                </div>
+                <div>
+                    <span class="text-sm text-gray-500">Saldo a favor</span>
+                    <p class="text-xl font-bold text-info">${{ receipt.surplus|floatformat:0 }}</p>
+                </div>
+                <div>
+                    <span class="text-sm text-gray-500">Fecha real de pago</span>
+                    <p>{{ receipt.date_paid|date:"d/m/Y" }}</p>
+                </div>
+                <div>
+                    <span class="text-sm text-gray-500">Fecha de registro</span>
+                    <p>{{ receipt.date_registered|date:"d/m/Y H:i" }}</p>
+                </div>
+                <div>
+                    <span class="text-sm text-gray-500">Forma de pago</span>
+                    <p>{{ receipt.payment_method.name }}</p>
+                </div>
+                <div>
+                    <span class="text-sm text-gray-500">Elaborado por</span>
+                    <p>{{ receipt.created_by.get_full_name|default:receipt.created_by.username }}</p>
+                </div>
+                {% if receipt.notes %}
+                <div class="md:col-span-2">
+                    <span class="text-sm text-gray-500">Observaciones</span>
+                    <p>{{ receipt.notes }}</p>
+                </div>
+                {% endif %}
+                {% if receipt.evidence %}
+                <div class="md:col-span-2">
+                    <span class="text-sm text-gray-500">Soporte (PDF)</span>
+                    <p><a href="{% url 'finance:receipt_evidence' receipt.pk %}" target="_blank" class="link link-primary">Ver soporte</a></p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Desglose de aplicación -->
+    <div class="card bg-white border border-gray-200 shadow-sm">
+        <div class="card-body">
+            <h2 class="card-title text-lg mb-4">Aplicación a cronograma</h2>
+            <div class="overflow-x-auto">
+                <table class="table table-zebra w-full text-sm">
+                    <thead>
+                        <tr>
+                            <th>Cuota #</th>
+                            <th>Fecha cuota</th>
+                            <th>Concepto</th>
+                            <th class="text-right">Monto aplicado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for app in applications %}
+                        <tr>
+                            <td>{{ app.schedule_item.numero_cuota|default:app.schedule_item.n }}</td>
+                            <td>{{ app.schedule_item.fecha|date:"d/m/Y" }}</td>
+                            <td>
+                                {% if app.concept == "MORA" %}
+                                    <span class="badge badge-error badge-sm">Mora</span>
+                                {% elif app.concept == "INT" %}
+                                    <span class="badge badge-warning badge-sm">Interés</span>
+                                {% else %}
+                                    <span class="badge badge-info badge-sm">Capital</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-right font-semibold">${{ app.amount|floatformat:0 }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center text-gray-500 py-8">Sin aplicaciones registradas.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

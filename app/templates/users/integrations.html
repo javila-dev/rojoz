@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Integraciones{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+    <div class="flex items-start justify-between gap-6">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">Integraciones</h1>
+            <p class="text-gray-600 mt-2">Configura la API externa para consultar proyectos.</p>
+        </div>
+        <div class="badge badge-neutral-elegant">Configuración</div>
+    </div>
+
+    <div class="card bg-white border border-gray-200 shadow-sm">
+        <div class="card-body space-y-6">
+            {% if saved %}
+            <div class="alert alert-success">
+                <span>Configuración guardada correctamente.</span>
+            </div>
+            {% endif %}
+
+            <form method="post" class="space-y-4">
+                {% csrf_token %}
+
+                <div>
+                    <label class="label">
+                        <span class="label-text font-medium">URL API Proyectos</span>
+                    </label>
+                    {{ form.projects_api_url }}
+                    {% if form.projects_api_url.errors %}
+                    <p class="text-sm text-red-600 mt-1">{{ form.projects_api_url.errors|striptags }}</p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label class="label">
+                        <span class="label-text font-medium">API Key</span>
+                    </label>
+                    {{ form.projects_api_key }}
+                    {% if form.projects_api_key.errors %}
+                    <p class="text-sm text-red-600 mt-1">{{ form.projects_api_key.errors|striptags }}</p>
+                    {% endif %}
+                </div>
+
+                <div class="flex items-center justify-end gap-2">
+                    <button type="submit" class="btn btn-neutral-elegant">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

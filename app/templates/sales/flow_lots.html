@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block title %}Flujo de Ventas - Adjudicaciones{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6">
+    <div class="rounded-2xl border border-gray-200 bg-white/80 backdrop-blur-xl shadow-sm p-6 lg:p-8 space-y-5">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+            <div>
+                <div class="flex items-center gap-2 text-sm text-gray-500 mb-3">
+                    <a href="{% url 'users:dashboard' %}" class="hover:text-rojoz-600 transition-colors">Dashboard</a>
+                    <i class="ri-arrow-right-s-line text-gray-400"></i>
+                    <a href="{% url 'sales:sale_flow_project' %}" class="hover:text-rojoz-600 transition-colors">Nueva venta</a>
+                    <i class="ri-arrow-right-s-line text-gray-400"></i>
+                    <span class="text-gray-800 font-medium">Lote</span>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-900" style="font-family: 'Playfair Display', serif;">Selecciona la adjudicación</h1>
+                <p class="text-gray-500 mt-1 text-sm">
+                    Proyecto: <span class="font-semibold">{{ project.name }}</span> ({{ project.city }})
+                </p>
+            </div>
+            <div class="flex items-center gap-2 w-full sm:w-auto">
+                <button type="button" class="btn btn-neutral-elegant btn-sm sm:btn-md flex-1 sm:flex-none" onclick="history.back()">Paso anterior</button>
+                <a href="{% url 'sales:sale_flow_project' %}" class="btn btn-neutral-elegant btn-sm sm:btn-md flex-1 sm:flex-none">Cambiar proyecto</a>
+            </div>
+        </div>
+
+        <ul class="steps steps-horizontal w-full text-sm flow-steps">
+            <li class="step step-primary">Proyecto</li>
+            <li class="step step-primary">Lote</li>
+            <li class="step">Contrato</li>
+            <li class="step">Pago</li>
+        </ul>
+    </div>
+
+    <div class="card bg-white border border-gray-200 shadow-sm">
+            <div class="card-body">
+                {% if integration_error %}
+                <div class="alert alert-warning text-sm">
+                    <span>{{ integration_error }}</span>
+                </div>
+                {% endif %}
+
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <h2 class="card-title">Selecciona una adjudicación</h2>
+                    <form method="get" class="join w-full sm:w-auto">
+                        <input type="hidden" name="page_size" value="{{ request.GET.page_size|default:'15' }}" />
+                        <input type="hidden" name="order" value="{{ request.GET.order|default:'-fecha' }}" />
+                        <input
+                            name="search"
+                            value="{{ search_query|default:'' }}"
+                            class="input input-bordered join-item w-full sm:w-auto"
+                            placeholder="Buscar adjudicación, inmueble o titular"
+                        />
+                        <button class="btn btn-neutral-elegant join-item" type="submit">Buscar</button>
+                    </form>
+                </div>
+
+                <div class="overflow-x-auto mt-4">
+                    <table class="table table-zebra w-full font-sans text-[15px]">
+                        <thead>
+                            <tr>
+                                <th class="text-sm font-semibold text-gray-700">Adjudicación</th>
+                                <th class="text-sm font-semibold text-gray-700">Inmueble</th>
+                                <th class="text-sm font-semibold text-gray-700">Titulares</th>
+                                <th class="text-sm font-semibold text-gray-700">Estado</th>
+                                <th class="text-sm font-semibold text-gray-700">Fecha</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-sm">
+                            {% if adjudicaciones %}
+                            {% for adjudicacion in adjudicaciones %}
+                            <tr>
+                                <td class="font-semibold">{{ adjudicacion.id }}</td>
+                                <td>{{ adjudicacion.inmueble_id }}</td>
+                                <td>
+                                    {% if adjudicacion.titulares %}
+                                        <div class="space-y-1">
+                                            {% for titular in adjudicacion.titulares %}
+                                                <div>{{ titular.nombre|upper }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    {% else %}
+                                        <span class="text-gray-500 text-sm">Sin titulares</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ adjudicacion.estado }}</td>
+                                <td>{{ adjudicacion.fecha|slice:":10" }}</td>
+                                <td class="text-right">
+                                    <a href="{% url 'sales:sale_flow_finishes' project.id adjudicacion.id %}" class="btn btn-sm btn-neutral-elegant">
+                                        Iniciar contrato
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center text-gray-500 py-8">
+                                    No hay adjudicaciones cargadas aún. Conecta el endpoint externo para verlas aquí.
+                                </td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% if pagination_links or load_more_link or pagination %}
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-4 border-t border-gray-100 pt-4 text-sm text-gray-600">
+                    {% if pagination %}
+                    <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <span>Total: <span class="font-semibold text-gray-900">{{ pagination.total_records }}</span></span>
+                        <span>Pág: <span class="font-semibold text-gray-900">{{ pagination.page }}</span> / {{ pagination.total_pages }}</span>
+                        {% if applied_filters and applied_filters.order %}
+                        <span>Orden: <span class="font-semibold text-gray-900">{{ applied_filters.order }}</span></span>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    <div class="flex items-center gap-2">
+                        {% if pagination_links and pagination_links.prev %}
+                        <a class="btn btn-sm btn-neutral-elegant" href="{{ pagination_links.prev }}">Anterior</a>
+                        {% else %}
+                        <button class="btn btn-sm btn-neutral-elegant" disabled>Anterior</button>
+                        {% endif %}
+                        {% if pagination_links and pagination_links.next %}
+                        <a class="btn btn-sm btn-neutral-elegant" href="{{ pagination_links.next }}">Siguiente</a>
+                        {% else %}
+                        <button class="btn btn-sm btn-neutral-elegant" disabled>Siguiente</button>
+                        {% endif %}
+                    </div>
+                    {% if load_more_link %}
+                    <a class="btn btn-sm btn-outline" href="{{ load_more_link }}">Cargar más (since_id)</a>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+    </div>
+</div>
+{% endblock %}

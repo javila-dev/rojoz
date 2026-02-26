@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Acceso restringido{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-center min-h-[60vh]">
+    <div class="text-center max-w-md">
+
+        <!-- Icono -->
+        <div class="w-20 h-20 mx-auto mb-6 rounded-2xl bg-rojoz-50 flex items-center justify-center">
+            <i class="ri-lock-line text-rojoz-500 text-4xl"></i>
+        </div>
+
+        <!-- Mensaje -->
+        <h1 class="text-2xl font-bold text-gray-900 mb-2" style="font-family: 'Playfair Display', serif;">
+            Acceso restringido
+        </h1>
+        <p class="text-gray-500 mb-6">
+            No tienes permiso para acceder a esta seccion.
+            Si crees que es un error, contacta a tu administrador.
+        </p>
+
+        <!-- Acciones -->
+        <div class="flex items-center justify-center gap-3">
+            <a href="{% url 'users:dashboard' %}" class="btn btn-primary gap-1">
+                <i class="ri-home-4-line"></i> Ir al inicio
+            </a>
+            <button onclick="history.back()" class="btn btn-neutral-elegant gap-1">
+                <i class="ri-arrow-left-line"></i> Volver
+            </button>
+        </div>
+
+        <!-- Info técnica -->
+        <p class="text-xs text-gray-300 mt-8">
+            {{ request.user.get_full_name|default:request.user.username }} &middot; {{ request.user.get_role_display|default:"Sin rol" }}
+        </p>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Assets - Constructora Rojoz{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.6.0/fonts/remixicon.css">
+{% endblock %}
+
+{% block content %}
+<div class="p-8 max-w-7xl mx-auto space-y-8">
+
+    <!-- Header -->
+    <div class="flex flex-wrap items-start justify-between gap-6">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900" style="font-family: 'Playfair Display', serif;">
+                Assets
+            </h1>
+            <p class="text-gray-600 mt-1">Imágenes y recursos para usar en plantillas PDF</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <a href="{% url 'documents:template_list' %}" class="btn btn-outline border-gray-300 hover:bg-gray-50">
+                <i class="ri-arrow-left-line mr-2"></i>
+                Plantillas
+            </a>
+            <a href="{% url 'documents:asset_create' %}" class="btn bg-rojoz-600 hover:bg-rojoz-700 text-white border-none">
+                <i class="ri-upload-2-line mr-2"></i>
+                Subir Asset
+            </a>
+        </div>
+    </div>
+
+    <!-- Lista de assets por categoría -->
+    {% if categories %}
+    {% for category in categories %}
+    {% if category.assets.all %}
+    <div class="card bg-white border border-gray-200 shadow-sm">
+        <div class="card-body">
+            <h2 class="card-title text-lg mb-4">
+                <i class="ri-folder-line text-rojoz-600"></i>
+                {{ category.name }}
+                <span class="badge badge-sm">{{ category.assets.count }}</span>
+            </h2>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                {% for asset in category.assets.all %}
+                <div class="group relative">
+                    <div class="aspect-square bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
+                        <img src="{{ asset.file.url }}" alt="{{ asset.name }}" class="w-full h-full object-contain">
+                    </div>
+                    <div class="mt-2">
+                        <p class="text-sm font-medium text-gray-900 truncate">{{ asset.name }}</p>
+                        {% if asset.width and asset.height %}
+                        <p class="text-xs text-gray-500">{{ asset.width }}x{{ asset.height }}px</p>
+                        {% endif %}
+                    </div>
+                    <!-- Acciones on hover -->
+                    <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
+                        <a href="{% url 'documents:asset_edit' pk=asset.pk %}" class="btn btn-sm btn-circle btn-ghost text-white">
+                            <i class="ri-edit-line"></i>
+                        </a>
+                        <a href="{% url 'documents:asset_delete' pk=asset.pk %}" class="btn btn-sm btn-circle btn-ghost text-white">
+                            <i class="ri-delete-bin-line"></i>
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    {% endfor %}
+    {% endif %}
+
+    <!-- Assets sin categoría o vacío -->
+    {% if not assets %}
+    <div class="card bg-white border border-gray-200">
+        <div class="card-body items-center text-center py-16">
+            <div class="w-20 h-20 rounded-full bg-rojoz-100 flex items-center justify-center mb-4">
+                <i class="ri-image-line text-rojoz-600 text-4xl"></i>
+            </div>
+            <h3 class="text-xl font-semibold text-gray-900">No hay assets</h3>
+            <p class="text-gray-600 mt-2 max-w-md">
+                Sube logos, firmas, sellos y otros recursos para usar en tus plantillas.
+            </p>
+            <a href="{% url 'documents:asset_create' %}" class="btn bg-rojoz-600 hover:bg-rojoz-700 text-white border-none mt-6">
+                <i class="ri-upload-2-line mr-2"></i>
+                Subir Asset
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

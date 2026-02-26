@@ -1,0 +1,1664 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Editor - {{ template.name }}{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.6.0/fonts/remixicon.css">
+<!-- GrapesJS CSS -->
+<link rel="stylesheet" href="https://unpkg.com/grapesjs/dist/css/grapes.min.css">
+<style>
+    /* Custom GrapesJS styles */
+    .gjs-one-bg { background-color: #f9fafb; }
+    .gjs-two-color { color: #374151; }
+    .gjs-three-bg { background-color: #ffffff; }
+    .gjs-four-color, .gjs-four-color-h:hover { color: #A0372A; }
+
+    #gjs {
+        border: 1px solid #e5e7eb;
+        border-radius: 0.5rem;
+    }
+
+    .gjs-cv-canvas {
+        background-color: #e5e7eb;
+    }
+
+    /* Panel lateral (assets/variables/bloques) */
+    .side-panel {
+        width: 24rem;
+    }
+
+    .side-panel-overlay {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        right: 0;
+        width: 24rem;
+        transform: translateX(100%);
+        transition: transform 0.2s ease;
+        z-index: 30;
+        box-shadow: -8px 0 20px rgba(17, 24, 39, 0.12);
+    }
+
+    .side-panel-backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(17, 24, 39, 0.35);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease;
+        z-index: 20;
+    }
+
+    #sidebar-toggle:checked ~ .side-panel-overlay {
+        transform: translateX(0);
+    }
+
+    #sidebar-toggle:checked ~ .side-panel-backdrop {
+        opacity: 1;
+        pointer-events: none;
+    }
+
+    .variable-item {
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.375rem;
+        cursor: pointer;
+        transition: all 0.15s;
+        border: 1px solid transparent;
+    }
+    .variable-item:hover {
+        background-color: #fef2f2;
+        border-color: #fecaca;
+    }
+    .variable-item code {
+        font-size: 0.75rem;
+        background-color: #f3f4f6;
+        padding: 0.125rem 0.375rem;
+        border-radius: 0.25rem;
+        color: #A0372A;
+    }
+
+    /* Panel de assets */
+    .asset-item {
+        padding: 0.5rem;
+        border-radius: 0.375rem;
+        cursor: pointer;
+        transition: all 0.15s;
+        border: 1px solid #e5e7eb;
+    }
+    .asset-item:hover {
+        border-color: #A0372A;
+        box-shadow: 0 2px 4px rgba(160, 55, 42, 0.1);
+    }
+    .asset-item img {
+        max-height: 60px;
+        object-fit: contain;
+    }
+
+    /* Items de Django y WeasyPrint */
+    .django-tag-item,
+    .weasy-item {
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.375rem;
+        cursor: pointer;
+        transition: all 0.15s;
+        border: 1px solid transparent;
+        background-color: #fafafa;
+    }
+    .django-tag-item:hover {
+        background-color: #fef2f2;
+        border-color: #fecaca;
+        transform: translateX(2px);
+    }
+    .weasy-item:hover {
+        background-color: #eff6ff;
+        border-color: #bfdbfe;
+        transform: translateX(2px);
+    }
+    .django-tag-item code,
+    .weasy-item code {
+        font-size: 0.7rem;
+        background-color: transparent;
+        padding: 0;
+        color: #374151;
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+
+    /* Items de fuentes */
+    .font-item,
+    .system-font-item {
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.375rem;
+        cursor: pointer;
+        transition: all 0.15s;
+        border: 1px solid transparent;
+        background-color: #fafafa;
+    }
+    .font-item:hover {
+        background-color: #f0fdf4;
+        border-color: #bbf7d0;
+        transform: translateX(2px);
+    }
+    .system-font-item:hover {
+        background-color: #fef3c7;
+        border-color: #fde68a;
+        transform: translateX(2px);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col h-[calc(100vh-2rem)]">
+
+    <!-- Toolbar -->
+    <div class="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-4">
+            <a href="{% url 'documents:template_list' %}" class="btn btn-sm btn-ghost">
+                <i class="ri-arrow-left-line"></i>
+            </a>
+            <div>
+                <h1 class="font-semibold text-gray-900">{{ template.name }}</h1>
+                <span class="text-xs text-gray-500 font-mono">{{ template.target_path }}</span>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+            <!-- Sidebar toggle -->
+            <label for="sidebar-toggle" class="btn btn-sm btn-outline">
+                <i class="ri-layout-left-line mr-1"></i>
+                Panel
+            </label>
+            <!-- Configuración de página -->
+            <div class="dropdown dropdown-end">
+                <label tabindex="0" class="btn btn-sm btn-outline">
+                    <i class="ri-pages-line mr-1"></i>
+                    {{ template.page_size }} {{ template.get_orientation_display }}
+                </label>
+                <div tabindex="0" class="dropdown-content z-50 card card-compact w-72 p-4 shadow-lg bg-white border border-gray-200">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="label"><span class="label-text font-medium">Tamaño de página</span></label>
+                            <select id="page-size" class="select select-bordered select-sm w-full">
+                                {% for value, label in page_sizes %}
+                                <option value="{{ value }}" {% if template.page_size == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="label"><span class="label-text font-medium">Orientación</span></label>
+                            <select id="page-orientation" class="select select-bordered select-sm w-full">
+                                {% for value, label in orientations %}
+                                <option value="{{ value }}" {% if template.orientation == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="label"><span class="label-text text-xs">Margen sup. (cm)</span></label>
+                                <input type="number" id="margin-top" value="{{ template.margin_top }}" step="0.1" class="input input-bordered input-sm w-full">
+                            </div>
+                            <div>
+                                <label class="label"><span class="label-text text-xs">Margen inf. (cm)</span></label>
+                                <input type="number" id="margin-bottom" value="{{ template.margin_bottom }}" step="0.1" class="input input-bordered input-sm w-full">
+                            </div>
+                            <div>
+                                <label class="label"><span class="label-text text-xs">Margen izq. (cm)</span></label>
+                                <input type="number" id="margin-left" value="{{ template.margin_left }}" step="0.1" class="input input-bordered input-sm w-full">
+                            </div>
+                            <div>
+                                <label class="label"><span class="label-text text-xs">Margen der. (cm)</span></label>
+                                <input type="number" id="margin-right" value="{{ template.margin_right }}" step="0.1" class="input input-bordered input-sm w-full">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Guardar -->
+            <button id="save-btn" class="btn btn-sm bg-rojoz-600 hover:bg-rojoz-700 text-white border-none" data-no-loading>
+                <i class="ri-save-line mr-1"></i>
+                Guardar
+            </button>
+            <button id="save-version-btn" class="btn btn-sm btn-outline" data-no-loading>
+                <i class="ri-git-commit-line mr-1"></i>
+                Guardar versión
+            </button>
+        </div>
+    </div>
+
+    <!-- Main content -->
+    <div class="flex flex-1 overflow-hidden relative">
+        <input id="sidebar-toggle" type="checkbox" class="hidden">
+
+        <!-- Canvas central: GrapesJS -->
+        <div class="flex-1 p-4 bg-gray-100 overflow-hidden">
+            <div id="gjs" class="h-full"></div>
+        </div>
+
+        <label for="sidebar-toggle" class="side-panel-backdrop"></label>
+
+        <!-- Panel derecho: Assets + Variables (overlay) -->
+        <div class="side-panel side-panel-overlay bg-white border-l border-gray-200 overflow-y-auto">
+            <div class="p-4 space-y-4">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-sm font-semibold text-gray-700">Panel</h2>
+                    <label for="sidebar-toggle" class="btn btn-xs btn-ghost">
+                        <i class="ri-close-line"></i>
+                    </label>
+                </div>
+                <div class="grid grid-cols-1 gap-4">
+                    <!-- Assets -->
+                    <div class="border-t border-gray-200 pt-4">
+                        <h3 class="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                            <i class="ri-image-line text-rojoz-600"></i>
+                            Assets
+                        </h3>
+                        {% if assets %}
+                        <div class="space-y-2 max-h-56 overflow-y-auto">
+                            {% for asset in assets %}
+                            <div class="asset-item" data-src="{{ asset.file.url }}" data-name="{{ asset.name }}" draggable="true">
+                                <img src="{{ asset.file.url }}" alt="{{ asset.name }}" class="w-full rounded">
+                                <span class="text-xs text-gray-600 mt-1 block truncate">{{ asset.name }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="text-center py-6 text-gray-500">
+                            <i class="ri-image-line text-3xl mb-2"></i>
+                            <p class="text-sm">No hay assets</p>
+                            <a href="{% url 'documents:asset_create' %}" class="btn btn-xs btn-outline mt-2">Subir</a>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Variables desde modelos -->
+                    <div class="border-t border-gray-200 pt-4">
+                        <h3 class="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                            <i class="ri-database-2-line text-rojoz-600"></i>
+                            Variables (Modelos)
+                        </h3>
+                        <div class="space-y-2">
+                            <div>
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-xs font-semibold text-gray-600">Aliases guardados</span>
+                                </div>
+                                <div id="alias-chips" class="flex flex-wrap gap-2">
+                                    {% for alias in context_aliases %}
+                                    <div class="inline-flex items-center gap-1 rounded-full border border-gray-200 px-2 py-1 text-xs bg-white">
+                                        <button type="button" class="alias-chip text-gray-700 font-medium" data-id="{{ alias.id }}" data-alias="{{ alias.alias }}" data-app="{{ alias.app_label }}" data-model="{{ alias.model_label }}">{{ alias.alias }}</button>
+                                        <button type="button" class="alias-delete text-gray-400 hover:text-red-600" data-id="{{ alias.id }}" title="Eliminar">×</button>
+                                    </div>
+                                    {% endfor %}
+                                    {% if not context_aliases %}
+                                    <span class="text-xs text-gray-400">No hay aliases</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <input id="var-alias" type="text" class="input input-bordered input-sm w-full" placeholder="Alias (ej. venta)">
+                            <select id="var-app" class="select select-bordered select-sm w-full">
+                                <option value="">Selecciona app</option>
+                            </select>
+                            <select id="var-model" class="select select-bordered select-sm w-full" disabled>
+                                <option value="">Selecciona modelo</option>
+                            </select>
+                            <button id="save-alias-btn" type="button" class="btn btn-xs btn-outline" data-no-loading>Guardar alias</button>
+                            <select id="var-field" class="select select-bordered select-sm w-full" disabled>
+                                <option value="">Selecciona campo</option>
+                            </select>
+                            <div id="var-rel-wrapper" class="hidden">
+                                <select id="var-rel-field" class="select select-bordered select-sm w-full">
+                                    <option value="">Selecciona campo relacionado</option>
+                                </select>
+                            </div>
+                            <div id="var-preview" class="text-xs font-mono text-gray-600"></div>
+                            <div id="var-drag" class="variable-item" draggable="true">Selecciona una variable</div>
+                        </div>
+                    </div>
+
+                    <!-- Django Templates -->
+                    <div class="border-t border-gray-200 pt-4">
+                        <h3 class="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                            <i class="ri-code-s-slash-line text-rojoz-600"></i>
+                            Django Templates
+                        </h3>
+                        <div class="space-y-1 max-h-56 overflow-y-auto">
+                            <div class="django-tag-item" data-tag="for" title="Ciclo for">
+                                <code class="text-xs">{% templatetag openblock %} for item in lista {% templatetag closeblock %}...{% templatetag openblock %} endfor {% templatetag closeblock %}</code>
+                                <span class="text-xs text-gray-500 block mt-1">Ciclo for</span>
+                            </div>
+                            <div class="django-tag-item" data-tag="if" title="Condicional if">
+                                <code class="text-xs">{% templatetag openblock %} if condicion {% templatetag closeblock %}...{% templatetag openblock %} endif {% templatetag closeblock %}</code>
+                                <span class="text-xs text-gray-500 block mt-1">Condicional if</span>
+                            </div>
+                            <div class="django-tag-item" data-tag="ifelse" title="Condicional if-else">
+                                <code class="text-xs">{% templatetag openblock %} if condicion {% templatetag closeblock %}...{% templatetag openblock %} else {% templatetag closeblock %}...{% templatetag openblock %} endif {% templatetag closeblock %}</code>
+                                <span class="text-xs text-gray-500 block mt-1">Condicional if-else</span>
+                            </div>
+                            <div class="django-tag-item" data-tag="with" title="Asignar variable temporal">
+                                <code class="text-xs">{% templatetag openblock %} with total=precio|add:impuesto {% templatetag closeblock %}...{% templatetag openblock %} endwith {% templatetag closeblock %}</code>
+                                <span class="text-xs text-gray-500 block mt-1">Variable temporal</span>
+                            </div>
+                            <div class="django-tag-item" data-tag="comment" title="Comentario">
+                                <code class="text-xs">{# Comentario #}</code>
+                                <span class="text-xs text-gray-500 block mt-1">Comentario</span>
+                            </div>
+                            <div class="django-tag-item" data-tag="include" title="Incluir template">
+                                <code class="text-xs">{% templatetag openblock %} include 'parcial.html' {% templatetag closeblock %}</code>
+                                <span class="text-xs text-gray-500 block mt-1">Incluir template</span>
+                            </div>
+                            <div class="django-tag-item" data-tag="filter-date" title="Filtro de fecha">
+                                <code class="text-xs">{% templatetag openvariable %} fecha|date:"d/m/Y" {% templatetag closevariable %}</code>
+                                <span class="text-xs text-gray-500 block mt-1">Formato fecha</span>
+                            </div>
+                            <div class="django-tag-item" data-tag="filter-number" title="Filtro de número">
+                                <code class="text-xs">{% templatetag openvariable %} precio|floatformat:2 {% templatetag closevariable %}</code>
+                                <span class="text-xs text-gray-500 block mt-1">Formato número</span>
+                            </div>
+                            <div class="django-tag-item" data-tag="filter-default" title="Valor por defecto">
+                                <code class="text-xs">{% templatetag openvariable %} valor|default:"N/A" {% templatetag closevariable %}</code>
+                                <span class="text-xs text-gray-500 block mt-1">Valor por defecto</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- WeasyPrint -->
+                    <div class="border-t border-gray-200 pt-4">
+                        <h3 class="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                            <i class="ri-file-pdf-2-line text-rojoz-600"></i>
+                            WeasyPrint
+                        </h3>
+                        <div class="space-y-1 max-h-56 overflow-y-auto">
+                            <div class="weasy-item" data-template="page-header" title="Encabezado de página fijo">
+                                <code class="text-xs">Header fijo</code>
+                                <span class="text-xs text-gray-500 block mt-1">Encabezado de página</span>
+                            </div>
+                            <div class="weasy-item" data-template="page-footer" title="Pie de página fijo">
+                                <code class="text-xs">Footer fijo</code>
+                                <span class="text-xs text-gray-500 block mt-1">Pie de página</span>
+                            </div>
+                            <div class="weasy-item" data-template="page-counter" title="Contador de páginas">
+                                <code class="text-xs">Página X de Y</code>
+                                <span class="text-xs text-gray-500 block mt-1">Contador de páginas</span>
+                            </div>
+                            <div class="weasy-item" data-template="page-break-before" title="Salto de página antes">
+                                <code class="text-xs">Salto antes</code>
+                                <span class="text-xs text-gray-500 block mt-1">Salto de página antes</span>
+                            </div>
+                            <div class="weasy-item" data-template="page-break-after" title="Salto de página después">
+                                <code class="text-xs">Salto después</code>
+                                <span class="text-xs text-gray-500 block mt-1">Salto de página después</span>
+                            </div>
+                            <div class="weasy-item" data-template="page-break-avoid" title="Evitar salto de página">
+                                <code class="text-xs">No separar</code>
+                                <span class="text-xs text-gray-500 block mt-1">Evitar salto</span>
+                            </div>
+                            <div class="weasy-item" data-template="watermark" title="Marca de agua">
+                                <code class="text-xs">Marca de agua</code>
+                                <span class="text-xs text-gray-500 block mt-1">Marca de agua</span>
+                            </div>
+                            <div class="weasy-item" data-template="running-header" title="Header con contador">
+                                <code class="text-xs">Header dinámico</code>
+                                <span class="text-xs text-gray-500 block mt-1">Header con contador</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Fuentes Personalizadas -->
+                    <div class="border-t border-gray-200 pt-4">
+                        <h3 class="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                            <i class="ri-font-size-2 text-rojoz-600"></i>
+                            Fuentes Personalizadas
+                        </h3>
+                        <div class="space-y-3">
+                            <!-- Fuentes locales (ZIP) -->
+                            <div>
+                                <label class="text-xs font-medium text-gray-600 mb-2 block">Fuentes locales (ZIP)</label>
+                                <input id="fonts-zip" type="file" accept=".zip" class="file-input file-input-bordered file-input-xs w-full" />
+                                <button id="upload-fonts-btn" type="button" class="btn btn-xs btn-outline w-full mt-2" data-no-loading>
+                                    <i class="ri-upload-2-line mr-1"></i>
+                                    Subir ZIP
+                                </button>
+                                <div class="mt-2 text-xs text-gray-500">Se guardan en <code>pdf_templates/fonts/</code></div>
+                                <div id="local-fonts-list" class="mt-3 space-y-2"></div>
+                            </div>
+
+                            <!-- Fuentes del sistema (safe para WeasyPrint) -->
+                            <div>
+                                <label class="text-xs font-medium text-gray-600 mb-2 block">Fuentes del sistema (PDF safe)</label>
+                                <div class="space-y-1">
+                                    <div class="system-font-item cursor-pointer" data-font-family="Arial, sans-serif">
+                                        <div class="text-xs font-medium">Arial</div>
+                                    </div>
+                                    <div class="system-font-item cursor-pointer" data-font-family="'Times New Roman', serif">
+                                        <div class="text-xs font-medium">Times New Roman</div>
+                                    </div>
+                                    <div class="system-font-item cursor-pointer" data-font-family="'Courier New', monospace">
+                                        <div class="text-xs font-medium">Courier New</div>
+                                    </div>
+                                    <div class="system-font-item cursor-pointer" data-font-family="Georgia, serif">
+                                        <div class="text-xs font-medium">Georgia</div>
+                                    </div>
+                                    <div class="system-font-item cursor-pointer" data-font-family="Verdana, sans-serif">
+                                        <div class="text-xs font-medium">Verdana</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<!-- GrapesJS -->
+<script src="https://unpkg.com/grapesjs@0.21.7/dist/grapes.min.js"></script>
+<script src="https://unpkg.com/grapesjs-preset-webpage@1.0.2/dist/grapesjs-preset-webpage.min.js"></script>
+<script>
+window.__gjsPresetWebpageLoaded = !!(window.grapesjs && window.grapesjs.plugins && window.grapesjs.plugins['gjs-preset-webpage']);
+</script>
+
+{% if template.components_json %}
+{{ template.components_json|json_script:"gjs-components" }}
+{% endif %}
+{% if template.styles_json %}
+{{ template.styles_json|json_script:"gjs-styles" }}
+{% endif %}
+
+<script>
+(function() {
+    const sidebarToggle = document.getElementById('sidebar-toggle');
+    const sidePanel = document.querySelector('.side-panel-overlay');
+    if (sidePanel && sidebarToggle) {
+        const dragStart = () => {
+            sidebarToggle.checked = false;
+        };
+        sidePanel.addEventListener('dragstart', (event) => {
+            const target = event.target;
+            if (target && target.closest('.asset-item, .variable-item, .django-tag-item, .weasy-item')) {
+                dragStart();
+            }
+        });
+    }
+
+    // Normalizar inputs numericos (coma -> punto)
+    ['margin-top', 'margin-bottom', 'margin-left', 'margin-right'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el || !el.value) return;
+        el.value = String(el.value).replace(',', '.');
+    });
+    // Inicializar GrapesJS
+    const plugins = window.__gjsPresetWebpageLoaded ? ['gjs-preset-webpage'] : [];
+    const editor = grapesjs.init({
+        container: '#gjs',
+        height: '100%',
+        width: 'auto',
+        plugins,
+        pluginsOpts: {
+            'gjs-preset-webpage': {
+                blocksBasicOpts: { flexGrid: true },
+                navbarOpts: false,
+                countdownOpts: false,
+                formsOpts: false,
+            }
+        },
+        storageManager: { type: null, autosave: false, autoload: false },
+        deviceManager: {
+            devices: [
+                { name: 'A4', width: '210mm' },
+                { name: 'Letter', width: '8.5in' },
+                { name: 'Legal', width: '8.5in' },
+            ]
+        },
+        canvas: {
+            styles: [
+                'https://fonts.googleapis.com/css2?family=Gudea:wght@400;700&display=swap'
+            ]
+        },
+        assetManager: {
+            assets: [
+                {% for asset in assets %}
+                { type: 'image', src: '{{ asset.file.url }}', name: '{{ asset.name }}' },
+                {% endfor %}
+            ],
+            upload: false,
+        }
+    });
+    // Desactivar almacenamiento interno de GrapesJS para evitar recursion al serializar
+    if (editor && editor.StorageManager) {
+        try {
+            editor.StorageManager.setAutosave(false);
+            editor.StorageManager.setAutoload(false);
+        } catch (e) {}
+    }
+    editor.on('storage:store', (e) => {
+        if (e) e.abort = true;
+    });
+    // Forzar viewport A4 para que apliquen los estilos con media (max-width: 210mm)
+    editor.setDevice('A4');
+
+    // Bloques basicos (por si el preset no los agrega al panel)
+    const bm = editor.BlockManager;
+    if (!bm.getAll().length) {
+        // Basico
+        bm.add('text', {
+            label: 'Texto',
+            content: '<p>Escribe tu texto aqui</p>',
+            category: 'Basico',
+        });
+        bm.add('heading', {
+            label: 'Titulo',
+            content: '<h1>Titulo</h1>',
+            category: 'Basico',
+        });
+        bm.add('subheading', {
+            label: 'Subtitulo',
+            content: '<h2>Subtitulo</h2>',
+            category: 'Basico',
+        });
+        bm.add('image', {
+            label: 'Imagen',
+            content: { type: 'image' },
+            category: 'Basico',
+        });
+        bm.add('list', {
+            label: 'Lista',
+            content: '<ul><li>Item 1</li><li>Item 2</li></ul>',
+            category: 'Basico',
+        });
+        bm.add('quote', {
+            label: 'Cita',
+            content: '<blockquote style="padding:12px; border-left:4px solid #ccc;">Texto de cita</blockquote>',
+            category: 'Basico',
+        });
+        bm.add('hr', {
+            label: 'Separador',
+            content: '<hr/>',
+            category: 'Basico',
+        });
+        bm.add('spacer', {
+            label: 'Espacio',
+            content: '<div style="height:20px;"></div>',
+            category: 'Basico',
+        });
+        bm.add('underline', {
+            label: 'Subrayado',
+            content: '<u>Texto subrayado</u>',
+            category: 'Basico',
+        });
+        bm.add('small', {
+            label: 'Texto pequeno',
+            content: '<small>Texto pequeno</small>',
+            category: 'Basico',
+        });
+
+        // Tablas
+        bm.add('table', {
+            label: 'Tabla',
+            content: '<table style="width:100%; border-collapse:collapse;"><tr><th style="border:1px solid #ddd; padding:6px;">Columna 1</th><th style="border:1px solid #ddd; padding:6px;">Columna 2</th></tr><tr><td style="border:1px solid #ddd; padding:6px;">Celda</td><td style="border:1px solid #ddd; padding:6px;">Celda</td></tr></table>',
+            category: 'Tablas',
+        });
+        bm.add('table-3x3', {
+            label: 'Tabla 3x3',
+            content: '<table style="width:100%; border-collapse:collapse;"><tr><td style="border:1px solid #ddd; padding:6px;">1</td><td style="border:1px solid #ddd; padding:6px;">2</td><td style="border:1px solid #ddd; padding:6px;">3</td></tr><tr><td style="border:1px solid #ddd; padding:6px;">4</td><td style="border:1px solid #ddd; padding:6px;">5</td><td style="border:1px solid #ddd; padding:6px;">6</td></tr><tr><td style="border:1px solid #ddd; padding:6px;">7</td><td style="border:1px solid #ddd; padding:6px;">8</td><td style="border:1px solid #ddd; padding:6px;">9</td></tr></table>',
+            category: 'Tablas',
+        });
+
+        // Layout
+        bm.add('section', {
+            label: 'Seccion',
+            content: '<section style="padding:20px;"></section>',
+            category: 'Layout',
+        });
+        bm.add('row', {
+            label: 'Fila',
+            content: '<div style="display:flex; gap:12px;"></div>',
+            category: 'Layout',
+        });
+        bm.add('columns-2', {
+            label: '2 Columnas',
+            content: '<div style="display:flex; gap:12px;"><div style="flex:1;">Columna 1</div><div style="flex:1;">Columna 2</div></div>',
+            category: 'Layout',
+        });
+        bm.add('columns-3', {
+            label: '3 Columnas',
+            content: '<div style="display:flex; gap:12px;"><div style="flex:1;">Columna 1</div><div style="flex:1;">Columna 2</div><div style="flex:1;">Columna 3</div></div>',
+            category: 'Layout',
+        });
+        bm.add('box', {
+            label: 'Caja',
+            content: '<div style="border:1px solid #ddd; padding:12px;">Contenido</div>',
+            category: 'Layout',
+        });
+
+        // Utilidades PDF
+        bm.add('page-break', {
+            label: 'Salto de pagina',
+            content: '<div style="page-break-after: always;"></div>',
+            category: 'PDF',
+        });
+        bm.add('signature-line', {
+            label: 'Linea de firma',
+            content: '<div style="margin-top:24px;"><div style="border-top:1px solid #000; width:240px;"></div><div style="font-size:12px; margin-top:4px;">Firma</div></div>',
+            category: 'PDF',
+        });
+        bm.add('date-line', {
+            label: 'Linea de fecha',
+            content: '<div style="margin-top:12px;"><div style="border-bottom:1px solid #000; width:200px; height:16px;"></div><div style="font-size:12px; margin-top:4px;">Fecha</div></div>',
+            category: 'PDF',
+        });
+        bm.add('footer', {
+            label: 'Pie de pagina',
+            content: '<div style="position:fixed; bottom:0; left:0; right:0; padding:8px 16px; font-size:10px; color:#666; border-top:1px solid #ddd; text-align:center;">Pie de pagina</div>',
+            category: 'PDF',
+        });
+        bm.add('page-counter-placeholder', {
+            label: 'Contador (placeholder)',
+            content: '<span style="font-size:10px; color:#666;">Pagina {page} de {pages}</span>',
+            category: 'PDF',
+        });
+        bm.add('watermark', {
+            label: 'Marca de agua',
+            content: '<div style="position:fixed; top:40%; left:10%; font-size:64px; color:rgba(0,0,0,0.08); transform:rotate(-15deg);">BORRADOR</div>',
+            category: 'PDF',
+        });
+        bm.add('logo', {
+            label: 'Logo',
+            content: '<img alt="Logo" style="max-width:180px; height:auto;" />',
+            category: 'PDF',
+        });
+    }
+
+    // Cargar contenido existente
+    let loadedProject = false;
+    const componentsScript = document.getElementById('gjs-components');
+    if (componentsScript) {
+        let saved = JSON.parse(componentsScript.textContent);
+        if (typeof saved === 'string') {
+            try { saved = JSON.parse(saved); } catch (e) {}
+        }
+        if (saved && saved.pages) {
+            editor.loadProjectData(saved);
+            loadedProject = true;
+        } else {
+            editor.setComponents(saved);
+        }
+    } else if ({{ clean_html_content|yesno:"true,false" }}) {
+    editor.setComponents(`{{ clean_html_content|escapejs }}`);
+    }
+
+    const stylesScript = document.getElementById('gjs-styles');
+    if (!loadedProject && stylesScript) {
+        let savedStyles = JSON.parse(stylesScript.textContent);
+        if (typeof savedStyles === 'string') {
+            try { savedStyles = JSON.parse(savedStyles); } catch (e) {}
+        }
+        console.log('[DEBUG Load] Cargando savedStyles:', JSON.stringify(savedStyles).substring(0, 500));
+        editor.setStyle(savedStyles);
+    } else if (!loadedProject && {{ template.css_content|yesno:"true,false" }}) {
+        const cssContent = `{{ template.css_content|escapejs }}`;
+        console.log('[DEBUG Load] Cargando CSS content:', cssContent.substring(0, 500));
+        editor.setStyle(cssContent);
+    }
+
+    function handleInsertVariable(varName) {
+        const varTag = `{% templatetag openvariable %} ${varName} {% templatetag closevariable %}`;
+
+        const selected = editor.getSelected();
+        if (selected) {
+            const tagName = selected.get('tagName');
+            if (['div', 'p', 'span', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'td', 'th', 'li'].includes(tagName?.toLowerCase())) {
+                const content = selected.get('content') || '';
+                selected.set('content', content + varTag);
+            } else {
+                selected.append({ type: 'text', content: varTag });
+            }
+        } else {
+            editor.addComponents({ type: 'text', content: varTag });
+        }
+    }
+
+    // Plantillas de Django tags
+    const djangoTemplates = {
+        'for': '{% templatetag openblock %} for item in lista {% templatetag closeblock %}\n    <p>{% templatetag openvariable %} item {% templatetag closevariable %}</p>\n{% templatetag openblock %} endfor {% templatetag closeblock %}',
+        'if': '{% templatetag openblock %} if condicion {% templatetag closeblock %}\n    <p>Contenido si es verdadero</p>\n{% templatetag openblock %} endif {% templatetag closeblock %}',
+        'ifelse': '{% templatetag openblock %} if condicion {% templatetag closeblock %}\n    <p>Contenido si es verdadero</p>\n{% templatetag openblock %} else {% templatetag closeblock %}\n    <p>Contenido si es falso</p>\n{% templatetag openblock %} endif {% templatetag closeblock %}',
+        'with': '{% templatetag openblock %} with total=precio|add:impuesto {% templatetag closeblock %}\n    <p>Total: {% templatetag openvariable %} total {% templatetag closevariable %}</p>\n{% templatetag openblock %} endwith {% templatetag closeblock %}',
+        'comment': '{# Este es un comentario que no se mostrará en el HTML final #}',
+        'include': '{% templatetag openblock %} include "parcial.html" {% templatetag closeblock %}',
+        'filter-date': '{% templatetag openvariable %} fecha|date:"d/m/Y" {% templatetag closevariable %}',
+        'filter-number': '{% templatetag openvariable %} precio|floatformat:2 {% templatetag closevariable %}',
+        'filter-default': '{% templatetag openvariable %} valor|default:"N/A" {% templatetag closevariable %}'
+    };
+
+    // Plantillas de WeasyPrint
+    const weasyTemplates = {
+        'page-header': '<div style="position: fixed; top: 0; left: 0; right: 0; height: 60px; padding: 10px 20px; background: #f9fafb; border-bottom: 2px solid #e5e7eb; font-size: 12px;">\n    <strong>Encabezado del documento</strong>\n</div>',
+        'page-footer': '<div style="position: fixed; bottom: 0; left: 0; right: 0; height: 50px; padding: 10px 20px; background: #f9fafb; border-top: 1px solid #e5e7eb; font-size: 10px; text-align: center;">\n    Pie de página - Mi Empresa © 2024\n</div>',
+        'page-counter': '<div style="position: fixed; bottom: 10px; right: 20px; font-size: 10px; color: #666;">\n    Página <span class="page-number"></span> de <span class="page-count"></span>\n</div>',
+        'page-break-before': '<div style="page-break-before: always;"></div>',
+        'page-break-after': '<div style="page-break-after: always;"></div>',
+        'page-break-avoid': '<div style="page-break-inside: avoid;">\n    <p>Contenido que no debe separarse entre páginas</p>\n</div>',
+        'watermark': '<div style="position: fixed; top: 40%; left: 15%; transform: rotate(-45deg); font-size: 72px; color: rgba(0,0,0,0.05); font-weight: bold; z-index: -1; pointer-events: none;">\n    BORRADOR\n</div>',
+        'running-header': '<div style="position: running(header); width: 100%; padding: 8px 0; border-bottom: 1px solid #ddd; font-size: 11px;">\n    <div style="display: flex; justify-content: space-between;">\n        <span>Documento</span>\n        <span>Página <span class="page-number"></span></span>\n    </div>\n</div>'
+    };
+
+    // Función para insertar Django template
+    function handleInsertDjangoTag(tagType) {
+        console.log('[handleInsertDjangoTag] Llamado con tagType:', tagType);
+        const content = djangoTemplates[tagType];
+        if (!content) {
+            console.log('[handleInsertDjangoTag] No hay contenido para:', tagType);
+            return;
+        }
+        console.log('[handleInsertDjangoTag] Contenido a insertar:', content.substring(0, 100) + '...');
+
+        // Insertar directamente como HTML completamente limpio (sin estilos)
+        const htmlWrapper = `<div data-django-tag="${tagType}" class="django-template-wrapper">${content}</div>`;
+
+        const selected = editor.getSelected();
+        if (selected) {
+            console.log('[handleInsertDjangoTag] Agregando a componente seleccionado');
+            selected.append(htmlWrapper);
+        } else {
+            console.log('[handleInsertDjangoTag] Agregando al editor raíz');
+            editor.addComponents(htmlWrapper);
+        }
+        console.log('[handleInsertDjangoTag] Componente agregado exitosamente');
+    }
+
+    // Función para insertar WeasyPrint template
+    function handleInsertWeasyTemplate(templateType) {
+        const content = weasyTemplates[templateType];
+        if (!content) return;
+
+        // Para WeasyPrint, insertar directamente el HTML ya que son elementos visuales
+        editor.addComponents(content);
+    }
+
+    // Event delegation - UN SOLO listener para todo
+    let lastClickTime = 0;
+    const DEBOUNCE_MS = 300;
+
+    document.addEventListener('click', (e) => {
+        const now = Date.now();
+        if (now - lastClickTime < DEBOUNCE_MS) {
+            console.log('Click ignorado (debounce)');
+            return;
+        }
+        lastClickTime = now;
+
+        // Variables
+        const variableItem = e.target.closest('.variable-item');
+        if (variableItem) {
+            if (variableItem.id === 'var-drag' || variableItem.dataset.varToken) {
+                return;
+            }
+            e.preventDefault();
+            e.stopPropagation();
+            const varName = variableItem.dataset.var;
+            const varToken = variableItem.dataset.varToken;
+            if (varName) {
+                console.log('Insertando variable:', varName);
+                handleInsertVariable(varName);
+            } else if (varToken) {
+                const clean = varToken.replace(/^[{]{2}\s*|\s*[}]{2}$/g, '').trim();
+                if (clean) {
+                    console.log('Insertando variable token:', clean);
+                    handleInsertVariable(clean);
+                }
+            }
+            return;
+        }
+
+        // Django tags
+        const djangoItem = e.target.closest('.django-tag-item');
+        if (djangoItem) {
+            e.preventDefault();
+            e.stopPropagation();
+            const tagType = djangoItem.dataset.tag;
+            if (tagType) {
+                console.log('Insertando Django tag:', tagType);
+                handleInsertDjangoTag(tagType);
+            }
+            return;
+        }
+
+        // WeasyPrint
+        const weasyItem = e.target.closest('.weasy-item');
+        if (weasyItem) {
+            e.preventDefault();
+            e.stopPropagation();
+            const templateType = weasyItem.dataset.template;
+            if (templateType) {
+                console.log('Insertando WeasyPrint template:', templateType);
+                handleInsertWeasyTemplate(templateType);
+            }
+            return;
+        }
+    });
+
+    // Variables desde modelos (auto-descubrimiento)
+    const aliasChips = document.getElementById('alias-chips');
+    const varAlias = document.getElementById('var-alias');
+    const varApp = document.getElementById('var-app');
+    const varModel = document.getElementById('var-model');
+    const varField = document.getElementById('var-field');
+    const varRelWrapper = document.getElementById('var-rel-wrapper');
+    const varRelField = document.getElementById('var-rel-field');
+    const varPreview = document.getElementById('var-preview');
+    const varDrag = document.getElementById('var-drag');
+    const saveAliasBtn = document.getElementById('save-alias-btn');
+
+    const fetchJSON = async (url) => {
+        const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        if (!res.ok) throw new Error('No se pudo cargar');
+        return res.json();
+    };
+
+    const resetSelect = (el, placeholder) => {
+        if (!el) return;
+        el.innerHTML = `<option value=\"\">${placeholder}</option>`;
+    };
+
+    const updateVarPreview = () => {
+        if (!varPreview || !varDrag) return;
+        const alias = (varAlias?.value || '').trim() || (varModel?.value || '');
+        const field = varField?.value || '';
+        const relField = !varRelWrapper?.classList.contains('hidden') ? (varRelField?.value || '') : '';
+        if (!alias || !field) {
+            varPreview.textContent = '';
+            varDrag.textContent = 'Selecciona una variable';
+            varDrag.dataset.varToken = '';
+            return;
+        }
+        const path = relField ? `${alias}.${field}.${relField}` : `${alias}.${field}`;
+        const token = `{% templatetag openvariable %} ${path} {% templatetag closevariable %}`;
+        varPreview.textContent = token;
+        varDrag.textContent = token;
+        varDrag.dataset.varToken = token;
+    };
+
+    const loadApps = async () => {
+        if (!varApp) return;
+        try {
+            const data = await fetchJSON('{% url "documents:api_apps" %}');
+            resetSelect(varApp, 'Selecciona app');
+            data.apps.forEach(app => {
+                const opt = document.createElement('option');
+                opt.value = app.label;
+                opt.textContent = app.name || app.label;
+                varApp.appendChild(opt);
+            });
+        } catch (e) {
+            // ignore
+        }
+    };
+
+    const loadModels = async (app) => {
+        if (!varModel || !app) return;
+        const data = await fetchJSON(`{% url "documents:api_models" %}?app=${encodeURIComponent(app)}`);
+        resetSelect(varModel, 'Selecciona modelo');
+        data.models.forEach(model => {
+            const opt = document.createElement('option');
+            opt.value = model.label;
+            opt.textContent = model.verbose_name || model.label;
+            varModel.appendChild(opt);
+        });
+        varModel.disabled = false;
+    };
+
+    const loadFields = async (app, model, targetSelect) => {
+        if (!targetSelect || !app || !model) return;
+        const data = await fetchJSON(`{% url "documents:api_fields" %}?app=${encodeURIComponent(app)}&model=${encodeURIComponent(model)}`);
+        resetSelect(targetSelect, 'Selecciona campo');
+        data.fields.forEach(field => {
+            const opt = document.createElement('option');
+            opt.value = field.name;
+            opt.textContent = field.label || field.name;
+            opt.dataset.isRelation = field.is_relation ? '1' : '';
+            opt.dataset.relatedApp = field.related_app || '';
+            opt.dataset.relatedModel = field.related_model || '';
+            targetSelect.appendChild(opt);
+        });
+        targetSelect.disabled = false;
+    };
+
+    if (varApp && varModel && varField && varRelField && varDrag) {
+        loadApps();
+
+        if (aliasChips) {
+            aliasChips.addEventListener('click', (e) => {
+                const del = e.target.closest('.alias-delete');
+                if (del) {
+                    const id = del.dataset.id;
+                    if (!id) return;
+                    fetch('{% url "documents:api_context_alias_delete" pk=template.pk alias_id=99999 %}'.replace('99999', id), {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+                    }).then(() => {
+                        del.closest('div')?.remove();
+                    }).catch(() => {});
+                    return;
+                }
+
+                const chip = e.target.closest('.alias-chip');
+                if (!chip) return;
+                const appLabel = chip.dataset.app;
+                const modelLabel = chip.dataset.model;
+                varAlias.value = chip.dataset.alias || '';
+                if (appLabel) {
+                    varApp.value = appLabel;
+                    loadModels(appLabel).then(() => {
+                        varModel.value = modelLabel || '';
+                        if (varModel.value) {
+                            loadFields(appLabel, varModel.value, varField);
+                        }
+                    });
+                }
+            });
+        }
+
+        varApp.addEventListener('change', () => {
+            resetSelect(varModel, 'Selecciona modelo');
+            resetSelect(varField, 'Selecciona campo');
+            resetSelect(varRelField, 'Selecciona campo relacionado');
+            varModel.disabled = true;
+            varField.disabled = true;
+            varRelWrapper.classList.add('hidden');
+            updateVarPreview();
+            if (varApp.value) loadModels(varApp.value);
+        });
+
+        varModel.addEventListener('change', () => {
+            resetSelect(varField, 'Selecciona campo');
+            resetSelect(varRelField, 'Selecciona campo relacionado');
+            varField.disabled = true;
+            varRelWrapper.classList.add('hidden');
+            if (!varAlias.value && varModel.value) {
+                varAlias.value = varModel.value;
+            }
+            updateVarPreview();
+            if (varApp.value && varModel.value) loadFields(varApp.value, varModel.value, varField);
+        });
+
+        varField.addEventListener('change', () => {
+            const opt = varField.options[varField.selectedIndex];
+            const isRel = opt?.dataset?.isRelation === '1';
+            if (isRel) {
+                varRelWrapper.classList.remove('hidden');
+                resetSelect(varRelField, 'Selecciona campo relacionado');
+                const rApp = opt.dataset.relatedApp;
+                const rModel = opt.dataset.relatedModel;
+                if (rApp && rModel) loadFields(rApp, rModel, varRelField);
+            } else {
+                varRelWrapper.classList.add('hidden');
+                resetSelect(varRelField, 'Selecciona campo relacionado');
+            }
+            updateVarPreview();
+        });
+
+        varRelField.addEventListener('change', updateVarPreview);
+        varAlias.addEventListener('input', updateVarPreview);
+
+        varDrag.addEventListener('dragstart', (e) => {
+            const token = varDrag.dataset.varToken;
+            if (!token) return;
+            e.dataTransfer.setData('text/template-var', token);
+            e.dataTransfer.setData('text/plain', '');
+            e.dataTransfer.setData('item-type', 'template-var');
+        });
+
+        if (saveAliasBtn) {
+            saveAliasBtn.addEventListener('click', async () => {
+                const alias = (varAlias.value || '').trim();
+                const appLabel = varApp.value;
+                const modelLabel = varModel.value;
+                if (!alias || !appLabel || !modelLabel) return;
+                saveAliasBtn.classList.add('loading');
+                saveAliasBtn.disabled = true;
+                try {
+                    const res = await fetch('{% url "documents:api_context_aliases" pk=template.pk %}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}',
+                        },
+                        body: JSON.stringify({ alias, app_label: appLabel, model_label: modelLabel })
+                    });
+                    if (!res.ok) return;
+                    const data = await res.json();
+                    if (!data.success) return;
+                    if (aliasChips) {
+                        const existing = aliasChips.querySelector(`.alias-chip[data-alias=\"${data.alias}\"]`);
+                        if (existing) {
+                            existing.dataset.id = data.id;
+                            existing.dataset.app = data.app_label;
+                            existing.dataset.model = data.model_label;
+                        } else {
+                            const chip = document.createElement('div');
+                            chip.className = 'inline-flex items-center gap-1 rounded-full border border-gray-200 px-2 py-1 text-xs bg-white';
+                            const labelBtn = document.createElement('button');
+                            labelBtn.type = 'button';
+                            labelBtn.className = 'alias-chip text-gray-700 font-medium';
+                            labelBtn.dataset.id = data.id;
+                            labelBtn.dataset.alias = data.alias;
+                            labelBtn.dataset.app = data.app_label;
+                            labelBtn.dataset.model = data.model_label;
+                            labelBtn.textContent = data.alias;
+                            const delBtn = document.createElement('button');
+                            delBtn.type = 'button';
+                            delBtn.className = 'alias-delete text-gray-400 hover:text-red-600';
+                            delBtn.dataset.id = data.id;
+                            delBtn.title = 'Eliminar';
+                            delBtn.textContent = '×';
+                            chip.appendChild(labelBtn);
+                            chip.appendChild(delBtn);
+                            aliasChips.appendChild(chip);
+                        }
+                    }
+                } catch (e) {
+                    // ignore
+                } finally {
+                    saveAliasBtn.classList.remove('loading');
+                    saveAliasBtn.disabled = false;
+                }
+            });
+        }
+    }
+
+    const applyFontFamily = (fontFamily) => {
+        if (!fontFamily) return;
+
+        const selected = editor.getSelected();
+        if (!selected) {
+            alert('Selecciona un elemento primero');
+            return;
+        }
+
+        selected.addStyle({ 'font-family': fontFamily });
+        alert(`Font-family "${fontFamily}" aplicada al elemento seleccionado`);
+    };
+
+    const addLocalFontFace = (family, fileName) => {
+        if (!family || !fileName) return;
+        const currentCss = editor.getCss();
+        const signature = `font-family: '${family}'`;
+        if (currentCss.includes(signature)) return;
+        const fontFace = `@font-face {\n  font-family: '${family}';\n  src: url('fonts/${fileName}');\n}\n\n`;
+        editor.setStyle(fontFace + currentCss);
+    };
+
+    const renderLocalFonts = (fonts) => {
+        const container = document.getElementById('local-fonts-list');
+        if (!container) return;
+        if (!fonts.length) {
+            container.innerHTML = '<div class="text-xs text-gray-400">No hay fuentes cargadas</div>';
+            return;
+        }
+        container.innerHTML = fonts.map(f => (
+            `<div class="system-font-item cursor-pointer" data-font-family="${f.family}" data-font-file="${f.file}">` +
+            `<div class="text-xs font-medium">${f.family}</div>` +
+            `</div>`
+        )).join('');
+        container.querySelectorAll('.system-font-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const family = item.dataset.fontFamily;
+                const file = item.dataset.fontFile;
+                addLocalFontFace(family, file);
+                applyFontFamily(`'${family}'`);
+            });
+        });
+    };
+
+    // Clicks en fuentes del sistema
+    document.querySelectorAll('.system-font-item').forEach(item => {
+        item.addEventListener('click', () => {
+            const fontFamily = item.dataset.fontFamily;
+            applyFontFamily(fontFamily);
+        });
+    });
+
+    // Cargar fuentes locales disponibles
+    fetch('{% url "documents:api_fonts_list" %}')
+        .then(res => res.json())
+        .then(data => renderLocalFonts(data.fonts || []))
+        .catch(() => renderLocalFonts([]));
+
+    // Subir ZIP de fuentes
+    const uploadFontsBtn = document.getElementById('upload-fonts-btn');
+    const fontsZip = document.getElementById('fonts-zip');
+    if (uploadFontsBtn && fontsZip) {
+        uploadFontsBtn.addEventListener('click', async () => {
+            if (!fontsZip.files || !fontsZip.files.length) {
+                alert('Selecciona un ZIP primero');
+                return;
+            }
+            const formData = new FormData();
+            formData.append('file', fontsZip.files[0]);
+            uploadFontsBtn.classList.add('loading');
+            uploadFontsBtn.disabled = true;
+            try {
+                const res = await fetch('{% url "documents:api_fonts_upload" %}', {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+                    body: formData
+                });
+                if (!res.ok) throw new Error('Upload falló');
+                const list = await fetch('{% url "documents:api_fonts_list" %}');
+                const data = await list.json();
+                renderLocalFonts(data.fonts || []);
+                fontsZip.value = '';
+            } catch (e) {
+                alert('No se pudo subir el ZIP');
+            } finally {
+                uploadFontsBtn.classList.remove('loading');
+                uploadFontsBtn.disabled = false;
+            }
+        });
+    }
+
+    const ensureImageNoMaxWidth = (model) => {
+        if (!model || !model.is || !model.is('image')) return;
+        model.addStyle({ 'max-width': 'none', height: 'auto' });
+    };
+    editor.on('load', () => {
+        const frameDoc = editor.Canvas.getDocument();
+        if (frameDoc && !frameDoc.getElementById('gjs-custom-styles')) {
+            const style = frameDoc.createElement('style');
+            style.id = 'gjs-custom-styles';
+            style.textContent = `
+                img{max-width:none;height:auto;}
+                .django-template-wrapper:hover {
+                    border-color: #f87171 !important;
+                    background-color: #fee2e2 !important;
+                }
+                .django-template-wrapper::before {
+                    content: 'Django Template';
+                    display: block;
+                    font-size: 10px;
+                    color: #991b1b;
+                    font-weight: bold;
+                    margin-bottom: 4px;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                }
+            `;
+            frameDoc.head.appendChild(style);
+        }
+        editor.getWrapper().findType('image').forEach(ensureImageNoMaxWidth);
+        const frameBody = editor.Canvas.getBody();
+        if (frameBody && !frameBody.dataset.assetsDropBound) {
+            frameBody.dataset.assetsDropBound = '1';
+            frameBody.addEventListener('dragover', (e) => e.preventDefault());
+            frameBody.addEventListener('drop', (e) => {
+                e.preventDefault();
+
+                const itemType = e.dataTransfer?.getData('item-type');
+
+                // Si es un asset (imagen)
+                if (itemType === 'asset') {
+                    const src = e.dataTransfer?.getData('text/plain');
+                    if (!src) return;
+
+                    const selected = editor.getSelected();
+                    let comp;
+                    if (selected) {
+                        comp = selected.append({ type: 'image', attributes: { src } });
+                    } else {
+                        comp = editor.addComponents({ type: 'image', attributes: { src } });
+                    }
+                    const model = Array.isArray(comp) ? comp[0] : comp;
+                    ensureImageNoMaxWidth(model);
+                    editor.select(model);
+                }
+                // Si es un template de Django
+                else if (itemType === 'django-tag') {
+                    console.log('[DROP] Django tag detectado en drop event');
+                    const html = e.dataTransfer?.getData('text/html');
+                    if (!html) {
+                        console.log('[DROP] No hay HTML en dataTransfer');
+                        return;
+                    }
+                    console.log('[DROP] HTML recibido:', html.substring(0, 100) + '...');
+
+                    // Crear componente wrapper completamente limpio (sin estilos)
+                    const component = {
+                        tagName: 'div',
+                        attributes: {
+                            'data-django-tag': 'custom',
+                            'class': 'django-template-wrapper'
+                        },
+                        components: [{
+                            type: 'textnode',
+                            content: html
+                        }],
+                        editable: true,
+                        draggable: true,
+                        droppable: false,
+                        removable: true,
+                        copyable: true,
+                        resizable: false
+                    };
+
+                    const selected = editor.getSelected();
+                    if (selected) {
+                        selected.append(component);
+                    } else {
+                        editor.addComponents(component);
+                    }
+                }
+                // Si es un template de WeasyPrint
+                else if (itemType === 'weasy-template') {
+                    const html = e.dataTransfer?.getData('text/html');
+                    if (!html) return;
+
+                    editor.addComponents(html);
+                }
+                // Si es una variable de modelo
+                else if (itemType === 'template-var') {
+                    const varToken = e.dataTransfer?.getData('text/template-var') || '';
+                    if (!varToken) return;
+                    if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+                    e.stopPropagation();
+
+                    const selected = editor.getSelected();
+                    let comp;
+                    if (selected) {
+                        const tagName = selected.get('tagName');
+                        if (['div', 'p', 'span', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'td', 'th', 'li'].includes(tagName?.toLowerCase())) {
+                            const content = selected.get('content') || '';
+                            selected.set('content', content + varToken);
+                        } else {
+                            comp = selected.append({ type: 'text', content: varToken });
+                        }
+                    } else {
+                        comp = editor.addComponents({ type: 'text', content: varToken });
+                    }
+                    const model = Array.isArray(comp) ? comp[0] : comp;
+                    if (model) editor.select(model);
+                }
+            });
+        }
+        const sanitizePastedHTML = (rawHtml) => {
+            if (!rawHtml) return '';
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(rawHtml, 'text/html');
+            const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_ELEMENT, null);
+            const allowedAttrs = new Set(['href', 'src', 'style', 'class', 'id', 'colspan', 'rowspan', 'width', 'height', 'alt', 'title']);
+
+            while (walker.nextNode()) {
+                const el = walker.currentNode;
+                const tag = el.tagName ? el.tagName.toLowerCase() : '';
+
+                if (tag === 'script' || tag === 'style' || tag === 'meta' || tag === 'link' || tag === 'iframe') {
+                    el.remove();
+                    continue;
+                }
+
+                el.removeAttribute('contenteditable');
+                Array.from(el.attributes || []).forEach(attr => {
+                    const name = attr.name.toLowerCase();
+                    if (name.startsWith('data-gjs')) {
+                        el.removeAttribute(attr.name);
+                        return;
+                    }
+                    if (!allowedAttrs.has(name) && !name.startsWith('data-')) {
+                        el.removeAttribute(attr.name);
+                    }
+                });
+            }
+
+            return doc.body.innerHTML || '';
+        };
+
+        if (frameBody && !frameBody.dataset.pasteSanitized) {
+            frameBody.dataset.pasteSanitized = '1';
+            frameBody.addEventListener('paste', (e) => {
+                const cb = e.clipboardData;
+                if (!cb) return;
+                const html = cb.getData('text/html');
+                const text = cb.getData('text/plain');
+                if (!html && !text) return;
+
+                e.preventDefault();
+                const cleanHtml = html ? sanitizePastedHTML(html) : '';
+                const payload = cleanHtml || (text || '').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br/>');
+
+                if (editor.RichTextEditor && typeof editor.RichTextEditor.getActive === 'function') {
+                    const rte = editor.RichTextEditor.getActive();
+                    if (rte && typeof editor.RichTextEditor.insertHTML === 'function') {
+                        editor.RichTextEditor.insertHTML(payload);
+                        return;
+                    }
+                }
+
+                // Insert at current caret inside iframe if possible
+                if (frameDoc && typeof frameDoc.getSelection === 'function') {
+                    const sel = frameDoc.getSelection();
+                    if (sel && sel.rangeCount > 0) {
+                        const range = sel.getRangeAt(0);
+                        if (frameBody && frameBody.contains(range.startContainer)) {
+                            range.deleteContents();
+                            const temp = frameDoc.createElement('div');
+                            temp.innerHTML = payload;
+                            const frag = frameDoc.createDocumentFragment();
+                            while (temp.firstChild) frag.appendChild(temp.firstChild);
+                            range.insertNode(frag);
+                            sel.removeAllRanges();
+                            sel.addRange(range);
+                            return;
+                        }
+                    }
+                }
+
+                const selected = editor.getSelected();
+                if (selected) {
+                    selected.append(payload);
+                } else {
+                    editor.addComponents(payload);
+                }
+            });
+        }
+        setTimeout(() => {}, 0);
+
+        // Aplicar estilos inline a todos los componentes después de cargar
+        setTimeout(() => {
+            // Primero extraer estilos del CSS (incluyendo media queries)
+            extractAndApplyStylesFromCSS();
+
+            // Luego aplicar inline a todos los componentes
+            const wrapper = editor.getWrapper();
+            if (wrapper) {
+                applyInlineStylesToAll(wrapper);
+            }
+        }, 100);
+    });
+    editor.on('component:add', (model) => {
+        if (model && model.get && model.get('attributes')) {
+            const attrs = model.get('attributes');
+            if (attrs['data-django-tag'] || attrs.class?.includes('django-template-wrapper')) {
+                console.log('[GrapesJS component:add] Django component agregado:', model.toHTML?.()?.substring(0, 100));
+            }
+        }
+        ensureImageNoMaxWidth(model);
+    });
+
+    const applyInlineStyles = (model) => {
+        const el = model?.getEl?.();
+        if (!el) return;
+        const styles = model.getStyle ? model.getStyle() : {};
+
+        // DEBUG: Log si tiene padding
+        const hasPadding = Object.keys(styles).some(k => k.includes('padding'));
+        if (hasPadding) {
+            console.log('[DEBUG applyInlineStyles] Aplicando padding a:', el.tagName, styles);
+        }
+
+        Object.entries(styles).forEach(([key, value]) => {
+            if (value === '' || value == null) return;
+            el.style.setProperty(key, String(value));
+        });
+    };
+
+    // Aplicar estilos inline a todos los componentes recursivamente
+    const applyInlineStylesToAll = (component) => {
+        if (!component) return;
+        applyInlineStyles(component);
+        const children = component.components ? component.components() : [];
+        children.forEach(child => applyInlineStylesToAll(child));
+    };
+
+    // Parsear CSS y extraer estilos de componentes (incluso dentro de media queries)
+    const extractAndApplyStylesFromCSS = () => {
+        const css = editor.getCss();
+        if (!css) return;
+
+        // Primero remover los media queries para procesar su contenido
+        let processedCSS = css;
+
+        // Extraer contenido de media queries y agregarlo al CSS procesado
+        const mediaQueryRegex = /@media[^{]+\{([\s\S]*?)\}\s*\}/g;
+        let mediaMatch;
+        let mediaContent = '';
+
+        while ((mediaMatch = mediaQueryRegex.exec(css)) !== null) {
+            mediaContent += mediaMatch[1] + '\n';
+        }
+
+        // Combinar CSS normal con contenido de media queries
+        processedCSS = css.replace(mediaQueryRegex, '') + '\n' + mediaContent;
+
+        // Extraer todas las reglas de ID
+        const idStyleMap = {};
+        const ruleRegex = /#([a-zA-Z0-9_-]+)\s*\{([^}]+)\}/g;
+        let ruleMatch;
+
+        while ((ruleMatch = ruleRegex.exec(processedCSS)) !== null) {
+            const id = ruleMatch[1];
+            const stylesText = ruleMatch[2];
+
+            if (!idStyleMap[id]) idStyleMap[id] = {};
+
+            // Parsear estilos
+            stylesText.split(';').forEach(style => {
+                const colonIndex = style.indexOf(':');
+                if (colonIndex === -1) return;
+
+                const prop = style.substring(0, colonIndex).trim();
+                const value = style.substring(colonIndex + 1).trim();
+
+                if (prop && value) {
+                    idStyleMap[id][prop] = value;
+                }
+            });
+        }
+
+        // Aplicar estilos a los componentes correspondientes
+        Object.entries(idStyleMap).forEach(([id, styles]) => {
+            const components = editor.getWrapper().find(`#${id}`);
+            const component = components && components[0];
+
+            if (component) {
+                // Agregar estilos al modelo de GrapesJS
+                component.addStyle(styles);
+
+                // Aplicar inline al DOM
+                applyInlineStyles(component);
+            }
+        });
+    };
+
+    editor.on('component:styleUpdate', (model) => applyInlineStyles(model));
+    editor.on('component:update', (model) => applyInlineStyles(model));
+
+    // Drag & drop de assets
+    document.querySelectorAll('.asset-item').forEach(el => {
+        el.addEventListener('dragstart', (e) => {
+            e.dataTransfer.setData('text/plain', el.dataset.src);
+            e.dataTransfer.setData('item-type', 'asset');
+        });
+    });
+
+    // Django tags - SOLO click, sin drag (para evitar duplicación)
+    document.querySelectorAll('.django-tag-item').forEach(el => {
+        el.draggable = false;
+        // No drag handlers - only click handler defined above
+    });
+
+    // Configurar drag & drop para WeasyPrint templates
+    document.querySelectorAll('.weasy-item').forEach(el => {
+        el.draggable = true;
+        el.addEventListener('dragstart', (e) => {
+            const templateType = el.dataset.template;
+            const content = weasyTemplates[templateType];
+            if (content) {
+                e.dataTransfer.setData('text/html', content);
+                e.dataTransfer.setData('item-type', 'weasy-template');
+            }
+        });
+    });
+
+    // Guardar
+    const handleSave = async (createVersion) => {
+        const btn = document.getElementById('save-btn');
+        const btnVersion = document.getElementById('save-version-btn');
+        const originalHtml = btn.innerHTML;
+        const originalHtmlVersion = btnVersion ? btnVersion.innerHTML : '';
+        btn.disabled = true;
+        if (btnVersion) btnVersion.disabled = true;
+        btn.innerHTML = '<span class="loading loading-spinner loading-xs"></span> Guardando...';
+        if (createVersion && btnVersion) {
+            btnVersion.innerHTML = '<span class="loading loading-spinner loading-xs"></span> Versionando...';
+        }
+
+        let success = false;
+        let finished = false;
+        const hardResetId = setTimeout(() => {
+            if (finished) return;
+            finished = true;
+            btn.innerHTML = originalHtml;
+            btn.classList.remove('btn-error');
+            btn.disabled = false;
+        }, 12000);
+
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+            const html = editor.getHtml();
+            const css = editor.getCss();
+
+            // DEBUG: Log CSS to check if padding is captured
+            console.log('[DEBUG Save] CSS capturado:', css.substring(0, 500));
+
+            let projectData = null;
+            let components = null;
+            let styles = null;
+
+            try {
+                projectData = editor.getProjectData ? editor.getProjectData() : null;
+            } catch (e) {
+                projectData = null;
+            }
+
+            if (!projectData) {
+                try {
+                    components = editor.getComponents().toJSON ? editor.getComponents().toJSON() : editor.getComponents();
+                } catch (e) {
+                    components = null;
+                }
+                try {
+                    styles = editor.getStyle().toJSON ? editor.getStyle().toJSON() : editor.getStyle();
+                    // DEBUG: Log styles to see what's being captured
+                    console.log('[DEBUG Save] Styles capturados:', JSON.stringify(styles).substring(0, 500));
+                } catch (e) {
+                    styles = null;
+                }
+            }
+
+            if (!html && (!components || components.length === 0)) {
+                throw new Error('El contenido esta vacio');
+            }
+
+            const payload = {
+                html,
+                css,
+                page_size: document.getElementById('page-size').value,
+                orientation: document.getElementById('page-orientation').value,
+                margin_top: parseFloat(document.getElementById('margin-top').value),
+                margin_bottom: parseFloat(document.getElementById('margin-bottom').value),
+                margin_left: parseFloat(document.getElementById('margin-left').value),
+                margin_right: parseFloat(document.getElementById('margin-right').value),
+                create_version: !!createVersion,
+            };
+
+            if (projectData) payload.project_data = projectData;
+            if (components) payload.components = components;
+            if (styles) payload.styles = styles;
+
+            const response = await fetch('{% url "documents:editor_save" pk=template.pk %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify(payload),
+                signal: controller.signal
+            });
+
+            clearTimeout(timeoutId);
+
+            const text = await response.text();
+            let data = {};
+            try {
+                data = JSON.parse(text);
+            } catch (e) {
+                throw new Error('Respuesta invalida del servidor');
+            }
+
+            if (!response.ok || !data.success) {
+                throw new Error(data.error || 'Error al guardar');
+            }
+
+            success = true;
+            finished = true;
+            clearTimeout(hardResetId);
+            btn.innerHTML = '<i class="ri-check-line mr-1"></i> Guardado';
+        } catch (error) {
+            console.error('Error:', error);
+            finished = true;
+            clearTimeout(hardResetId);
+            btn.innerHTML = '<i class="ri-error-warning-line mr-1"></i> Error';
+            btn.classList.add('btn-error');
+        } finally {
+            if (success) {
+                setTimeout(() => {
+                    btn.innerHTML = originalHtml;
+                    btn.disabled = false;
+                    if (btnVersion) {
+                        btnVersion.innerHTML = originalHtmlVersion;
+                        btnVersion.disabled = false;
+                    }
+                }, 1500);
+            } else {
+                setTimeout(() => {
+                    btn.innerHTML = originalHtml;
+                    btn.classList.remove('btn-error');
+                    btn.disabled = false;
+                    if (btnVersion) {
+                        btnVersion.innerHTML = originalHtmlVersion;
+                        btnVersion.disabled = false;
+                    }
+                }, 2000);
+            }
+        }
+    };
+
+    document.getElementById('save-btn').addEventListener('click', async () => {
+        handleSave(false);
+    });
+    const saveVersionBtn = document.getElementById('save-version-btn');
+    if (saveVersionBtn) {
+        saveVersionBtn.addEventListener('click', async () => {
+            handleSave(true);
+        });
+    }
+
+    // Keyboard shortcut para guardar (Ctrl+S)
+    document.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+            e.preventDefault();
+            document.getElementById('save-btn').click();
+        }
+    });
+
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,19 @@
+<div class="space-y-3">
+    <div class="flex items-center justify-between text-sm text-gray-600">
+        <span>Total asignado</span>
+        <span class="font-semibold text-gray-900">{{ total_commission_percent }}%</span>
+    </div>
+    <div class="flex items-center justify-between text-sm text-gray-600">
+        <span>Cargos asignados</span>
+        <span class="font-semibold text-gray-900">{{ assigned_roles|length }}</span>
+    </div>
+    {% if assigned_roles %}
+    <div class="flex flex-wrap gap-2 pt-2">
+        {% for role_name in assigned_roles %}
+        <span class="badge badge-neutral-elegant">{{ role_name }}</span>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-sm text-gray-500">Sin escala registrada.</div>
+    {% endif %}
+</div>

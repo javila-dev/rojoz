@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Recibos por proyecto{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6">
+    <div>
+        <h1 class="text-3xl font-bold text-gray-900">Recibos de caja</h1>
+        <p class="text-gray-600 mt-2">Selecciona el proyecto para ver sus recaudos.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {% for project in projects %}
+        <a href="{% url 'finance:receipt_project_list' project.id %}" class="card bg-white border border-gray-200 shadow-sm hover:border-rojoz-300 transition">
+            <div class="card-body space-y-2">
+                <div class="flex items-center gap-4">
+                    <div class="avatar">
+                        <div class="w-12 rounded-full ring ring-rojoz-100 ring-offset-2 ring-offset-base-100">
+                            {% if project.logo %}
+                            <img src="{{ project.logo.url }}" alt="Logo {{ project.name }}" />
+                            {% else %}
+                            <div class="bg-rojoz-50 text-rojoz-700 flex items-center justify-center w-12 h-12 text-sm font-semibold">
+                                {{ project.name|slice:":2"|upper }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-semibold text-gray-900">{{ project.name }}</h2>
+                        <p class="text-sm text-gray-600">{{ project.city }}</p>
+                    </div>
+                </div>
+            </div>
+        </a>
+        {% empty %}
+        <div class="text-gray-500">No hay proyectos registrados.</div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

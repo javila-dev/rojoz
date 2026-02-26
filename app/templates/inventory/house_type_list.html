@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Tipos de casa - {{ project.name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6">
+    <div class="flex items-start justify-between gap-6">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">Tipos de casa</h1>
+            <p class="text-gray-600 mt-2">Proyecto: {{ project.name }}</p>
+        </div>
+        <a href="{% url 'inventory:project_settings' project.id %}" class="btn btn-neutral-elegant">Volver</a>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-2 card bg-white border border-gray-200 shadow-sm">
+            <div class="card-body">
+                <h2 class="card-title">Listado</h2>
+                <div class="overflow-x-auto mt-4">
+                    <table class="table table-zebra w-full text-sm">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Precio base</th>
+                                <th>Máx. descuento</th>
+                                <th>Área</th>
+                                <th>Habitaciones</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for house_type in house_types %}
+                            <tr>
+                                <td class="font-semibold">{{ house_type.name }}</td>
+                                <td>${{ house_type.base_price|floatformat:0|intcomma }}</td>
+                                <td>{{ house_type.max_discount_percent|default:0 }}%</td>
+                                <td>{{ house_type.area|default:"—" }}</td>
+                                <td>{{ house_type.rooms|default:"—" }}</td>
+                                <td class="text-right">
+                                    <a href="{% url 'inventory:house_type_edit' project.id house_type.id %}" class="btn btn-xs btn-neutral-elegant">Editar</a>
+                                    <a href="{% url 'inventory:house_type_delete' project.id house_type.id %}" class="btn btn-xs btn-outline">Eliminar</a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center text-gray-500 py-6">No hay tipos de casa.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card bg-white border border-gray-200 shadow-sm">
+            <div class="card-body space-y-4">
+                <h2 class="card-title">Nuevo tipo</h2>
+                <form method="post" class="space-y-3">
+                    {% csrf_token %}
+                    {% if form.errors %}
+                    <div class="alert alert-error text-sm">
+                        <div>
+                            <strong>No se pudo guardar.</strong>
+                            <div class="mt-1 text-xs">{{ form.errors }}</div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    <div>
+                        <label class="label"><span class="label-text">Nombre</span></label>
+                        {{ form.name }}
+                    </div>
+                    <div>
+                        <label class="label"><span class="label-text">Descripción</span></label>
+                        {{ form.description }}
+                    </div>
+                    <div>
+                        <label class="label"><span class="label-text">Precio base</span></label>
+                        {{ form.base_price }}
+                        {% if form.base_price.errors %}
+                        <div class="text-xs text-red-600 mt-1">{{ form.base_price.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <label class="label"><span class="label-text">Máx. descuento (%)</span></label>
+                        {{ form.max_discount_percent }}
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label class="label"><span class="label-text">Área (m2)</span></label>
+                            {{ form.area }}
+                        </div>
+                        <div>
+                            <label class="label"><span class="label-text">Habitaciones</span></label>
+                            {{ form.rooms }}
+                        </div>
+                        <div>
+                            <label class="label"><span class="label-text">Baños</span></label>
+                            {{ form.bathrooms }}
+                        </div>
+                        <div>
+                            <label class="label"><span class="label-text">Duración (meses)</span></label>
+                            {{ form.construction_duration_months }}
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-neutral-elegant w-full">Guardar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    (function () {
+        const inputs = document.querySelectorAll('input[data-currency="true"]');
+        const toNumber = (value) => value.replace(/[^\d]/g, "");
+        const format = (value) => {
+            if (!value) return "";
+            return new Intl.NumberFormat("es-CO").format(parseInt(value, 10));
+        };
+        inputs.forEach((input) => {
+            input.addEventListener("input", () => {
+                const raw = toNumber(input.value);
+                input.value = format(raw);
+            });
+            input.addEventListener("blur", () => {
+                const raw = toNumber(input.value);
+                input.value = format(raw);
+            });
+        });
+    })();
+</script>
+{% endblock %}

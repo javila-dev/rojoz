@@ -1,0 +1,178 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Mi Portal{% endblock %} - Constructora Rojoz</title>
+    <link rel="icon" type="image/png" href="https://s3.2asoft.tech/construccion-media-public/document_assets/logo rojoz.png">
+
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Gudea:wght@400;700&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.6.0/fonts/remixicon.css" rel="stylesheet" />
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'rojoz': {
+                            50: '#fef2f2', 100: '#fee2e2', 200: '#fecaca', 300: '#fca5a5',
+                            400: '#f87171', 500: '#C4574E', 600: '#A0372A', 700: '#7A2518',
+                            800: '#5a1a0f', 900: '#3d100a',
+                        },
+                        ink: "#1f2937", mist: "#f9fafb", warm: "#fef7f5"
+                    },
+                    backgroundImage: {
+                        "soft-wash": "linear-gradient(135deg, #fef7f5 0%, #ffffff 35%, #f9fafb 100%)",
+                        "brand-gradient": "linear-gradient(135deg, #A0372A 0%, #C4574E 100%)",
+                    }
+                }
+            }
+        }
+    </script>
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-soft-wash text-ink min-h-screen" style="font-family: 'Gudea', system-ui, sans-serif;">
+
+    <!-- Topbar -->
+    <header class="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-rojoz-100/40 shadow-sm">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6">
+            <div class="flex items-center justify-between h-16">
+
+                <!-- Logo -->
+                <a href="{% url 'portal:dashboard' %}" class="flex items-center gap-3 group">
+                    <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-rojoz-600 to-rojoz-500 flex items-center justify-center overflow-hidden">
+                        <img src="https://s3.2asoft.tech/construccion-media-public/document_assets/logo rojoz.png"
+                             alt="Rojoz" class="w-full h-full object-contain brightness-0 invert p-1">
+                    </div>
+                    <span class="text-xl font-bold text-gray-900 tracking-tight group-hover:text-rojoz-600 transition-colors"
+                          style="font-family: 'Playfair Display', serif;">Rojoz</span>
+                </a>
+
+                <!-- Nav central -->
+                <nav class="hidden sm:flex items-center gap-1">
+                    <a href="{% url 'portal:dashboard' %}"
+                       class="px-4 py-2 rounded-lg text-sm font-medium transition-all
+                              {% block nav_dashboard_class %}text-gray-600 hover:text-rojoz-700 hover:bg-rojoz-50{% endblock %}">
+                        <i class="ri-home-4-line mr-1"></i> Mis contratos
+                    </a>
+                </nav>
+
+                <!-- Usuario -->
+                <div class="flex items-center gap-3">
+                    <div class="hidden sm:block text-right">
+                        <p class="text-sm font-semibold text-gray-800 leading-tight">
+                            {{ request.session.portal_name|default:"Cliente" }}
+                        </p>
+                        <p class="text-xs text-gray-400">Portal del cliente</p>
+                    </div>
+                    <div class="w-9 h-9 rounded-full bg-gradient-to-br from-rojoz-600 to-rojoz-400 text-white flex items-center justify-center text-sm font-semibold">
+                        {{ request.session.portal_name|default:"C"|slice:":1"|upper }}
+                    </div>
+                    <a href="{% url 'portal:logout' %}" class="btn btn-sm btn-ghost text-gray-500 hover:text-rojoz-600" title="Cerrar sesion">
+                        <i class="ri-logout-box-r-line text-lg"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Nav mobile -->
+        <div class="sm:hidden border-t border-gray-100 px-4 py-2 flex gap-2">
+            <a href="{% url 'portal:dashboard' %}"
+               class="flex-1 text-center py-2 rounded-lg text-xs font-medium
+                      {% block nav_mobile_dashboard %}text-gray-600{% endblock %}">
+                <i class="ri-home-4-line block text-lg mb-0.5"></i> Contratos
+            </a>
+            <a href="{% url 'portal:logout' %}"
+               class="flex-1 text-center py-2 rounded-lg text-xs font-medium text-gray-600">
+                <i class="ri-logout-box-r-line block text-lg mb-0.5"></i> Salir
+            </a>
+        </div>
+    </header>
+
+    <!-- Content -->
+    <main class="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+        {% block content %}{% endblock %}
+    </main>
+
+    <style>
+        :root {
+            --brand-rojoz: #A0372A;
+            --brand-rojoz-light: #C4574E;
+            --brand-rojoz-dark: #7A2518;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--brand-rojoz) 0%, var(--brand-rojoz-light) 100%);
+            border: none;
+            color: white;
+            box-shadow: 0 4px 14px rgba(160, 55, 42, 0.25);
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            box-shadow: 0 8px 20px rgba(160, 55, 42, 0.35);
+            transform: translateY(-1px);
+        }
+
+        .btn-neutral-elegant {
+            background: #ffffff;
+            border: 1.5px solid #e5e7eb;
+            color: #1f2937;
+            transition: all 0.2s ease;
+        }
+        .btn-neutral-elegant:hover {
+            border-color: rgba(160, 55, 42, 0.4);
+            background: linear-gradient(135deg, #fef7f5 0%, #ffffff 100%);
+            box-shadow: 0 2px 8px rgba(160, 55, 42, 0.08);
+        }
+
+        .card {
+            box-shadow: 0 1px 3px rgba(160, 55, 42, 0.08), 0 1px 2px rgba(0,0,0,0.02);
+            border: 1px solid rgba(160, 55, 42, 0.1);
+            background: white;
+            animation: fadeInUp 0.5s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .table th {
+            font-weight: 600;
+            color: var(--brand-rojoz-dark);
+            background: linear-gradient(to bottom, #fef7f5, #ffffff);
+            border-bottom: 2px solid rgba(160, 55, 42, 0.15);
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+        }
+        .table tr { transition: background 0.15s ease; }
+        .table tr:hover { background: rgba(160, 55, 42, 0.02); }
+
+        .progress-bar {
+            height: 8px;
+            border-radius: 4px;
+            background: #f3f4f6;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            background: linear-gradient(90deg, var(--brand-rojoz), var(--brand-rojoz-light));
+            transition: width 0.8s ease;
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f9fafb; }
+        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+    </style>
+
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

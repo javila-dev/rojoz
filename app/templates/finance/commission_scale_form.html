@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}{% if is_create %}Agregar escala{% else %}Editar escala{% endif %}{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto space-y-6">
+    <div>
+        <h1 class="text-3xl font-bold text-gray-900">{% if is_create %}Agregar escala{% else %}Editar escala{% endif %}</h1>
+        <p class="text-gray-600 mt-2">Venta {{ sale.id }}</p>
+    </div>
+
+    <form method="post" class="card bg-white border border-gray-200 shadow-sm">
+        {% csrf_token %}
+        <div class="card-body space-y-6">
+            <div>
+                <label class="label"><span class="label-text">Gestor</span></label>
+                {{ form.user }}
+                {{ form.user.errors }}
+            </div>
+            <div>
+                <label class="label"><span class="label-text">Cargo</span></label>
+                {{ form.role }}
+                {{ form.role.errors }}
+            </div>
+            <div>
+                <label class="label"><span class="label-text">Porcentaje</span></label>
+                {{ form.percentage }}
+                {{ form.percentage.errors }}
+            </div>
+            <div class="flex items-center justify-end gap-3">
+                <a href="{% url 'finance:sale_commission_scale_list' sale.id %}" class="btn btn-neutral-elegant">Cancelar</a>
+                <button type="submit" class="btn btn-primary">Guardar</button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

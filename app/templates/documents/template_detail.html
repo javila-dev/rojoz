@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}{{ template.name }} - Constructora Rojoz{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.6.0/fonts/remixicon.css">
+{% endblock %}
+
+{% block content %}
+<div class="p-8 max-w-5xl mx-auto space-y-8">
+
+    <!-- Header -->
+    <div class="flex flex-wrap items-start justify-between gap-6">
+        <div class="flex items-center gap-4">
+            <a href="{% url 'documents:template_list' %}" class="btn btn-ghost btn-sm">
+                <i class="ri-arrow-left-line"></i>
+            </a>
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900" style="font-family: 'Playfair Display', serif;">
+                    {{ template.name }}
+                </h1>
+                <div class="flex items-center gap-2 mt-1">
+                    <span class="badge {% if template.is_active %}badge-success{% else %}badge-ghost{% endif %}">
+                        {% if template.is_active %}Activa{% else %}Inactiva{% endif %}
+                    </span>
+                    <span class="text-gray-500">{{ template.get_status_display }}</span>
+                </div>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            <a href="{% url 'documents:editor' pk=template.pk %}" class="btn bg-rojoz-600 hover:bg-rojoz-700 text-white border-none">
+                <i class="ri-edit-line mr-2"></i>
+                Abrir Editor
+            </a>
+            <form action="{% url 'documents:template_publish' pk=template.pk %}" method="post">
+                {% csrf_token %}
+                <button class="btn btn-outline" type="submit">
+                    <i class="ri-upload-cloud-2-line mr-2"></i>
+                    Publicar
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Info principal -->
+        <div class="lg:col-span-2 space-y-6">
+
+            <!-- Descripción -->
+            {% if template.description %}
+            <div class="card bg-white border border-gray-200">
+                <div class="card-body">
+                    <h2 class="card-title text-lg">Descripción</h2>
+                    <p class="text-gray-600">{{ template.description }}</p>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Variables custom -->
+            <div class="card bg-white border border-gray-200">
+                <div class="card-body">
+                    <h2 class="card-title text-lg">Variables Personalizadas</h2>
+                    {% if template.custom_variables.all %}
+                    <div class="overflow-x-auto mt-4">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Variable</th>
+                                    <th>Etiqueta</th>
+                                    <th>Tipo</th>
+                                    <th>Requerida</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for var in template.custom_variables.all %}
+                                <tr>
+                                    <td><code class="text-sm">{{ var.name }}</code></td>
+                                    <td>{{ var.label }}</td>
+                                    <td>{{ var.get_data_type_display }}</td>
+                                    <td>{% if var.is_required %}<i class="ri-check-line text-green-600"></i>{% else %}-{% endif %}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-gray-500 text-sm mt-2">No hay variables personalizadas definidas.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- JSON de contexto esperado -->
+            <div class="card bg-white border border-gray-200">
+                <div class="card-body">
+                    <div class="flex items-center justify-between">
+                        <h2 class="card-title text-lg">Contexto Esperado (JSON)</h2>
+                        <button id="analyze-context-btn" class="btn btn-sm btn-outline" type="button" data-no-loading>
+                            <i class="ri-search-line mr-2"></i>
+                            Analizar HTML
+                        </button>
+                    </div>
+                    <p class="text-sm text-gray-500 mt-1">Se analiza el HTML guardado para detectar variables y tags.</p>
+                    <div class="mt-4 bg-gray-50 border border-gray-200 rounded-lg p-3 overflow-x-auto">
+                        <pre id="expected-context-output" class="text-xs font-mono whitespace-pre text-gray-700"><code>{}</code></pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Versiones recientes -->
+            <div class="card bg-white border border-gray-200">
+                <div class="card-body">
+                    <div class="flex items-center justify-between">
+                        <h2 class="card-title text-lg">Versiones Recientes</h2>
+                        <a href="{% url 'documents:version_list' pk=template.pk %}" class="btn btn-sm btn-ghost">Ver todas</a>
+                    </div>
+                    {% if template.versions.all %}
+                    <div class="space-y-2 mt-4">
+                        {% for version in template.versions.all|slice:":5" %}
+                        <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+                            <div>
+                                <span class="font-medium">v{{ version.version_number }}</span>
+                                <span class="text-sm text-gray-500 ml-2">{{ version.created_at|naturaltime }}</span>
+                            </div>
+                            {% if version.change_description %}
+                            <span class="text-sm text-gray-600 truncate max-w-xs">{{ version.change_description }}</span>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-gray-500 text-sm mt-2">No hay versiones anteriores.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Sidebar -->
+        <div class="space-y-6">
+
+            <!-- Configuración de página -->
+            <div class="card bg-white border border-gray-200">
+                <div class="card-body">
+                    <h2 class="card-title text-lg">Configuración de Página</h2>
+                    <div class="space-y-3 mt-4 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Tamaño</span>
+                            <span class="font-medium">{{ template.get_page_size_display }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Orientación</span>
+                            <span class="font-medium">{{ template.get_orientation_display }}</span>
+                        </div>
+                        <div class="divider my-2"></div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Margen superior</span>
+                            <span>{{ template.margin_top }} cm</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Margen inferior</span>
+                            <span>{{ template.margin_bottom }} cm</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Margen izquierdo</span>
+                            <span>{{ template.margin_left }} cm</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Margen derecho</span>
+                            <span>{{ template.margin_right }} cm</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Metadatos -->
+            <div class="card bg-white border border-gray-200">
+                <div class="card-body">
+                    <h2 class="card-title text-lg">Información</h2>
+                    <div class="space-y-3 mt-4 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Slug</span>
+                            <span class="font-mono">{{ template.slug }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Ruta de publicación</span>
+                            <span class="font-mono">{{ template.target_path }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Creada</span>
+                            <span>{{ template.created_at|naturaltime }}</span>
+                        </div>
+                        {% if template.published_at %}
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Publicada</span>
+                            <span>{{ template.published_at|naturaltime }}</span>
+                        </div>
+                        {% endif %}
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Actualizada</span>
+                            <span>{{ template.updated_at|naturaltime }}</span>
+                        </div>
+                        {% if template.created_by %}
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Autor</span>
+                            <span>{{ template.created_by.get_full_name|default:template.created_by.username }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Acciones -->
+            <div class="card bg-white border border-gray-200">
+                <div class="card-body">
+                    <h2 class="card-title text-lg">Acciones</h2>
+                    <div class="space-y-2 mt-4">
+                        <a href="{% url 'documents:template_edit' pk=template.pk %}" class="btn btn-sm btn-outline w-full justify-start">
+                            <i class="ri-settings-3-line mr-2"></i>
+                            Editar Configuración
+                        </a>
+                        <a href="{% url 'documents:template_delete' pk=template.pk %}" class="btn btn-sm btn-outline btn-error w-full justify-start">
+                            <i class="ri-delete-bin-line mr-2"></i>
+                            Eliminar Plantilla
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(() => {
+    const btn = document.getElementById('analyze-context-btn');
+    const out = document.getElementById('expected-context-output');
+    if (!btn || !out) return;
+    btn.addEventListener('click', async () => {
+        btn.classList.add('loading');
+        btn.disabled = true;
+        try {
+            const res = await fetch('{% url "documents:api_analyze_template_context" pk=template.pk %}', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+            });
+            const data = await res.json();
+            out.textContent = JSON.stringify(data, null, 2);
+        } catch (e) {
+            out.textContent = JSON.stringify({ error: 'No se pudo analizar' }, null, 2);
+        } finally {
+            btn.classList.remove('loading');
+            btn.disabled = false;
+        }
+    });
+})();
+</script>
+{% endblock %}

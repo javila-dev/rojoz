@@ -1,0 +1,524 @@
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Estado de cuenta – {{ sale.contract_number|default:sale.id }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 18mm 16mm 20mm 16mm;
+            @bottom-right {
+                content: "Página " counter(page) " de " counter(pages);
+                font-size: 8px;
+                color: #9ca3af;
+                font-family: "Helvetica Neue", Arial, sans-serif;
+            }
+        }
+
+        :root {
+            --accent: #A0372A;
+            --accent-light: #F3E8E6;
+            --dark: #111827;
+            --muted: #6b7280;
+            --border: #e5e7eb;
+            --bg-subtle: #f9fafb;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: "Helvetica Neue", Arial, sans-serif;
+            color: var(--dark);
+            font-size: 10px;
+            line-height: 1.5;
+        }
+
+        /* ── Header ── */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 16px;
+            border-bottom: 2px solid var(--accent);
+            margin-bottom: 20px;
+        }
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .logo-box {
+            width: 64px;
+            height: 64px;
+            border-radius: 10px;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        .logo-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        .logo-placeholder {
+            width: 64px;
+            height: 64px;
+            border-radius: 10px;
+            background: var(--accent-light);
+            flex-shrink: 0;
+        }
+        .header-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--accent);
+            letter-spacing: -0.3px;
+        }
+        .header-subtitle {
+            font-size: 10px;
+            color: var(--muted);
+            margin-top: 2px;
+        }
+        .header-right {
+            text-align: right;
+        }
+        .header-right .doc-type {
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--muted);
+            font-weight: 600;
+        }
+        .header-right .doc-number {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--dark);
+            margin-top: 2px;
+        }
+        .header-right .doc-date {
+            font-size: 9px;
+            color: var(--muted);
+            margin-top: 4px;
+        }
+
+        /* ── Info cards row ── */
+        .info-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+        .info-card {
+            flex: 1;
+            background: var(--bg-subtle);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 12px;
+        }
+        .info-card .label {
+            font-size: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--muted);
+            font-weight: 600;
+            margin-bottom: 3px;
+        }
+        .info-card .value {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--dark);
+        }
+        .info-card .sub {
+            font-size: 8.5px;
+            color: var(--muted);
+            margin-top: 1px;
+        }
+
+        /* ── Summary boxes ── */
+        .summary-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 22px;
+        }
+        .summary-box {
+            flex: 1;
+            border-radius: 8px;
+            padding: 12px 14px;
+            text-align: center;
+        }
+        .summary-box .s-label {
+            font-size: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .summary-box .s-value {
+            font-size: 16px;
+            font-weight: 700;
+        }
+        .summary-box .s-sub {
+            font-size: 8px;
+            margin-top: 2px;
+        }
+        .box-total {
+            background: var(--accent-light);
+            border: 1px solid #e0c4c0;
+        }
+        .box-total .s-label { color: var(--accent); }
+        .box-total .s-value { color: var(--accent); }
+        .box-total .s-sub { color: #9b6b65; }
+        .box-paid {
+            background: #ecfdf5;
+            border: 1px solid #a7f3d0;
+        }
+        .box-paid .s-label { color: #047857; }
+        .box-paid .s-value { color: #047857; }
+        .box-paid .s-sub { color: #6b9c8a; }
+        .box-pending {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+        }
+        .box-pending .s-label { color: #b91c1c; }
+        .box-pending .s-value { color: #b91c1c; }
+        .box-pending .s-sub { color: #9c6b6b; }
+        .box-surplus {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+        }
+        .box-surplus .s-label { color: #1d4ed8; }
+        .box-surplus .s-value { color: #1d4ed8; }
+        .box-surplus .s-sub { color: #6b849c; }
+
+        /* ── Section titles ── */
+        .section-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 8px;
+            padding-bottom: 4px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .section-title .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent);
+            flex-shrink: 0;
+        }
+
+        /* ── Tables ── */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 9px;
+            margin-bottom: 20px;
+        }
+        thead th {
+            text-align: left;
+            background: var(--dark);
+            color: #fff;
+            padding: 7px 6px;
+            font-weight: 600;
+            font-size: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        thead th:first-child { border-radius: 6px 0 0 0; }
+        thead th:last-child { border-radius: 0 6px 0 0; }
+        tbody td {
+            padding: 6px;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        tbody tr:nth-child(even) td {
+            background: var(--bg-subtle);
+        }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+
+        .badge {
+            display: inline-block;
+            font-size: 7.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        .badge-paid { background: #d1fae5; color: #065f46; }
+        .badge-pending { background: #fef3c7; color: #92400e; }
+        .badge-cap { background: #dbeafe; color: #1e40af; }
+        .badge-int { background: #fef3c7; color: #92400e; }
+        .badge-mora { background: #fee2e2; color: #991b1b; }
+
+        /* ── Totals row in table ── */
+        .total-row td {
+            font-weight: 700;
+            border-top: 2px solid var(--dark);
+            border-bottom: none;
+            background: var(--bg-subtle) !important;
+            padding: 8px 6px;
+        }
+
+        /* ── Parties ── */
+        .parties-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+        .party-card {
+            flex: 1;
+            background: var(--bg-subtle);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 10px;
+        }
+        .party-card .name { font-size: 10px; font-weight: 600; color: var(--dark); }
+        .party-card .doc { font-size: 8.5px; color: var(--muted); }
+
+        /* ── Footer ── */
+        .footer {
+            margin-top: 24px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+        .footer-left {
+            font-size: 8px;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+        .footer-right {
+            text-align: right;
+            font-size: 8px;
+            color: var(--muted);
+        }
+        .footer-brand {
+            font-size: 9px;
+            font-weight: 700;
+            color: var(--accent);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ═══ HEADER ═══ -->
+    <div class="header">
+        <div class="header-left">
+            {% if project.logo %}
+            <div class="logo-box">
+                <img src="{{ project.logo.url }}" alt="{{ project.name }}">
+            </div>
+            {% else %}
+            <div class="logo-placeholder"></div>
+            {% endif %}
+            <div>
+                <div class="header-title">{{ project.name }}</div>
+                <div class="header-subtitle">{{ project.city }}</div>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="doc-type">Estado de cuenta</div>
+            <div class="doc-number">Contrato #{{ sale.contract_number|default:sale.id }}</div>
+            <div class="doc-date">Generado: {{ today|date:"d/m/Y" }}</div>
+        </div>
+    </div>
+
+    <!-- ═══ CLIENT INFO ═══ -->
+    {% if parties %}
+    <div class="parties-row">
+        {% for party in parties %}
+        <div class="party-card">
+            <div class="name">{{ party.full_name }}</div>
+            <div class="doc">{{ party.document_type }} {{ party.document_number }}</div>
+            {% if party.email %}<div class="doc">{{ party.email }}</div>{% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- ═══ CONTRACT INFO ═══ -->
+    <div class="info-row">
+        <div class="info-card">
+            <div class="label">Tipo de casa</div>
+            <div class="value">{{ sale.house_type.name }}</div>
+            <div class="sub">Base $ {{ sale.house_type.base_price|floatformat:0|intcomma }}</div>
+        </div>
+        <div class="info-card">
+            <div class="label">Estado del contrato</div>
+            <div class="value">{{ sale.get_status_display }}</div>
+            <div class="sub">Desde {{ sale.date_created|date:"d/m/Y" }}</div>
+        </div>
+        {% if payment_plan %}
+        <div class="info-card">
+            <div class="label">Financiación</div>
+            <div class="value">$ {{ payment_plan.financed_amount|floatformat:0|intcomma }}</div>
+            <div class="sub">Tasa {{ payment_plan.finance_rate_monthly }}% mensual</div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- ═══ SUMMARY BOXES ═══ -->
+    <div class="summary-row">
+        <div class="summary-box box-total">
+            <div class="s-label">Valor contrato</div>
+            <div class="s-value">$ {{ sale.final_price|floatformat:0|intcomma }}</div>
+            <div class="s-sub">Incluye acabados</div>
+        </div>
+        <div class="summary-box box-paid">
+            <div class="s-label">Total recaudado</div>
+            <div class="s-value">$ {{ total_paid|floatformat:0|intcomma }}</div>
+            <div class="s-sub">{{ receipt_count }} recibo{{ receipt_count|pluralize:"s" }}</div>
+        </div>
+        <div class="summary-box box-pending">
+            <div class="s-label">Saldo pendiente</div>
+            <div class="s-value">$ {{ pending_capital|floatformat:0|intcomma }}</div>
+            <div class="s-sub">Capital por pagar</div>
+        </div>
+        {% if total_surplus > 0 %}
+        <div class="summary-box box-surplus">
+            <div class="s-label">Saldo a favor</div>
+            <div class="s-value">$ {{ total_surplus|floatformat:0|intcomma }}</div>
+            <div class="s-sub">Excedente acumulado</div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- ═══ RECEIPTS TABLE ═══ -->
+    <div class="section-title"><span class="dot"></span> Recibos registrados</div>
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Fecha pago</th>
+                <th>Forma de pago</th>
+                <th class="text-right">Valor</th>
+                <th class="text-right">Saldo a favor</th>
+                <th>Elaborado por</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in receipts %}
+            <tr>
+                <td>{{ r.pk }}</td>
+                <td>{{ r.date_paid|date:"d/m/Y" }}</td>
+                <td>{{ r.payment_method.name }}</td>
+                <td class="text-right">$ {{ r.amount|floatformat:0|intcomma }}</td>
+                <td class="text-right">$ {{ r.surplus|floatformat:0|intcomma }}</td>
+                <td>{{ r.created_by.get_full_name|default:r.created_by.username }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" class="text-center">Sin recibos registrados.</td>
+            </tr>
+            {% endfor %}
+            {% if receipts %}
+            <tr class="total-row">
+                <td colspan="3">Total</td>
+                <td class="text-right">$ {{ total_paid|floatformat:0|intcomma }}</td>
+                <td class="text-right">$ {{ total_surplus|floatformat:0|intcomma }}</td>
+                <td></td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+
+    <!-- ═══ SCHEDULE TABLE ═══ -->
+    {% if schedule_items %}
+    <div class="section-title"><span class="dot"></span> Cronograma de pagos</div>
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Fecha</th>
+                <th>Concepto</th>
+                <th class="text-right">Capital</th>
+                <th class="text-right">Interés</th>
+                <th class="text-right">Total</th>
+                <th class="text-right">Pag. cap.</th>
+                <th class="text-right">Pag. int.</th>
+                <th class="text-center">Estado</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in schedule_items %}
+            <tr>
+                <td>{{ item.numero_cuota|default:item.n }}</td>
+                <td>{{ item.fecha|date:"d/m/Y" }}</td>
+                <td>{{ item.concepto }}</td>
+                <td class="text-right">$ {{ item.capital|floatformat:0|intcomma }}</td>
+                <td class="text-right">$ {{ item.interes|floatformat:0|intcomma }}</td>
+                <td class="text-right">$ {{ item.valor_total|floatformat:0|intcomma }}</td>
+                <td class="text-right">$ {{ item.paid_capital|floatformat:0|intcomma }}</td>
+                <td class="text-right">$ {{ item.paid_interes|floatformat:0|intcomma }}</td>
+                <td class="text-center">
+                    {% if item.is_fully_paid %}
+                    <span class="badge badge-paid">Pagada</span>
+                    {% else %}
+                    <span class="badge badge-pending">Pendiente</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <!-- ═══ APPLICATION DETAIL TABLE ═══ -->
+    {% if applications %}
+    <div class="section-title"><span class="dot"></span> Detalle de recaudo aplicado</div>
+    <table>
+        <thead>
+            <tr>
+                <th>Recibo</th>
+                <th>Fecha pago</th>
+                <th>Cuota</th>
+                <th>Fecha cuota</th>
+                <th class="text-right">Capital</th>
+                <th class="text-right">Interés cte.</th>
+                <th class="text-right">Mora</th>
+                <th class="text-right">Total aplicado</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in applications %}
+            <tr>
+                <td>#{{ row.receipt.pk }}</td>
+                <td>{{ row.receipt.date_paid|date:"d/m/Y" }}</td>
+                <td>{{ row.schedule_item.numero_cuota|default:row.schedule_item.n }}</td>
+                <td>{{ row.schedule_item.fecha|date:"d/m/Y" }}</td>
+                <td class="text-right">$ {{ row.capital|floatformat:0|intcomma }}</td>
+                <td class="text-right">$ {{ row.interes|floatformat:0|intcomma }}</td>
+                <td class="text-right">$ {{ row.mora|floatformat:0|intcomma }}</td>
+                <td class="text-right">$ {{ row.total|floatformat:0|intcomma }}</td>
+            </tr>
+            {% endfor %}
+            <tr class="total-row">
+                <td colspan="4">Total aplicado</td>
+                <td class="text-right">$ {{ total_capital_applied|floatformat:0|intcomma }}</td>
+                <td class="text-right">$ {{ total_interes_applied|floatformat:0|intcomma }}</td>
+                <td class="text-right">$ {{ total_mora_applied|floatformat:0|intcomma }}</td>
+                <td class="text-right">$ {{ total_applied|floatformat:0|intcomma }}</td>
+            </tr>
+        </tbody>
+    </table>
+    {% endif %}
+
+    <!-- ═══ FOOTER ═══ -->
+    <div class="footer">
+        <div class="footer-left">
+            Este documento es un estado de cuenta informativo.<br>
+            No constituye un recibo de pago ni tiene validez fiscal.
+        </div>
+        <div class="footer-right">
+            <div class="footer-brand">{{ project.name }}</div>
+            {{ project.city }}<br>
+            Generado el {{ today|date:"d/m/Y" }} a las {{ today|time:"H:i" }}
+        </div>
+    </div>
+
+</body>
+</html>

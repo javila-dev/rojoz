@@ -1,0 +1,31 @@
+<div class="overflow-x-auto">
+    <table class="table table-zebra w-full text-sm">
+        <thead>
+            <tr>
+                <th>Gestor</th>
+                <th>Cargo</th>
+                <th>%</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for scale in scales %}
+            <tr>
+                <td class="font-semibold">{{ scale.user.get_full_name|default:scale.user.username }}</td>
+                <td>{{ scale.role.name }}</td>
+                <td>{{ scale.percentage }}%</td>
+                <td class="text-right space-x-2">
+                    {% if can_edit %}
+                    <a href="{% url 'finance:sale_commission_scale_edit' sale.id scale.id %}" class="btn btn-xs btn-neutral-elegant">Editar</a>
+                    <a href="{% url 'finance:sale_commission_scale_delete' sale.id scale.id %}" class="btn btn-xs btn-outline">Eliminar</a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4" class="text-center text-gray-500 py-8">No hay escala registrada.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

@@ -1,0 +1,119 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Constructora Rojoz{% endblock %}</title>
+    <link rel="icon" type="image/png" href="https://s3.2asoft.tech/construccion-media-public/document_assets/logo rojoz.png">
+
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.6.0/fonts/remixicon.css" rel="stylesheet" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Gudea:wght@400;700&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'rojoz': {
+                            50: '#fef2f2',
+                            100: '#fee2e2',
+                            200: '#fecaca',
+                            300: '#fca5a5',
+                            400: '#f87171',
+                            500: '#C4574E',
+                            600: '#A0372A',
+                            700: '#7A2518',
+                            800: '#5a1a0f',
+                            900: '#3d100a',
+                        },
+                        ink: "#1f2937",
+                        mist: "#f9fafb",
+                        warm: "#fef7f5"
+                    },
+                    backgroundImage: {
+                        "soft-wash": "linear-gradient(135deg, #fef7f5 0%, #ffffff 35%, #f9fafb 100%)",
+                        "brand-gradient": "linear-gradient(135deg, #A0372A 0%, #C4574E 100%)",
+                        "brand-subtle": "linear-gradient(135deg, rgba(160,55,42,0.05) 0%, rgba(196,87,78,0.12) 100%)"
+                    }
+                }
+            }
+        }
+    </script>
+
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-soft-wash text-ink" style="font-family: 'Gudea', system-ui, -apple-system, sans-serif;">
+    <div class="min-h-screen">
+        <header class="bg-white/80 backdrop-blur border-b border-rojoz-100">
+            <div class="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-rojoz-600 via-rojoz-500 to-rojoz-400 flex items-center justify-center text-white shadow-sm">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="text-xl font-bold" style="font-family: 'Playfair Display', serif;">Rojoz</div>
+                        <div class="text-xs text-gray-500">Constructora & Ventas</div>
+                    </div>
+                </div>
+                <div class="text-xs text-gray-500">{% block header_tagline %}Registro de asesores{% endblock %}</div>
+            </div>
+        </header>
+
+        <main class="px-6 py-10">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <style>
+        .btn-primary {
+            background: linear-gradient(135deg, #A0372A 0%, #C4574E 100%);
+            border: none;
+            color: white;
+            box-shadow: 0 4px 14px rgba(160, 55, 42, 0.25), 0 2px 4px rgba(160, 55, 42, 0.15);
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            box-shadow: 0 8px 20px rgba(160, 55, 42, 0.35), 0 4px 8px rgba(160, 55, 42, 0.2);
+            transform: translateY(-2px);
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(24px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideInRight {
+            from { opacity: 0; transform: translateX(24px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        .animate-fade-in-up { animation: fadeInUp .5s ease both; }
+        .animate-slide-in-right { animation: slideInRight .5s ease both; }
+        .delay-100 { animation-delay: .1s; }
+        .delay-200 { animation-delay: .2s; }
+        .delay-300 { animation-delay: .3s; }
+        .delay-400 { animation-delay: .4s; }
+
+        .input:focus, .select:focus {
+            border-color: #C4574E;
+            box-shadow: 0 0 0 3px rgba(196, 87, 78, 0.12);
+        }
+        .field-error {
+            display: flex; align-items: center; gap: 4px;
+            color: #dc2626; font-size: 0.8rem; margin-top: 4px;
+        }
+        .section-badge {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 28px; height: 28px; border-radius: 50%;
+            background: linear-gradient(135deg, #A0372A, #C4574E);
+            color: white; font-size: 0.75rem; font-weight: 700;
+            flex-shrink: 0;
+        }
+    </style>
+</body>
+</html>

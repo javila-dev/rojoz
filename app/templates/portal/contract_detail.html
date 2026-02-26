@@ -1,0 +1,251 @@
+{% extends "portal/base_portal.html" %}
+{% load humanize %}
+
+{% block title %}Contrato #{{ sale.contract_number|default:sale.id }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Breadcrumb -->
+    <div class="flex items-center gap-2 text-sm text-gray-500">
+        <a href="{% url 'portal:dashboard' %}" class="hover:text-rojoz-600 transition-colors">Mis contratos</a>
+        <i class="ri-arrow-right-s-line text-gray-400"></i>
+        <span class="text-gray-800 font-medium">Contrato #{{ sale.contract_number|default:sale.id }}</span>
+    </div>
+
+    <!-- Header -->
+    <div class="flex flex-wrap items-start justify-between gap-4">
+        <div>
+            <div class="flex items-center gap-3">
+                <h1 class="text-2xl font-bold text-gray-900" style="font-family: 'Playfair Display', serif;">
+                    {{ sale.project.name }}
+                </h1>
+                {% if sale.status == 'APP' %}
+                <span class="badge bg-emerald-100 text-emerald-700 border-0">Aprobado</span>
+                {% elif sale.status == 'PEND' %}
+                <span class="badge bg-amber-100 text-amber-700 border-0">Pendiente</span>
+                {% else %}
+                <span class="badge bg-gray-100 text-gray-600 border-0">{{ sale.get_status_display }}</span>
+                {% endif %}
+            </div>
+            <p class="text-gray-500 text-sm mt-1">
+                {{ sale.house_type.name }}
+                {% if sale.contract_number %} &middot; Contrato #{{ sale.contract_number }}{% endif %}
+                &middot; Creado {{ sale.date_created|date:"d M Y" }}
+            </p>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="{% url 'portal:payments' sale.pk %}" class="btn btn-sm btn-primary gap-1">
+                <i class="ri-money-dollar-circle-line"></i> Ver pagos
+            </a>
+            <a href="{% url 'portal:dashboard' %}" class="btn btn-sm btn-neutral-elegant">Volver</a>
+        </div>
+    </div>
+
+    <!-- Resumen financiero -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="card rounded-xl p-4 text-center">
+            <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Valor total</p>
+            <p class="text-xl font-bold text-gray-900 mt-1">${{ sale.final_price|floatformat:0|intcomma }}</p>
+        </div>
+        <div class="card rounded-xl p-4 text-center">
+            <p class="text-xs text-emerald-600 font-medium uppercase tracking-wide">Pagado</p>
+            <p class="text-xl font-bold text-emerald-700 mt-1">${{ total_paid|floatformat:0|intcomma }}</p>
+        </div>
+        <div class="card rounded-xl p-4 text-center">
+            <p class="text-xs text-amber-600 font-medium uppercase tracking-wide">Pendiente</p>
+            <p class="text-xl font-bold text-amber-700 mt-1">${{ pending|floatformat:0|intcomma }}</p>
+        </div>
+        <div class="card rounded-xl p-4 text-center">
+            <p class="text-xs text-blue-600 font-medium uppercase tracking-wide">Saldo a favor</p>
+            <p class="text-xl font-bold text-blue-700 mt-1">${{ total_surplus|floatformat:0|intcomma }}</p>
+        </div>
+    </div>
+
+    <!-- Info del lote -->
+    {% if sale.lot_metadata %}
+    <div class="card bg-white rounded-xl overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+            <i class="ri-map-pin-line text-rojoz-600"></i>
+            <h2 class="font-bold text-gray-800">Informacion del inmueble</h2>
+        </div>
+        <div class="p-5">
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {% if sale.lot_metadata.lote %}
+                <div>
+                    <p class="text-xs text-gray-400 uppercase tracking-wide">Lote</p>
+                    <p class="text-sm font-semibold text-gray-800 mt-0.5">{{ sale.lot_metadata.lote }}</p>
+                </div>
+                {% endif %}
+                {% if sale.lot_metadata.manzana %}
+                <div>
+                    <p class="text-xs text-gray-400 uppercase tracking-wide">Manzana</p>
+                    <p class="text-sm font-semibold text-gray-800 mt-0.5">{{ sale.lot_metadata.manzana }}</p>
+                </div>
+                {% endif %}
+                {% if sale.lot_metadata.matricula %}
+                <div>
+                    <p class="text-xs text-gray-400 uppercase tracking-wide">Matricula</p>
+                    <p class="text-sm font-semibold text-gray-800 mt-0.5">{{ sale.lot_metadata.matricula }}</p>
+                </div>
+                {% endif %}
+                <div>
+                    <p class="text-xs text-gray-400 uppercase tracking-wide">Tipo vivienda</p>
+                    <p class="text-sm font-semibold text-gray-800 mt-0.5">{{ sale.house_type.name }}</p>
+                </div>
+                {% if sale.house_type.area %}
+                <div>
+                    <p class="text-xs text-gray-400 uppercase tracking-wide">Area</p>
+                    <p class="text-sm font-semibold text-gray-800 mt-0.5">{{ sale.house_type.area }} m&sup2;</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Titulares -->
+    {% if parties %}
+    <div class="card bg-white rounded-xl overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+            <i class="ri-team-line text-rojoz-600"></i>
+            <h2 class="font-bold text-gray-800">Titulares del contrato</h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="table w-full text-sm">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Documento</th>
+                        <th>Telefono</th>
+                        <th>Email</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for party in parties %}
+                    <tr>
+                        <td class="font-semibold">{{ party.full_name }}</td>
+                        <td>{{ party.document_type_label }} {{ party.document_number }}</td>
+                        <td>{{ party.mobile|default:party.phone|default:"—" }}</td>
+                        <td>{{ party.email|default:"—" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Acabados -->
+    {% if finishes %}
+    <div class="card bg-white rounded-xl overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+            <i class="ri-palette-line text-rojoz-600"></i>
+            <h2 class="font-bold text-gray-800">Acabados seleccionados</h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="table w-full text-sm">
+                <thead>
+                    <tr>
+                        <th>Acabado</th>
+                        <th class="text-right">Valor</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sf in finishes %}
+                    <tr>
+                        <td>{{ sf.finish.name }}</td>
+                        <td class="text-right font-semibold">${{ sf.price_snapshot|floatformat:0|intcomma }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Plan de pago -->
+    {% if plan %}
+    <div class="card bg-white rounded-xl overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+            <i class="ri-calculator-line text-rojoz-600"></i>
+            <h2 class="font-bold text-gray-800">Plan de pago</h2>
+        </div>
+        <div class="p-5">
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                <div>
+                    <p class="text-xs text-gray-400 uppercase tracking-wide">Precio total</p>
+                    <p class="text-sm font-bold text-gray-800 mt-0.5">${{ plan.price_total|floatformat:0|intcomma }}</p>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-400 uppercase tracking-wide">Cuota inicial</p>
+                    <p class="text-sm font-bold text-gray-800 mt-0.5">${{ plan.initial_amount|floatformat:0|intcomma }}</p>
+                    <p class="text-xs text-gray-500">{{ plan.initial_percent|floatformat:1 }}% en {{ plan.initial_months }} mes{{ plan.initial_months|pluralize:"es" }}</p>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-400 uppercase tracking-wide">Financiacion</p>
+                    <p class="text-sm font-bold text-gray-800 mt-0.5">${{ plan.financed_amount|floatformat:0|intcomma }}</p>
+                    <p class="text-xs text-gray-500">{{ plan.finance_months }} mes{{ plan.finance_months|pluralize:"es" }} al {{ plan.finance_rate_monthly }}% mensual</p>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-400 uppercase tracking-wide">Tipo amortizacion</p>
+                    <p class="text-sm font-semibold text-gray-800 mt-0.5">{{ plan.get_amortization_type_display }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Documentos -->
+    <div class="card bg-white rounded-xl overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+            <i class="ri-file-download-line text-rojoz-600"></i>
+            <h2 class="font-bold text-gray-800">Documentos</h2>
+        </div>
+        <div class="p-5">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {% if plan %}
+                <a href="{% url 'portal:schedule_pdf' sale.pk %}" target="_blank"
+                   class="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-rojoz-300 hover:bg-rojoz-50/50 transition-all group">
+                    <div class="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
+                        <i class="ri-calendar-schedule-line text-blue-500 text-lg"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm font-semibold text-gray-800 group-hover:text-rojoz-700">Cronograma de pagos</p>
+                        <p class="text-xs text-gray-500">Descargar PDF</p>
+                    </div>
+                </a>
+                {% endif %}
+
+                <a href="{% url 'portal:account_statement_pdf' sale.pk %}" target="_blank"
+                   class="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-rojoz-300 hover:bg-rojoz-50/50 transition-all group">
+                    <div class="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0">
+                        <i class="ri-bill-line text-emerald-500 text-lg"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm font-semibold text-gray-800 group-hover:text-rojoz-700">Estado de cuenta</p>
+                        <p class="text-xs text-gray-500">Descargar PDF</p>
+                    </div>
+                </a>
+            </div>
+
+            {% if documents %}
+            <div class="mt-4 pt-4 border-t border-gray-100">
+                <p class="text-xs text-gray-400 uppercase tracking-wide font-semibold mb-3">Documentos adjuntos</p>
+                <div class="space-y-2">
+                    {% for doc in documents %}
+                    <a href="{% url 'portal:contract_document' sale.pk doc.id %}" target="_blank"
+                       class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors">
+                        <i class="ri-attachment-2 text-gray-400"></i>
+                        <span class="text-sm text-gray-700">{{ doc.description|default:"Documento" }}</span>
+                        <span class="text-xs text-gray-400 ml-auto">{{ doc.date|date:"d/m/Y" }}</span>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+{% endblock %}

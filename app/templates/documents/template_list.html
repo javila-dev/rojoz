@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Plantillas - Constructora Rojoz{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.6.0/fonts/remixicon.css">
+{% endblock %}
+
+{% block content %}
+<div class="p-8 max-w-7xl mx-auto space-y-8">
+
+    <!-- Header -->
+    <div class="flex flex-wrap items-start justify-between gap-6">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900" style="font-family: 'Playfair Display', serif;">
+                Plantillas
+            </h1>
+            <p class="text-gray-600 mt-1">Gestiona tus plantillas HTML publicadas</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <a href="{% url 'documents:asset_list' %}" class="btn btn-outline border-gray-300 hover:bg-gray-50">
+                <i class="ri-image-line mr-2"></i>
+                Assets
+            </a>
+            <a href="{% url 'documents:template_create' %}" class="btn bg-rojoz-600 hover:bg-rojoz-700 text-white border-none">
+                <i class="ri-add-line mr-2"></i>
+                Nueva Plantilla
+            </a>
+        </div>
+    </div>
+
+    <!-- Lista de plantillas -->
+    {% if templates %}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for template in templates %}
+        <div class="card bg-white border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+            <div class="card-body">
+                <!-- Header de la tarjeta -->
+                <div class="flex items-start justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-lg bg-rojoz-100 flex items-center justify-center">
+                            <i class="ri-file-pdf-line text-rojoz-600 text-xl"></i>
+                        </div>
+                        <div>
+                            <h2 class="card-title text-lg">{{ template.name }}</h2>
+                            <span class="badge badge-sm {% if template.is_active %}badge-success{% else %}badge-ghost{% endif %}">
+                                {% if template.is_active %}Activa{% else %}Inactiva{% endif %}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Info -->
+                <div class="mt-4 space-y-2 text-sm text-gray-600">
+                    <div class="flex items-center gap-2">
+                        <i class="ri-link-m text-gray-400"></i>
+                        <span class="font-mono text-xs">{{ template.target_path }}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <i class="ri-file-copy-line text-gray-400"></i>
+                        <span>{{ template.page_size }} {{ template.get_orientation_display }}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <i class="ri-flag-line text-gray-400"></i>
+                        <span>{{ template.get_status_display }}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <i class="ri-time-line text-gray-400"></i>
+                        <span>Actualizada {{ template.updated_at|naturaltime }}</span>
+                    </div>
+                </div>
+
+                <!-- Descripción -->
+                {% if template.description %}
+                <p class="mt-3 text-sm text-gray-500 line-clamp-2">{{ template.description }}</p>
+                {% endif %}
+
+                <!-- Acciones -->
+                <div class="card-actions justify-end mt-4 pt-4 border-t border-gray-100">
+                    <a href="{% url 'documents:editor' pk=template.pk %}" class="btn btn-sm bg-rojoz-600 hover:bg-rojoz-700 text-white border-none">
+                        <i class="ri-edit-line mr-1"></i>
+                        Editar
+                    </a>
+                    <form action="{% url 'documents:template_publish' pk=template.pk %}" method="post">
+                        {% csrf_token %}
+                        <button class="btn btn-sm btn-outline" type="submit">
+                            <i class="ri-upload-cloud-2-line mr-1"></i>
+                            Publicar
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <!-- Empty state -->
+    <div class="card bg-white border border-gray-200">
+        <div class="card-body items-center text-center py-16">
+            <div class="w-20 h-20 rounded-full bg-rojoz-100 flex items-center justify-center mb-4">
+                <i class="ri-file-pdf-line text-rojoz-600 text-4xl"></i>
+            </div>
+            <h3 class="text-xl font-semibold text-gray-900">No hay plantillas</h3>
+            <p class="text-gray-600 mt-2 max-w-md">
+                Crea tu primera plantilla HTML para empezar a publicar documentos personalizados.
+            </p>
+            <a href="{% url 'documents:template_create' %}" class="btn bg-rojoz-600 hover:bg-rojoz-700 text-white border-none mt-6">
+                <i class="ri-add-line mr-2"></i>
+                Crear Plantilla
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

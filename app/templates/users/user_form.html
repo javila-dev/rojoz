@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title %}{% if is_create %}Nuevo usuario{% else %}Editar usuario{% endif %}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900" style="font-family:'Playfair Display',serif;">
+            {% if is_create %}Nuevo usuario{% else %}Editar usuario{% endif %}
+        </h1>
+        <p class="text-sm text-gray-500">Gestiona datos, roles y acceso.</p>
+    </div>
+
+    <form method="post" class="card bg-white border border-gray-200 shadow-sm">
+        {% csrf_token %}
+        <div class="card-body space-y-6">
+            {% if form.non_field_errors %}
+            <div class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 flex items-start gap-2">
+                <i class="ri-error-warning-line text-lg mt-0.5 flex-shrink-0"></i>
+                <div>{{ form.non_field_errors.0 }}</div>
+            </div>
+            {% endif %}
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="label"><span class="label-text font-medium">Usuario</span></label>
+                    {{ form.username }}
+                    {% if form.username.errors %}<div class="field-error"><i class="ri-alert-line"></i> {{ form.username.errors.0 }}</div>{% endif %}
+                </div>
+                <div>
+                    <label class="label"><span class="label-text font-medium">Email</span></label>
+                    {{ form.email }}
+                    {% if form.email.errors %}<div class="field-error"><i class="ri-alert-line"></i> {{ form.email.errors.0 }}</div>{% endif %}
+                </div>
+                <div>
+                    <label class="label"><span class="label-text font-medium">Nombres</span></label>
+                    {{ form.first_name }}
+                    {% if form.first_name.errors %}<div class="field-error"><i class="ri-alert-line"></i> {{ form.first_name.errors.0 }}</div>{% endif %}
+                </div>
+                <div>
+                    <label class="label"><span class="label-text font-medium">Apellidos</span></label>
+                    {{ form.last_name }}
+                    {% if form.last_name.errors %}<div class="field-error"><i class="ri-alert-line"></i> {{ form.last_name.errors.0 }}</div>{% endif %}
+                </div>
+                <div>
+                    <label class="label"><span class="label-text font-medium">Celular</span></label>
+                    {{ form.phone }}
+                    {% if form.phone.errors %}<div class="field-error"><i class="ri-alert-line"></i> {{ form.phone.errors.0 }}</div>{% endif %}
+                </div>
+                <div class="flex items-center gap-3 pt-8">
+                    {{ form.is_active }}
+                    <span class="text-sm text-gray-700">Activo</span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="label"><span class="label-text font-medium">Rol principal</span></label>
+                    {{ form.role }}
+                    {% if form.role.errors %}<div class="field-error"><i class="ri-alert-line"></i> {{ form.role.errors.0 }}</div>{% endif %}
+                </div>
+                <div>
+                    <label class="label"><span class="label-text font-medium">Roles adicionales</span></label>
+                    {{ form.roles }}
+                    {% if form.roles.errors %}<div class="field-error"><i class="ri-alert-line"></i> {{ form.roles.errors.0 }}</div>{% endif %}
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="label"><span class="label-text font-medium">{% if is_create %}Contrasena{% else %}Nueva contrasena{% endif %}</span></label>
+                    {{ form.password1 }}
+                    {% if form.password1.errors %}<div class="field-error"><i class="ri-alert-line"></i> {{ form.password1.errors.0 }}</div>{% endif %}
+                </div>
+                <div>
+                    <label class="label"><span class="label-text font-medium">Confirmar contrasena</span></label>
+                    {{ form.password2 }}
+                    {% if form.password2.errors %}<div class="field-error"><i class="ri-alert-line"></i> {{ form.password2.errors.0 }}</div>{% endif %}
+                </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-3 pt-2 border-t border-gray-100">
+                <a href="{% url 'users:user_list' %}" class="btn btn-ghost">Cancelar</a>
+                <button type="submit" class="btn btn-primary">Guardar</button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

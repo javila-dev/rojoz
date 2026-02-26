@@ -1,0 +1,516 @@
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Recibo de caja #{{ receipt.pk }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 18mm 16mm 20mm 16mm;
+        }
+
+        :root {
+            --accent: #A0372A;
+            --accent-light: #F3E8E6;
+            --dark: #111827;
+            --muted: #6b7280;
+            --border: #e5e7eb;
+            --bg-subtle: #f9fafb;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: "Helvetica Neue", Arial, sans-serif;
+            color: var(--dark);
+            font-size: 10px;
+            line-height: 1.5;
+        }
+
+        /* ── Header ── */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 14px;
+            border-bottom: 2px solid var(--accent);
+            margin-bottom: 22px;
+        }
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .logo-box {
+            width: 58px;
+            height: 58px;
+            border-radius: 10px;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        .logo-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        .logo-placeholder {
+            width: 58px;
+            height: 58px;
+            border-radius: 10px;
+            background: var(--accent-light);
+            flex-shrink: 0;
+        }
+        .header-brand {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--accent);
+            letter-spacing: -0.3px;
+        }
+        .header-city {
+            font-size: 10px;
+            color: var(--muted);
+            margin-top: 1px;
+        }
+        .header-right {
+            text-align: right;
+        }
+        .doc-label {
+            font-size: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--muted);
+            font-weight: 600;
+        }
+        .doc-number {
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--dark);
+            margin-top: 2px;
+            letter-spacing: -0.5px;
+        }
+        .doc-date {
+            font-size: 9px;
+            color: var(--muted);
+            margin-top: 4px;
+        }
+
+        /* ── Amount highlight ── */
+        .amount-bar {
+            background: var(--dark);
+            color: #fff;
+            border-radius: 10px;
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 22px;
+        }
+        .amount-bar .label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+            opacity: 0.7;
+        }
+        .amount-bar .value {
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+        .amount-bar .right-info {
+            text-align: right;
+        }
+        .amount-bar .method {
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .amount-bar .date {
+            font-size: 9px;
+            opacity: 0.6;
+            margin-top: 2px;
+        }
+
+        /* ── Info grid ── */
+        .info-grid {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 22px;
+        }
+        .info-card {
+            flex: 1;
+            background: var(--bg-subtle);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 12px;
+        }
+        .info-card .label {
+            font-size: 7.5px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--muted);
+            font-weight: 600;
+            margin-bottom: 3px;
+        }
+        .info-card .value {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--dark);
+        }
+        .info-card .sub {
+            font-size: 8.5px;
+            color: var(--muted);
+            margin-top: 1px;
+        }
+
+        /* ── Parties ── */
+        .parties-section {
+            margin-bottom: 22px;
+        }
+        .parties-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 8px;
+        }
+        .party-card {
+            flex: 1;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 10px;
+        }
+        .party-card .name { font-size: 10px; font-weight: 600; color: var(--dark); }
+        .party-card .doc { font-size: 8.5px; color: var(--muted); }
+
+        /* ── Section titles ── */
+        .section-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 8px;
+            padding-bottom: 4px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .section-title .dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--accent);
+            flex-shrink: 0;
+        }
+
+        /* ── Tables ── */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 9px;
+            margin-bottom: 22px;
+        }
+        thead th {
+            text-align: left;
+            background: var(--dark);
+            color: #fff;
+            padding: 7px 6px;
+            font-weight: 600;
+            font-size: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        thead th:first-child { border-radius: 6px 0 0 0; }
+        thead th:last-child { border-radius: 0 6px 0 0; }
+        tbody td {
+            padding: 6px;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        tbody tr:nth-child(even) td {
+            background: var(--bg-subtle);
+        }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+
+        .badge {
+            display: inline-block;
+            font-size: 7px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        .badge-cap { background: #dbeafe; color: #1e40af; }
+        .badge-int { background: #fef3c7; color: #92400e; }
+        .badge-mora { background: #fee2e2; color: #991b1b; }
+
+        .total-row td {
+            font-weight: 700;
+            border-top: 2px solid var(--dark);
+            border-bottom: none;
+            background: var(--bg-subtle) !important;
+            padding: 8px 6px;
+        }
+
+        /* ── Surplus callout ── */
+        .surplus-callout {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 8px;
+            padding: 10px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 22px;
+        }
+        .surplus-callout .sc-label {
+            font-size: 9px;
+            color: #1d4ed8;
+            font-weight: 600;
+        }
+        .surplus-callout .sc-value {
+            font-size: 14px;
+            color: #1d4ed8;
+            font-weight: 800;
+        }
+
+        /* ── Notes ── */
+        .notes-box {
+            background: var(--bg-subtle);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-bottom: 22px;
+        }
+        .notes-box .label {
+            font-size: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--muted);
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .notes-box .text {
+            font-size: 9.5px;
+            color: var(--dark);
+        }
+
+        /* ── Signatures ── */
+        .signatures {
+            display: flex;
+            gap: 40px;
+            margin-top: 50px;
+            padding-top: 10px;
+        }
+        .sig-block {
+            flex: 1;
+            text-align: center;
+        }
+        .sig-line {
+            border-top: 1px solid var(--dark);
+            margin-bottom: 6px;
+            margin-top: 40px;
+        }
+        .sig-name {
+            font-size: 9px;
+            font-weight: 600;
+            color: var(--dark);
+        }
+        .sig-role {
+            font-size: 8px;
+            color: var(--muted);
+        }
+
+        /* ── Footer ── */
+        .footer {
+            margin-top: 30px;
+            padding-top: 10px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+        .footer-left {
+            font-size: 8px;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+        .footer-right {
+            text-align: right;
+            font-size: 8px;
+            color: var(--muted);
+        }
+        .footer-brand {
+            font-size: 9px;
+            font-weight: 700;
+            color: var(--accent);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ═══ HEADER ═══ -->
+    <div class="header">
+        <div class="header-left">
+            {% if project.logo %}
+            <div class="logo-box">
+                <img src="{{ project.logo.url }}" alt="{{ project.name }}">
+            </div>
+            {% else %}
+            <div class="logo-placeholder"></div>
+            {% endif %}
+            <div>
+                <div class="header-brand">{{ project.name }}</div>
+                <div class="header-city">{{ project.city }}</div>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="doc-label">Recibo de caja</div>
+            <div class="doc-number">#{{ receipt.pk }}</div>
+            <div class="doc-date">{{ receipt.date_registered|date:"d/m/Y H:i" }}</div>
+        </div>
+    </div>
+
+    <!-- ═══ AMOUNT BAR ═══ -->
+    <div class="amount-bar">
+        <div>
+            <div class="label">Valor recibido</div>
+            <div class="value">$ {{ receipt.amount|floatformat:0|intcomma }}</div>
+        </div>
+        <div class="right-info">
+            <div class="method">{{ receipt.payment_method.name }}</div>
+            <div class="date">Pagado el {{ receipt.date_paid|date:"d/m/Y" }}</div>
+        </div>
+    </div>
+
+    <!-- ═══ CONTRACT INFO ═══ -->
+    <div class="info-grid">
+        <div class="info-card">
+            <div class="label">Contrato</div>
+            <div class="value">#{{ sale.contract_number|default:sale.id }}</div>
+            <div class="sub">{{ sale.get_status_display }}</div>
+        </div>
+        <div class="info-card">
+            <div class="label">Tipo de casa</div>
+            <div class="value">{{ sale.house_type.name }}</div>
+            <div class="sub">$ {{ sale.house_type.base_price|floatformat:0|intcomma }}</div>
+        </div>
+        <div class="info-card">
+            <div class="label">Valor contrato</div>
+            <div class="value">$ {{ sale.final_price|floatformat:0|intcomma }}</div>
+            <div class="sub">Incluye acabados</div>
+        </div>
+        <div class="info-card">
+            <div class="label">Elaborado por</div>
+            <div class="value">{{ receipt.created_by.get_full_name|default:receipt.created_by.username }}</div>
+            <div class="sub">{{ receipt.date_registered|date:"d/m/Y H:i" }}</div>
+        </div>
+    </div>
+
+    <!-- ═══ PARTIES ═══ -->
+    {% if parties %}
+    <div class="parties-section">
+        <div class="section-title"><span class="dot"></span> Titulares del contrato</div>
+        <div class="parties-row">
+            {% for party in parties %}
+            <div class="party-card">
+                <div class="name">{{ party.full_name }}</div>
+                <div class="doc">{{ party.document_type }} {{ party.document_number }}</div>
+                {% if party.email %}<div class="doc">{{ party.email }}</div>{% endif %}
+                {% if party.phone %}<div class="doc">{{ party.phone }}</div>{% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ═══ APPLICATION TABLE ═══ -->
+    <div class="section-title"><span class="dot"></span> Distribución del pago</div>
+    <table>
+        <thead>
+            <tr>
+                <th>Cuota #</th>
+                <th>Fecha cuota</th>
+                <th>Concepto</th>
+                <th class="text-right">Capital</th>
+                <th class="text-right">Interés cte.</th>
+                <th class="text-right">Mora</th>
+                <th class="text-right">Total aplicado</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in app_rows %}
+            <tr>
+                <td>{{ row.schedule_item.numero_cuota|default:row.schedule_item.n }}</td>
+                <td>{{ row.schedule_item.fecha|date:"d/m/Y" }}</td>
+                <td>
+                    {% if row.capital > 0 %}<span class="badge badge-cap">Capital</span>{% endif %}
+                    {% if row.interes > 0 %}<span class="badge badge-int">Interés</span>{% endif %}
+                    {% if row.mora > 0 %}<span class="badge badge-mora">Mora</span>{% endif %}
+                </td>
+                <td class="text-right">$ {{ row.capital|floatformat:0|intcomma }}</td>
+                <td class="text-right">$ {{ row.interes|floatformat:0|intcomma }}</td>
+                <td class="text-right">$ {{ row.mora|floatformat:0|intcomma }}</td>
+                <td class="text-right">$ {{ row.total|floatformat:0|intcomma }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" class="text-center">Sin aplicaciones registradas.</td>
+            </tr>
+            {% endfor %}
+            {% if app_rows %}
+            <tr class="total-row">
+                <td colspan="3">Total aplicado</td>
+                <td class="text-right">$ {{ total_capital|floatformat:0|intcomma }}</td>
+                <td class="text-right">$ {{ total_interes|floatformat:0|intcomma }}</td>
+                <td class="text-right">$ {{ total_mora|floatformat:0|intcomma }}</td>
+                <td class="text-right">$ {{ total_applied|floatformat:0|intcomma }}</td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+
+    <!-- ═══ SURPLUS ═══ -->
+    {% if receipt.surplus > 0 %}
+    <div class="surplus-callout">
+        <div class="sc-label">Saldo a favor generado por este recibo</div>
+        <div class="sc-value">$ {{ receipt.surplus|floatformat:0|intcomma }}</div>
+    </div>
+    {% endif %}
+
+    <!-- ═══ NOTES ═══ -->
+    {% if receipt.notes %}
+    <div class="notes-box">
+        <div class="label">Observaciones</div>
+        <div class="text">{{ receipt.notes }}</div>
+    </div>
+    {% endif %}
+
+    <!-- ═══ SIGNATURES ═══ -->
+    <div class="signatures">
+        <div class="sig-block">
+            <div class="sig-line"></div>
+            <div class="sig-name">{{ receipt.created_by.get_full_name|default:receipt.created_by.username }}</div>
+            <div class="sig-role">Elaboró</div>
+        </div>
+        <div class="sig-block">
+            <div class="sig-line"></div>
+            <div class="sig-name">{{ parties.0.full_name|default:"Cliente" }}</div>
+            <div class="sig-role">Recibido por</div>
+        </div>
+    </div>
+
+    <!-- ═══ FOOTER ═══ -->
+    <div class="footer">
+        <div class="footer-left">
+            Este recibo es un comprobante de pago recibido.<br>
+            No reemplaza la factura de venta ni tiene efectos fiscales.
+        </div>
+        <div class="footer-right">
+            <div class="footer-brand">{{ project.name }}</div>
+            {{ project.city }}<br>
+            Generado el {{ today|date:"d/m/Y" }} a las {{ today|time:"H:i" }}
+        </div>
+    </div>
+
+</body>
+</html>

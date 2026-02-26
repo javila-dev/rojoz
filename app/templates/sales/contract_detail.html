@@ -1,0 +1,483 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Contrato {{ contract.contract_number|default:contract.id }}{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.6.0/fonts/remixicon.css">
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-8">
+    <div class="rounded-2xl border border-gray-200 bg-white/80 backdrop-blur-xl shadow-sm p-6 lg:p-8">
+        <div class="flex flex-wrap items-start justify-between gap-6">
+            <div class="space-y-2">
+                <div class="flex items-center gap-3">
+                    <span class="badge badge-neutral-elegant">Contrato</span>
+                    <span class="text-xs text-gray-500">{{ contract.date_created|date:"Y-m-d" }}</span>
+                </div>
+                <h1 class="text-3xl lg:text-4xl font-bold text-gray-900">Contrato #{{ contract.contract_number|default:"—" }}</h1>
+                <p class="text-sm text-gray-600">Proyecto: <span class="font-semibold">{{ contract.project.name }}</span> · {{ contract.project.city }}</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+                <a href="{% url 'sales:contract_status_select' contract.project.id %}" class="btn btn-neutral-elegant btn-sm sm:btn-md">Volver</a>
+
+                <div class="dropdown dropdown-end">
+                    <div tabindex="0" role="button" class="btn btn-neutral-elegant btn-sm sm:btn-md">Contrato</div>
+                    <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box shadow w-56 border border-gray-200">
+                        {% if contract.status == contract.State.PENDING or contract.status == contract.State.APPROVED %}
+                        <li><a href="{% url 'sales:contract_pdf' contract.id %}" data-no-loading>Descargar contrato PDF</a></li>
+                        <li><a href="{% url 'sales:pagare_pdf' contract.id %}" data-no-loading>Descargar pagaré PDF</a></li>
+                        {% endif %}
+                        {% if can_edit %}
+                        <li><a href="{% url 'sales:contract_edit_flow' contract.id %}">Editar en flujo</a></li>
+                        {% endif %}
+                        {% if contract.status == contract.State.PENDING %}
+                        <li><label for="contract_parties_modal">Gestionar terceros</label></li>
+                        {% endif %}
+                        <li><label for="sale_documents_modal">Documentos adjuntos</label></li>
+                    </ul>
+                </div>
+
+                <div class="dropdown dropdown-end">
+                    <div tabindex="0" role="button" class="btn btn-neutral-elegant btn-sm sm:btn-md">Finanzas</div>
+                    <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box shadow w-56 border border-gray-200">
+                        <li><a href="{% url 'finance:receipt_list' contract.id %}">Recaudos</a></li>
+                        <li><a href="{% url 'finance:account_statement_pdf' contract.id %}" target="_blank" data-no-loading>Estado de cuenta</a></li>
+                    </ul>
+                </div>
+
+                <div class="dropdown dropdown-end">
+                    <div tabindex="0" role="button" class="btn btn-neutral-elegant btn-sm sm:btn-md">Comisiones</div>
+                    <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box shadow w-56 border border-gray-200">
+                        {% if contract.status == contract.State.PENDING %}
+                        <li>
+                            <label
+                                for="commission_scale_modal"
+                                hx-get="{% url 'finance:sale_commission_scale_create' contract.id %}"
+                                hx-target="#commission-scale-form"
+                                hx-swap="innerHTML"
+                            >Agregar escala</label>
+                        </li>
+                        {% endif %}
+                        <li><a href="{% url 'finance:sale_commission_scale_list' contract.id %}">Ver escala completa</a></li>
+                        <li><a href="{% url 'finance:commission_liquidation_queue' %}">Panel de liquidación</a></li>
+                    </ul>
+                </div>
+
+                {% if can_approve %}
+                <form method="post" action="{% url 'sales:contract_approve' contract.id %}">
+                    {% csrf_token %}
+                    <button class="btn border-0 text-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-2xl" type="submit" style="background:linear-gradient(135deg,#16a34a,#22c55e);">
+                        Aprobar
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        <div class="mt-6 grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+            <div class="stat bg-base-100 border border-gray-100 rounded-xl">
+                <div class="stat-title text-xs">Tipo de casa</div>
+                <div class="stat-value text-base sm:text-xl">{{ contract.house_type.name }}</div>
+                <div class="stat-desc">Base ${{ contract.house_type.base_price|floatformat:0|intcomma }}</div>
+            </div>
+            <div class="stat bg-base-100 border border-gray-100 rounded-xl">
+                <div class="stat-title text-xs">Valor total</div>
+                <div class="stat-value text-base sm:text-xl">$ {{ contract.final_price|floatformat:0|intcomma }}</div>
+                <div class="stat-desc">Incluye acabados</div>
+            </div>
+            <div class="stat bg-base-100 border border-gray-100 rounded-xl col-span-2 sm:col-span-1">
+                <div class="stat-title text-xs">Estado</div>
+                <div class="stat-value text-base sm:text-xl">{{ contract.get_status_display }}</div>
+                <div class="stat-desc">{{ contract.date_created|date:"Y-m-d" }}</div>
+            </div>
+        </div>
+        <div class="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+            <div class="stat bg-base-100 border border-gray-100 rounded-xl">
+                <div class="stat-title text-xs">Total recaudado</div>
+                <div class="stat-value text-base sm:text-xl text-success">$ {{ total_paid|floatformat:0|intcomma }}</div>
+                <div class="stat-desc">Todos los pagos recibidos</div>
+            </div>
+            <div class="stat bg-base-100 border border-gray-100 rounded-xl">
+                <div class="stat-title text-xs">Capital pagado</div>
+                <div class="stat-value text-base sm:text-xl">$ {{ total_capital_paid|floatformat:0|intcomma }}</div>
+                <div class="stat-desc">Abonado a capital</div>
+            </div>
+            <div class="stat bg-base-100 border border-gray-100 rounded-xl col-span-2 sm:col-span-1">
+                <div class="stat-title text-xs">Saldo pendiente</div>
+                <div class="stat-value text-base sm:text-xl text-error">$ {{ pending_capital|floatformat:0|intcomma }}</div>
+                <div class="stat-desc">Capital por pagar</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-2 space-y-6">
+            <div class="card bg-white border border-gray-200 shadow-sm">
+                <div class="card-body">
+                    <div class="flex items-center justify-between gap-3">
+                        <h2 class="card-title flex items-center gap-2">
+                            <i class="ri-group-line text-gray-500"></i>
+                            Terceros
+                        </h2>
+                        {% if contract.status == contract.State.PENDING %}
+                        <label for="contract_parties_modal" class="btn btn-sm btn-neutral-elegant">Gestionar</label>
+                        {% endif %}
+                    </div>
+                    <p class="text-sm text-gray-600">Firmantes del contrato.</p>
+                    <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {% for party in contract.parties.all %}
+                        <div class="border border-gray-100 rounded-xl p-4">
+                            <div class="text-sm font-semibold text-gray-900">{{ party.full_name }}</div>
+                            <div class="text-xs text-gray-500">{{ party.document_type_label }} {{ party.document_number }}</div>
+                            <div class="text-xs text-gray-500">{{ party.email|default:"—" }}</div>
+                        </div>
+                        {% empty %}
+                        <div class="text-sm text-gray-500">Sin terceros registrados.</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="card bg-white border border-gray-200 shadow-sm">
+                <div class="card-body">
+                    <h2 class="card-title flex items-center gap-2">
+                        <i class="ri-magic-line text-gray-500"></i>
+                        Acabados seleccionados
+                    </h2>
+                    <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {% for finish in contract.salefinish_set.all %}
+                        <div class="border border-gray-100 rounded-xl p-4">
+                            <div class="text-sm font-semibold text-gray-900">{{ finish.finish.name }}</div>
+                            <div class="text-xs text-gray-500">$ {{ finish.price_snapshot|floatformat:0|intcomma }}</div>
+                        </div>
+                        {% empty %}
+                        <div class="text-sm text-gray-500">Sin acabados adicionales.</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <aside class="space-y-6">
+            <div class="card bg-white border border-gray-200 shadow-sm">
+                <div class="card-body">
+                    <h3 class="card-title flex items-center gap-2">
+                        <i class="ri-map-pin-2-line text-gray-500"></i>
+                        Resumen del lote
+                    </h3>
+                    <div class="mt-3 text-sm text-gray-600 space-y-2">
+                        <div class="flex items-center justify-between"><span>ID inmueble</span><span class="font-semibold">{{ contract.lot_metadata.id_inmueble|default:"—" }}</span></div>
+                        <div class="flex items-center justify-between"><span>Matrícula</span><span class="font-semibold">{{ contract.lot_metadata.matricula|default:"—" }}</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card bg-white border border-gray-200 shadow-sm">
+                <div class="card-body">
+                    <div class="flex items-center justify-between gap-3">
+                        <h3 class="card-title flex items-center gap-2">
+                            <i class="ri-bank-card-line text-gray-500"></i>
+                            Plan de pago
+                        </h3>
+                        {% if contract.status == contract.State.APPROVED %}
+                        <a href="{% url 'finance:account_statement_pdf' contract.id %}" class="btn btn-xs btn-neutral-elegant" data-no-loading target="_blank">Estado de cuenta</a>
+                        {% endif %}
+                    </div>
+                    {% if payment_plan %}
+                    <div class="mt-3 text-sm text-gray-600 space-y-2">
+                        <div class="flex items-center justify-between"><span>Cuota inicial</span><span class="font-semibold">$ {{ payment_plan.initial_amount|floatformat:0|intcomma }}</span></div>
+                        <div class="flex items-center justify-between"><span>Financiación</span><span class="font-semibold">$ {{ payment_plan.financed_amount|floatformat:0|intcomma }}</span></div>
+                        <div class="flex items-center justify-between"><span>Tasa mensual</span><span class="font-semibold">{{ payment_plan.finance_rate_monthly }}%</span></div>
+                    </div>
+                    {% else %}
+                    <div class="text-sm text-gray-500">Sin plan registrado.</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card bg-white border border-gray-200 shadow-sm">
+                <div class="card-body space-y-3">
+                    <div class="flex items-center justify-between gap-3">
+                        <h3 class="card-title flex items-center gap-2">
+                            <i class="ri-hand-coin-line text-gray-500"></i>
+                            Escala de comisiones
+                        </h3>
+                        {% if contract.status == contract.State.PENDING %}
+                        <span class="text-xs text-gray-500">Gestiona desde el menu Comisiones.</span>
+                        {% endif %}
+                    </div>
+                    <div id="commission-scale-table">
+                        {% include "finance/partials/commission_scale_summary.html" with total_commission_percent=total_commission_percent assigned_roles=assigned_roles %}
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-2 card bg-white border border-gray-200 shadow-sm">
+            <div class="card-body space-y-4">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <h2 class="card-title flex items-center gap-2">
+                        <i class="ri-file-list-3-line text-gray-500"></i>
+                        Cronograma de pagos
+                    </h2>
+                    <a href="{% url 'sales:contract_schedule_pdf' contract.id %}" class="btn btn-neutral-elegant btn-sm" data-no-loading>
+                        Exportar PDF
+                    </a>
+                </div>
+                <div class="overflow-x-auto max-h-[28rem] overflow-y-auto">
+                    <table class="table table-zebra w-full text-sm">
+                        <thead>
+                            <tr class="sticky top-0 bg-base-100 z-10">
+                                <th class="w-10">#</th>
+                                <th class="w-32">Fecha</th>
+                                <th class="w-24">Cuota</th>
+                                <th class="text-right w-28">Valor</th>
+                                <th class="text-right w-28">Capital</th>
+                                <th class="text-right w-28">Interés</th>
+                                <th class="text-right w-32">Saldo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in schedule_items %}
+                            <tr>
+                                <td>{{ item.n }}</td>
+                                <td>{{ item.fecha|date:"Y-m-d" }}</td>
+                                <td>
+                                    {% if item.numero_cuota %}
+                                    {{ item.concepto|default:"" }}{{ item.numero_cuota }}
+                                    {% else %}
+                                    {{ item.concepto|default:"—" }}
+                                    {% endif %}
+                                </td>
+                                <td class="text-right">$ {{ item.valor_total|floatformat:0|intcomma }}</td>
+                                <td class="text-right">$ {{ item.capital|floatformat:0|intcomma }}</td>
+                                <td class="text-right">$ {{ item.interes|floatformat:0|intcomma }}</td>
+                                <td class="text-right">$ {{ item.saldo|floatformat:0|intcomma }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-center text-gray-500 py-6">Sin cronograma registrado.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card bg-white border border-gray-200 shadow-sm">
+            <div class="card-body space-y-4">
+                <h2 class="card-title flex items-center gap-2">
+                    <i class="ri-history-line text-gray-500"></i>
+                    Timeline del contrato
+                </h2>
+                {% if logs %}
+                <div class="max-h-[28rem] overflow-y-auto pr-2">
+                    <ol class="relative ml-2 border-l border-gray-200 space-y-6">
+                        {% for log in logs %}
+                        <li class="ml-6">
+                            <span class="absolute -left-[7px] mt-1 h-3 w-3 rounded-full bg-rojoz-500 ring-4 ring-rojoz-100"></span>
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <div class="text-sm font-semibold text-gray-900">{{ log.get_action_display }}</div>
+                                <div class="text-xs text-gray-500">{{ log.created_at|date:"Y-m-d H:i" }}</div>
+                            </div>
+                            {% if log.message %}
+                            <p class="mt-1 text-xs text-gray-500">{{ log.message }}</p>
+                            {% endif %}
+                            {% if log.created_by %}
+                            <p class="mt-1 text-xs text-gray-400">Por {{ log.created_by.get_full_name|default:log.created_by.username }}</p>
+                            {% endif %}
+                        </li>
+                        {% endfor %}
+                    </ol>
+                </div>
+                {% else %}
+                <div class="text-sm text-gray-500">Sin actividad registrada.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+</div>
+
+{% if contract.status == contract.State.PENDING %}
+<input type="checkbox" id="commission_scale_modal" class="modal-toggle">
+<div class="modal" role="dialog">
+    <div class="modal-box max-w-lg">
+        <h3 class="text-lg font-semibold text-gray-900">Agregar escala</h3>
+        <div id="commission-scale-form" class="mt-4">
+            <div class="text-sm text-gray-500">Cargando...</div>
+        </div>
+    </div>
+    <label class="modal-backdrop" for="commission_scale_modal">Cerrar</label>
+</div>
+{% endif %}
+
+{% if contract.status == contract.State.PENDING %}
+<input type="checkbox" id="contract_parties_modal" class="modal-toggle" {% if open_parties_modal %}checked{% endif %}>
+<div class="modal" role="dialog">
+    <div class="modal-box max-w-5xl">
+        <div class="flex items-center justify-between gap-3">
+            <h3 class="text-lg font-semibold text-gray-900">Gestionar terceros del contrato</h3>
+            <label for="contract_parties_modal" class="btn btn-sm btn-neutral-elegant">Cerrar</label>
+        </div>
+
+        <form method="post" action="{% url 'sales:contract_detail' contract.id %}" class="mt-4 border border-gray-200 rounded-xl p-4 space-y-4">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="add_party">
+            <div class="flex items-center justify-between gap-3">
+                <h4 class="font-semibold text-gray-900">Vincular tercero</h4>
+                <span class="text-xs text-gray-500">Si el documento ya existe, se reutiliza.</span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                    <label class="label"><span class="label-text">Tipo documento</span></label>
+                    {{ party_form.document_type }}
+                    {{ party_form.document_type.errors }}
+                </div>
+                <div>
+                    <label class="label"><span class="label-text">Documento *</span></label>
+                    {{ party_form.document_number }}
+                    {{ party_form.document_number.errors }}
+                </div>
+                <div class="md:col-span-2">
+                    <label class="label"><span class="label-text">Nombre completo *</span></label>
+                    {{ party_form.full_name }}
+                    {{ party_form.full_name.errors }}
+                </div>
+                <div>
+                    <label class="label"><span class="label-text">Email</span></label>
+                    {{ party_form.email }}
+                    {{ party_form.email.errors }}
+                </div>
+                <div>
+                    <label class="label"><span class="label-text">Celular</span></label>
+                    {{ party_form.mobile }}
+                    {{ party_form.mobile.errors }}
+                </div>
+                <div>
+                    <label class="label"><span class="label-text">Dirección</span></label>
+                    {{ party_form.address }}
+                    {{ party_form.address.errors }}
+                </div>
+                <div>
+                    <label class="label"><span class="label-text">Ciudad</span></label>
+                    {{ party_form.city_name }}
+                    {{ party_form.city_name.errors }}
+                </div>
+            </div>
+            <div class="flex justify-end">
+                <button type="submit" class="btn btn-primary">Vincular tercero</button>
+            </div>
+        </form>
+
+        <div class="mt-6">
+            <h4 class="font-semibold text-gray-900 mb-3">Terceros vinculados</h4>
+            <div class="overflow-x-auto">
+                <table class="table table-zebra w-full text-sm">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Documento</th>
+                            <th>Email</th>
+                            <th>Celular</th>
+                            <th class="text-right">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for party in contract.parties.all %}
+                        <tr>
+                            <td>{{ party.full_name }}</td>
+                            <td>{{ party.document_type_label }} {{ party.document_number }}</td>
+                            <td>{{ party.email|default:"—" }}</td>
+                            <td>{{ party.mobile|default:party.phone_alt|default:"—" }}</td>
+                            <td class="text-right">
+                                <form method="post" action="{% url 'sales:contract_detail' contract.id %}" class="inline">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="remove_party">
+                                    <input type="hidden" name="party_id" value="{{ party.id }}">
+                                    <button type="submit" class="btn btn-xs btn-outline">Desvincular</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center text-gray-500 py-6">Sin terceros vinculados.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <label class="modal-backdrop" for="contract_parties_modal">Cerrar</label>
+</div>
+{% endif %}
+
+<input type="checkbox" id="sale_documents_modal" class="modal-toggle">
+<div class="modal" role="dialog">
+    <div class="modal-box max-w-5xl">
+        <div class="flex items-center justify-between gap-3">
+            <h3 class="text-lg font-semibold text-gray-900">Documentos adjuntos</h3>
+            <label for="sale_documents_modal" class="btn btn-sm btn-neutral-elegant">Cerrar</label>
+        </div>
+
+        <form method="post" enctype="multipart/form-data" action="{% url 'sales:sale_document_create' contract.id %}" class="mt-4 space-y-4">
+            {% csrf_token %}
+            <div>
+                <label class="label"><span class="label-text">Documento (PDF)</span></label>
+                {{ document_form.document }}
+                {{ document_form.document.errors }}
+            </div>
+            <div>
+                <label class="label"><span class="label-text">Descripción</span></label>
+                {{ document_form.description }}
+                {{ document_form.description.errors }}
+            </div>
+            <div class="flex justify-end">
+                <button type="submit" class="btn btn-primary">Subir documento</button>
+            </div>
+        </form>
+
+        <div class="mt-6 overflow-x-auto">
+            <table class="table table-zebra w-full text-sm">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Descripción</th>
+                        <th>Archivo</th>
+                        <th>Cargado por</th>
+                        <th>Registro</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for doc in documents %}
+                    <tr>
+                        <td>{{ doc.date|date:"Y-m-d" }}</td>
+                        <td>{{ doc.description|default:"—" }}</td>
+                        <td>
+                            <a href="{% url 'sales:sale_document_view' contract.id doc.id %}" target="_blank" class="btn btn-xs btn-neutral-elegant">Ver</a>
+                        </td>
+                        <td>{{ doc.uploaded_by.get_full_name|default:doc.uploaded_by.username|default:"—" }}</td>
+                        <td>{{ doc.created_at|date:"Y-m-d H:i" }}</td>
+                        <td class="text-right">
+                            <a href="{% url 'sales:sale_document_delete' contract.id doc.id %}" class="btn btn-xs btn-outline">Eliminar</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center text-gray-500 py-8">No hay documentos adjuntos.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <label class="modal-backdrop" for="sale_documents_modal">Cerrar</label>
+</div>
+{% endblock %}
