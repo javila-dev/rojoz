@@ -34,6 +34,13 @@ app/**/migrations/__pycache__/
 !.env.example
 
 # ==============================
+# Dev
+# ==============================
+Dockerfile.dev
+docker-compose.dev.yml
+*.dev
+
+# ==============================
 # IDE / OS
 # ==============================
 .vscode/
