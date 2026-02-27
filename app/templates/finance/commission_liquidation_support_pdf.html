@@ -1,0 +1,361 @@
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Liquidación comisión #{{ payment.pk }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 18mm;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif;
+            color: #111827;
+            font-size: 11px;
+            line-height: 1.45;
+        }
+        .page-title {
+            text-align: center;
+            text-transform: uppercase;
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            letter-spacing: .5px;
+        }
+        .doc-number {
+            text-align: center;
+            font-size: 12px;
+            margin-bottom: 20px;
+        }
+        .line-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+        .line-item {
+            flex: 1;
+            border-bottom: 1px solid #9ca3af;
+            padding-bottom: 4px;
+        }
+        .label {
+            text-transform: uppercase;
+            font-size: 9px;
+            color: #6b7280;
+            letter-spacing: .5px;
+            margin-bottom: 2px;
+        }
+        .value {
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .box {
+            border: 1px solid #d1d5db;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+        .box h3 {
+            margin: 0 0 8px 0;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+        .paragraph {
+            margin-top: 12px;
+            text-align: justify;
+            line-height: 1.6;
+        }
+        .sign-block {
+            margin-top: 44px;
+        }
+        .sign-line {
+            border-top: 1px solid #111827;
+            width: 280px;
+            padding-top: 6px;
+        }
+        .muted {
+            color: #6b7280;
+            font-size: 10px;
+        }
+        .page-break {
+            page-break-before: always;
+        }
+
+        /* Página 2: recibo de caja Rojoz */
+        .receipt-page {
+            color: #111827;
+        }
+        .receipt-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #A0372A;
+            padding-bottom: 10px;
+            margin-bottom: 16px;
+        }
+        .receipt-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .receipt-logo {
+            width: 52px;
+            height: 52px;
+            border-radius: 8px;
+            object-fit: contain;
+        }
+        .receipt-title {
+            font-size: 17px;
+            font-weight: 800;
+            color: #A0372A;
+        }
+        .receipt-sub {
+            font-size: 10px;
+            color: #6b7280;
+        }
+        .receipt-num {
+            text-align: right;
+        }
+        .receipt-num .main {
+            font-size: 20px;
+            font-weight: 800;
+        }
+        .amount-highlight {
+            background: linear-gradient(135deg, #A0372A, #C4574E);
+            color: #fff;
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin-bottom: 14px;
+        }
+        .amount-highlight .label {
+            color: #fce8e5;
+            margin-bottom: 4px;
+        }
+        .amount-highlight .value {
+            color: #fff;
+            font-size: 28px;
+            font-weight: 800;
+        }
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+            margin-bottom: 14px;
+        }
+        .table th, .table td {
+            border: 1px solid #e5e7eb;
+            padding: 7px 8px;
+            vertical-align: top;
+            font-size: 10px;
+        }
+        .table th {
+            background: #fef2f2;
+            text-transform: uppercase;
+            letter-spacing: .4px;
+            color: #A0372A;
+            text-align: left;
+        }
+        .text-right {
+            text-align: right;
+        }
+        .receipt-footer {
+            margin-top: 22px;
+            border-top: 1px dashed #d1d5db;
+            padding-top: 10px;
+            font-size: 10px;
+            color: #6b7280;
+        }
+    </style>
+</head>
+<body>
+    <!-- Página 1 -->
+    <section>
+        <h1 class="page-title">Cuenta de cobro</h1>
+        <p class="doc-number">No. {{ account_number }}</p>
+
+        <div class="line-row">
+            <div class="line-item">
+                <div class="label">Ciudad</div>
+                <div class="value">{{ city }}</div>
+            </div>
+            <div class="line-item">
+                <div class="label">Fecha</div>
+                <div class="value">{{ issue_date|date:"d/m/Y" }}</div>
+            </div>
+        </div>
+
+        <div class="box">
+            <h3>Datos del cobrador</h3>
+            <div class="line-row">
+                <div class="line-item">
+                    <div class="label">Nombre completo</div>
+                    <div class="value">{{ advisor.get_full_name|default:advisor.username }}</div>
+                </div>
+                <div class="line-item">
+                    <div class="label">NIT</div>
+                    <div class="value">{{ advisor.nit|default:"No registrado" }}</div>
+                </div>
+            </div>
+            <div class="line-row">
+                <div class="line-item">
+                    <div class="label">Correo electrónico</div>
+                    <div class="value">{{ advisor.email|default:"No registrado" }}</div>
+                </div>
+                <div class="line-item">
+                    <div class="label">Teléfono</div>
+                    <div class="value">{{ advisor.phone|default:"No registrado" }}</div>
+                </div>
+            </div>
+            <div class="line-row">
+                <div class="line-item">
+                    <div class="label">Banco</div>
+                    <div class="value">{{ advisor.get_bank_code_display|default:"No registrado" }}</div>
+                </div>
+                <div class="line-item">
+                    <div class="label">Tipo y número de cuenta</div>
+                    <div class="value">{{ advisor.get_account_type_display|default:"" }} {{ advisor.account_number|default:"No registrado" }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="box">
+            <h3>Datos del pagador</h3>
+            <div class="line-row">
+                <div class="line-item">
+                    <div class="label">Razón social</div>
+                    <div class="value">{{ company_name }}</div>
+                </div>
+                <div class="line-item">
+                    <div class="label">NIT</div>
+                    <div class="value">{{ company_nit }}</div>
+                </div>
+            </div>
+            <div class="line-row">
+                <div class="line-item">
+                    <div class="label">Dirección</div>
+                    <div class="value">{{ company_address }}</div>
+                </div>
+                <div class="line-item">
+                    <div class="label">Ciudad</div>
+                    <div class="value">{{ company_city }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="box">
+            <h3>Concepto del cobro</h3>
+            <p>
+                Cobro por comisión comercial correspondiente al contrato
+                #{{ sale.contract_number|default:sale.id|truncatechars:12 }},
+                proyecto {{ project.name }},
+                según liquidación registrada en el sistema.
+            </p>
+            <div class="line-row" style="margin-top: 10px;">
+                <div class="line-item">
+                    <div class="label">Valor a cobrar</div>
+                    <div class="value">${{ payment.amount_paid|floatformat:0|intcomma }} COP</div>
+                </div>
+                <div class="line-item">
+                    <div class="label">Referencia de liquidación</div>
+                    <div class="value">Liquidación #{{ payment.pk }}</div>
+                </div>
+            </div>
+        </div>
+
+        <p class="paragraph">
+            Declaro bajo gravedad de juramento que la presente cuenta de cobro corresponde a servicios efectivamente
+            prestados y que cumplo con las obligaciones tributarias aplicables conforme a la normatividad colombiana.
+            Este documento se emite para el trámite interno de pago y como soporte para que el adquirente elabore,
+            cuando aplique, el documento soporte en adquisiciones a no obligados a facturar.
+        </p>
+
+        <div class="sign-block">
+            <div class="sign-line">
+                <strong>{{ advisor.get_full_name|default:advisor.username }}</strong><br>
+                <span class="muted">Firma / NIT: {{ advisor.nit|default:"No registrado" }}</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Página 2 -->
+    <section class="receipt-page page-break">
+        <div class="receipt-header">
+            <div class="receipt-brand">
+                <img src="{{ company_logo_url }}" alt="Rojoz" class="receipt-logo">
+                <div>
+                    <div class="receipt-title">{{ company_name }}</div>
+                    <div class="receipt-sub">Recibo de caja por pago de comisión</div>
+                </div>
+            </div>
+            <div class="receipt-num">
+                <div class="label">Recibo No.</div>
+                <div class="main">{{ cash_receipt_number }}</div>
+                <div class="receipt-sub">{{ issue_date|date:"d/m/Y" }}</div>
+            </div>
+        </div>
+
+        <div class="amount-highlight">
+            <div class="label">Valor entregado</div>
+            <div class="value">${{ payment.amount_paid|floatformat:0|intcomma }}</div>
+        </div>
+
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Concepto</th>
+                    <th>Detalle</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Beneficiario</td>
+                    <td>{{ advisor.get_full_name|default:advisor.username }}</td>
+                </tr>
+                <tr>
+                    <td>NIT beneficiario</td>
+                    <td>{{ advisor.nit|default:"No registrado" }}</td>
+                </tr>
+                <tr>
+                    <td>Proyecto</td>
+                    <td>{{ project.name }}</td>
+                </tr>
+                <tr>
+                    <td>Contrato</td>
+                    <td>#{{ sale.contract_number|default:sale.id|truncatechars:12 }}</td>
+                </tr>
+                <tr>
+                    <td>Motivo</td>
+                    <td>{{ payment.trigger }}</td>
+                </tr>
+                <tr>
+                    <td>Fecha de pago registrada</td>
+                    <td>{{ payment.date_paid|date:"d/m/Y H:i" }}</td>
+                </tr>
+                <tr>
+                    <td>Banco destino</td>
+                    <td>{{ advisor.get_bank_code_display|default:"No registrado" }} - {{ advisor.account_number|default:"No registrado" }}</td>
+                </tr>
+                <tr>
+                    <td><strong>Total</strong></td>
+                    <td class="text-right"><strong>${{ payment.amount_paid|floatformat:0|intcomma }} COP</strong></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="line-row" style="margin-top: 30px;">
+            <div class="line-item" style="margin-right: 20px;">
+                <div class="label">Firma tesorería</div>
+                <div style="height: 36px;"></div>
+            </div>
+            <div class="line-item">
+                <div class="label">Firma beneficiario</div>
+                <div style="height: 36px;"></div>
+            </div>
+        </div>
+
+        <div class="receipt-footer">
+            Documento de soporte interno para la entrega de dinero correspondiente a la comisión liquidada.
+        </div>
+    </section>
+</body>
+</html>

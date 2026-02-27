@@ -119,6 +119,16 @@
                             {% endif %}
                         </div>
                     </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1.5">NIT</label>
+                            {{ profile_form.nit }}
+                            {% if profile_form.nit.errors %}
+                            <p class="text-red-500 text-xs mt-1">{{ profile_form.nit.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
                 </div>
 
                 <div class="px-5 py-4 border-t border-gray-100 flex justify-end">
@@ -153,6 +163,13 @@
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1.5">NIT</label>
+                            {{ profile_form.nit }}
+                            {% if profile_form.nit.errors %}
+                            <p class="text-red-500 text-xs mt-1">{{ profile_form.nit.errors.0 }}</p>
+                            {% endif %}
+                        </div>
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-1.5">Tipo de cuenta</label>
                             {{ profile_form.account_type }}

@@ -22,6 +22,12 @@ class User(AbstractUser):
     role = models.CharField(max_length=20, choices=RoleCode.choices, default=RoleCode.CLIENTE)
     roles = models.ManyToManyField("users.UserRole", blank=True, related_name="users")
     phone = models.CharField("Celular de Contacto", max_length=20, blank=True)
+    nit = models.CharField(
+        "NIT",
+        max_length=20,
+        blank=True,
+        help_text="NIT del asesor para documentos de cobro y pagos.",
+    )
     photo = models.ImageField(
         "Foto Perfil",
         upload_to='users/photos/',

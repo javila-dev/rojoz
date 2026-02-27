@@ -192,6 +192,12 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 DOCUMENTS_TEMPLATES_BASE_DIR = BASE_DIR / "pdf_templates"
 DOCUMENTS_FONTS_DIR = BASE_DIR / "pdf_templates" / "fonts"
 
+# Datos corporativos para documentos de soporte de comisiones
+ROJOZ_COMPANY_NAME = os.environ.get("ROJOZ_COMPANY_NAME", "Constructora Rojoz")
+ROJOZ_COMPANY_NIT = os.environ.get("ROJOZ_COMPANY_NIT", "900.396.340-3")
+ROJOZ_COMPANY_ADDRESS = os.environ.get("ROJOZ_COMPANY_ADDRESS", "Calle 9 sur # 79c-151 apto 2405")
+ROJOZ_COMPANY_CITY = os.environ.get("ROJOZ_COMPANY_CITY", "Medellin")
+
 # ==========================================
 # 9. API TESORERIA (N8N / INTEGRACIONES)
 # ==========================================

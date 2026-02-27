@@ -35,6 +35,7 @@ class UsersAuthAndPermissionTests(BaseAppTestCase):
                 "last_name": "Lopez",
                 "email": "ana@example.com",
                 "phone": "3001112233",
+                "nit": "900123456-7",
                 "bank_code": "1007",
                 "account_type": "AH",
                 "account_number": "123456789",
@@ -46,6 +47,7 @@ class UsersAuthAndPermissionTests(BaseAppTestCase):
         created = User.objects.get(email="ana@example.com")
         self.assertFalse(created.is_active)
         self.assertEqual(created.role, RoleCode.ASESOR)
+        self.assertEqual(created.nit, "900123456-7")
 
     def test_middleware_protected_view_redirects_anonymous_and_blocks_wrong_role(self):
         anonymous = self.client.get(reverse("users:user_list"))
@@ -87,6 +89,7 @@ class UsersAuthAndPermissionTests(BaseAppTestCase):
                 "last_name": "General",
                 "email": "gerente@example.com",
                 "phone": "3001234567",
+                "nit": "900999888-1",
                 "bank_code": "1007",
                 "account_type": "AH",
                 "account_number": "1234567890",
@@ -98,6 +101,7 @@ class UsersAuthAndPermissionTests(BaseAppTestCase):
         self.gerente.refresh_from_db()
         self.assertEqual(self.gerente.first_name, "Gerente")
         self.assertEqual(self.gerente.phone, "3001234567")
+        self.assertEqual(self.gerente.nit, "900999888-1")
 
     def test_profile_change_password_updates_credentials(self):
         self.client.force_login(self.gerente)

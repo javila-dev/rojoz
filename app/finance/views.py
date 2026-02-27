@@ -4,12 +4,14 @@ from decimal import Decimal, ROUND_HALF_UP
 from io import BytesIO
 import csv
 
+from django.conf import settings
 from django.db import transaction
 from django.db.models import Q, Sum
 from django.http import HttpResponse, FileResponse, Http404
 from django.shortcuts import render, redirect, get_object_or_404
 from django.template.loader import render_to_string
 from django.contrib import messages
+from django.utils import timezone
 from weasyprint import HTML
 
 from django.contrib.auth.decorators import login_required
@@ -1407,6 +1409,52 @@ def receipt_request_evidence(request, solicitud_id):
 def my_commissions(request):
     """Vista personal de comisiones para asesores."""
     user = request.user
+    liquidation_pdf_id = (request.GET.get("liquidacion_pdf") or "").strip()
+
+    if liquidation_pdf_id:
+        try:
+            liquidation_id = int(liquidation_pdf_id)
+        except (TypeError, ValueError):
+            raise Http404("Identificador de liquidación inválido.")
+
+        payment_qs = CommissionPayment.objects.select_related(
+            "participant__sale__project",
+            "participant__user",
+        )
+        if not user.is_superuser:
+            payment_qs = payment_qs.filter(participant__user=user)
+        payment = get_object_or_404(payment_qs, pk=liquidation_id)
+
+        advisor = payment.participant.user
+        sale = payment.participant.sale
+        project = sale.project
+        account_number = f"CC-{payment.date_paid:%Y%m%d}-{payment.pk:05d}"
+        cash_receipt_number = f"RC-{payment.pk:06d}"
+
+        context = {
+            "payment": payment,
+            "advisor": advisor,
+            "sale": sale,
+            "project": project,
+            "account_number": account_number,
+            "cash_receipt_number": cash_receipt_number,
+            "city": project.city or "__________",
+            "issue_date": timezone.localtime(payment.date_paid).date(),
+            "company_name": getattr(settings, "ROJOZ_COMPANY_NAME", "Constructora Rojoz"),
+            "company_nit": getattr(settings, "ROJOZ_COMPANY_NIT", "________________"),
+            "company_address": getattr(settings, "ROJOZ_COMPANY_ADDRESS", "________________"),
+            "company_city": getattr(settings, "ROJOZ_COMPANY_CITY", project.city or "________________"),
+            "company_logo_url": "https://s3.2asoft.tech/construccion-media-public/document_assets/logo rojoz.png",
+        }
+        html_content = render_to_string("finance/commission_liquidation_support_pdf.html", context)
+        pdf_bytes = HTML(
+            string=html_content,
+            base_url=request.build_absolute_uri("/"),
+        ).write_pdf()
+        filename = f"liquidacion-comision-{payment.pk}.pdf"
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
 
     # Escalas de comisión donde aparece este usuario
     scales = (

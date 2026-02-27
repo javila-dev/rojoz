@@ -17,6 +17,25 @@
         </p>
     </div>
 
+    {% if show_advisor_profile_alert %}
+    <a href="{% url 'users:profile' %}?tab=profile" class="block card bg-amber-50 border border-amber-200 rounded-xl p-4 hover:bg-amber-100 transition-colors">
+        <div class="flex items-start gap-3">
+            <div class="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+                <i class="ri-alert-line text-amber-700 text-lg"></i>
+            </div>
+            <div class="min-w-0">
+                <p class="font-semibold text-amber-900">Completa tu perfil para comisiones</p>
+                <p class="text-sm text-amber-800 mt-1">
+                    Te faltan datos obligatorios:
+                    <span class="font-medium">{{ advisor_missing_profile_fields|join:", " }}</span>.
+                </p>
+                <p class="text-xs text-amber-700 mt-1">Haz clic para completar tu perfil.</p>
+            </div>
+            <i class="ri-arrow-right-s-line text-amber-500 text-xl ml-auto"></i>
+        </div>
+    </a>
+    {% endif %}
+
     {# ═══════════════════════════════════════════════════════════════ #}
     {# VISTA CLIENTE — Mis contratos                                   #}
     {# ═══════════════════════════════════════════════════════════════ #}

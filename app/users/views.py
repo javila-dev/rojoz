@@ -141,6 +141,19 @@ def dashboard_view(request):
     can_see_users = can_see_all
     can_see_roles = is_admin
 
+    missing_profile_fields = []
+    if is_asesor:
+        if not (user.first_name or "").strip() or not (user.last_name or "").strip():
+            missing_profile_fields.append("nombre y apellido")
+        if not (user.nit or "").strip():
+            missing_profile_fields.append("NIT")
+        if not (user.bank_code or "").strip():
+            missing_profile_fields.append("banco")
+        if not (user.account_type or "").strip():
+            missing_profile_fields.append("tipo de cuenta")
+        if not (user.account_number or "").strip():
+            missing_profile_fields.append("número de cuenta")
+
     ctx = {
         "can_see_sales": can_see_sales,
         "can_see_finance": can_see_finance,
@@ -152,6 +165,8 @@ def dashboard_view(request):
         "can_see_all": can_see_all,
         "is_asesor": is_asesor,
         "is_cliente": is_cliente,
+        "show_advisor_profile_alert": bool(missing_profile_fields),
+        "advisor_missing_profile_fields": missing_profile_fields,
     }
 
     # ── Proyectos ─────────────────────────────────────────────────
