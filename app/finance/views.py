@@ -1409,41 +1409,49 @@ def receipt_request_evidence(request, solicitud_id):
 def my_commissions(request):
     """Vista personal de comisiones para asesores."""
     user = request.user
-    liquidation_pdf_id = (request.GET.get("liquidacion_pdf") or "").strip()
+    liquidation_pdf_date = (request.GET.get("liquidacion_pdf_fecha") or "").strip()
 
-    if liquidation_pdf_id:
+    if liquidation_pdf_date:
         try:
-            liquidation_id = int(liquidation_pdf_id)
+            liquidation_day = date.fromisoformat(liquidation_pdf_date)
         except (TypeError, ValueError):
-            raise Http404("Identificador de liquidación inválido.")
+            raise Http404("Fecha de liquidación inválida.")
 
-        payment_qs = CommissionPayment.objects.select_related(
-            "participant__sale__project",
-            "participant__user",
+        payments = list(
+            CommissionPayment.objects.select_related(
+                "participant__sale__project",
+                "participant",
+                "participant__user",
+            )
+            .filter(
+                participant__user=user,
+                date_paid__date=liquidation_day,
+            )
+            .order_by("date_paid", "pk")
         )
-        if not user.is_superuser:
-            payment_qs = payment_qs.filter(participant__user=user)
-        payment = get_object_or_404(payment_qs, pk=liquidation_id)
+        if not payments:
+            raise Http404("No se encontraron liquidaciones para la fecha indicada.")
 
-        advisor = payment.participant.user
-        sale = payment.participant.sale
-        project = sale.project
-        account_number = f"CC-{payment.date_paid:%Y%m%d}-{payment.pk:05d}"
-        cash_receipt_number = f"RC-{payment.pk:06d}"
+        advisor = user
+        total_amount = sum((p.amount_paid for p in payments), Decimal("0"))
+        issue_datetime = timezone.localtime(payments[-1].date_paid)
+        account_number = f"CC-{liquidation_day:%Y%m%d}-{advisor.pk:04d}"
+        cash_receipt_number = f"RC-{liquidation_day:%Y%m%d}"
 
         context = {
-            "payment": payment,
+            "payments": payments,
+            "payments_count": len(payments),
+            "total_amount": total_amount,
             "advisor": advisor,
-            "sale": sale,
-            "project": project,
             "account_number": account_number,
             "cash_receipt_number": cash_receipt_number,
-            "city": project.city or "__________",
-            "issue_date": timezone.localtime(payment.date_paid).date(),
+            "city": payments[0].participant.sale.project.city or "__________",
+            "issue_date": issue_datetime.date(),
+            "liquidation_day": liquidation_day,
             "company_name": getattr(settings, "ROJOZ_COMPANY_NAME", "Constructora Rojoz"),
             "company_nit": getattr(settings, "ROJOZ_COMPANY_NIT", "________________"),
             "company_address": getattr(settings, "ROJOZ_COMPANY_ADDRESS", "________________"),
-            "company_city": getattr(settings, "ROJOZ_COMPANY_CITY", project.city or "________________"),
+            "company_city": getattr(settings, "ROJOZ_COMPANY_CITY", payments[0].participant.sale.project.city or "________________"),
             "company_logo_url": "https://s3.2asoft.tech/construccion-media-public/document_assets/logo rojoz.png",
         }
         html_content = render_to_string("finance/commission_liquidation_support_pdf.html", context)
@@ -1451,7 +1459,7 @@ def my_commissions(request):
             string=html_content,
             base_url=request.build_absolute_uri("/"),
         ).write_pdf()
-        filename = f"liquidacion-comision-{payment.pk}.pdf"
+        filename = f"liquidacion-comisiones-{liquidation_day:%Y%m%d}.pdf"
         response = HttpResponse(pdf_bytes, content_type="application/pdf")
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
         return response

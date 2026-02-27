@@ -3,172 +3,43 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Liquidación comisión #{{ payment.pk }}</title>
+    <title>Liquidación de comisiones {{ liquidation_day|date:"Y-m-d" }}</title>
     <style>
-        @page {
-            size: A4;
-            margin: 18mm;
-        }
+        @page { size: A4; margin: 10mm 18mm 18mm 18mm; }
         * { box-sizing: border-box; }
-        body {
-            font-family: Arial, sans-serif;
-            color: #111827;
-            font-size: 11px;
-            line-height: 1.45;
-        }
-        .page-title {
-            text-align: center;
-            text-transform: uppercase;
-            font-size: 18px;
-            font-weight: 700;
-            margin-bottom: 8px;
-            letter-spacing: .5px;
-        }
-        .doc-number {
-            text-align: center;
-            font-size: 12px;
-            margin-bottom: 20px;
-        }
-        .line-row {
-            display: flex;
-            gap: 12px;
-            margin-bottom: 8px;
-        }
-        .line-item {
-            flex: 1;
-            border-bottom: 1px solid #9ca3af;
-            padding-bottom: 4px;
-        }
-        .label {
-            text-transform: uppercase;
-            font-size: 9px;
-            color: #6b7280;
-            letter-spacing: .5px;
-            margin-bottom: 2px;
-        }
-        .value {
-            font-size: 11px;
-            font-weight: 600;
-        }
-        .box {
-            border: 1px solid #d1d5db;
-            padding: 12px;
-            margin-bottom: 12px;
-        }
-        .box h3 {
-            margin: 0 0 8px 0;
-            font-size: 12px;
-            text-transform: uppercase;
-        }
-        .paragraph {
-            margin-top: 12px;
-            text-align: justify;
-            line-height: 1.6;
-        }
-        .sign-block {
-            margin-top: 44px;
-        }
-        .sign-line {
-            border-top: 1px solid #111827;
-            width: 280px;
-            padding-top: 6px;
-        }
-        .muted {
-            color: #6b7280;
-            font-size: 10px;
-        }
-        .page-break {
-            page-break-before: always;
-        }
+        body { font-family: Arial, sans-serif; color: #111827; font-size: 11px; line-height: 1.45; }
+        .page-title { text-align: center; text-transform: uppercase; font-size: 17px; font-weight: 700; margin-bottom: 4px; }
+        .doc-number { text-align: center; font-size: 11px; margin-bottom: 10px; }
+        .line-row { display: flex; gap: 12px; margin-bottom: 8px; }
+        .line-item { flex: 1; border-bottom: 1px solid #9ca3af; padding-bottom: 4px; }
+        .label { text-transform: uppercase; font-size: 9px; color: #6b7280; margin-bottom: 2px; }
+        .value { font-size: 11px; font-weight: 600; }
+        .box { border: 1px solid #d1d5db; padding: 12px; margin-bottom: 12px; }
+        .box h3 { margin: 0 0 8px 0; font-size: 12px; text-transform: uppercase; }
+        .paragraph { margin-top: 12px; text-align: justify; line-height: 1.6; }
+        .sign-block { margin-top: 40px; }
+        .sign-line { border-top: 1px solid #111827; width: 280px; padding-top: 6px; }
+        .muted { color: #6b7280; font-size: 10px; }
+        .page-break { page-break-before: always; }
+        .table { width: 100%; border-collapse: collapse; margin-top: 8px; margin-bottom: 14px; }
+        .table th, .table td { border: 1px solid #e5e7eb; padding: 6px 7px; font-size: 9px; vertical-align: top; }
+        .table th { background: #f3f4f6; text-transform: uppercase; color: #374151; text-align: left; }
+        .text-right { text-align: right; }
 
-        /* Página 2: recibo de caja Rojoz */
-        .receipt-page {
-            color: #111827;
-        }
-        .receipt-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 2px solid #A0372A;
-            padding-bottom: 10px;
-            margin-bottom: 16px;
-        }
-        .receipt-brand {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .receipt-logo {
-            width: 52px;
-            height: 52px;
-            border-radius: 8px;
-            object-fit: contain;
-        }
-        .receipt-title {
-            font-size: 17px;
-            font-weight: 800;
-            color: #A0372A;
-        }
-        .receipt-sub {
-            font-size: 10px;
-            color: #6b7280;
-        }
-        .receipt-num {
-            text-align: right;
-        }
-        .receipt-num .main {
-            font-size: 20px;
-            font-weight: 800;
-        }
-        .amount-highlight {
-            background: linear-gradient(135deg, #A0372A, #C4574E);
-            color: #fff;
-            border-radius: 10px;
-            padding: 14px 16px;
-            margin-bottom: 14px;
-        }
-        .amount-highlight .label {
-            color: #fce8e5;
-            margin-bottom: 4px;
-        }
-        .amount-highlight .value {
-            color: #fff;
-            font-size: 28px;
-            font-weight: 800;
-        }
-        .table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 8px;
-            margin-bottom: 14px;
-        }
-        .table th, .table td {
-            border: 1px solid #e5e7eb;
-            padding: 7px 8px;
-            vertical-align: top;
-            font-size: 10px;
-        }
-        .table th {
-            background: #fef2f2;
-            text-transform: uppercase;
-            letter-spacing: .4px;
-            color: #A0372A;
-            text-align: left;
-        }
-        .text-right {
-            text-align: right;
-        }
-        .receipt-footer {
-            margin-top: 22px;
-            border-top: 1px dashed #d1d5db;
-            padding-top: 10px;
-            font-size: 10px;
-            color: #6b7280;
-        }
+        .receipt-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #A0372A; padding-bottom: 10px; margin-bottom: 14px; }
+        .receipt-brand { display: flex; align-items: center; gap: 10px; }
+        .receipt-logo { width: 52px; height: 52px; border-radius: 8px; object-fit: contain; }
+        .receipt-title { font-size: 17px; font-weight: 800; color: #A0372A; }
+        .receipt-sub { font-size: 10px; color: #6b7280; }
+        .receipt-num { text-align: right; }
+        .receipt-num .main { font-size: 20px; font-weight: 800; }
+        .amount-highlight { background: linear-gradient(135deg, #A0372A, #C4574E); color: #fff; border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
+        .amount-highlight .label { color: #fce8e5; margin-bottom: 4px; }
+        .amount-highlight .value { color: #fff; font-size: 28px; font-weight: 800; }
+        .receipt-footer { margin-top: 20px; border-top: 1px dashed #d1d5db; padding-top: 10px; font-size: 10px; color: #6b7280; }
     </style>
 </head>
 <body>
-    <!-- Página 1 -->
     <section>
         <h1 class="page-title">Cuenta de cobro</h1>
         <p class="doc-number">No. {{ account_number }}</p>
@@ -179,7 +50,7 @@
                 <div class="value">{{ city }}</div>
             </div>
             <div class="line-item">
-                <div class="label">Fecha</div>
+                <div class="label">Fecha de emisión</div>
                 <div class="value">{{ issue_date|date:"d/m/Y" }}</div>
             </div>
         </div>
@@ -198,7 +69,7 @@
             </div>
             <div class="line-row">
                 <div class="line-item">
-                    <div class="label">Correo electrónico</div>
+                    <div class="label">Correo</div>
                     <div class="value">{{ advisor.email|default:"No registrado" }}</div>
                 </div>
                 <div class="line-item">
@@ -245,19 +116,17 @@
         <div class="box">
             <h3>Concepto del cobro</h3>
             <p>
-                Cobro por comisión comercial correspondiente al contrato
-                #{{ sale.contract_number|default:sale.id|truncatechars:12 }},
-                proyecto {{ project.name }},
-                según liquidación registrada en el sistema.
+                Cobro consolidado por comisiones liquidadas el día {{ liquidation_day|date:"d/m/Y" }},
+                correspondiente a {{ payments_count }} liquidación{{ payments_count|pluralize:"es" }} registradas en el sistema.
             </p>
             <div class="line-row" style="margin-top: 10px;">
                 <div class="line-item">
-                    <div class="label">Valor a cobrar</div>
-                    <div class="value">${{ payment.amount_paid|floatformat:0|intcomma }} COP</div>
+                    <div class="label">Valor total a cobrar</div>
+                    <div class="value">${{ total_amount|floatformat:0|intcomma }} COP</div>
                 </div>
                 <div class="line-item">
-                    <div class="label">Referencia de liquidación</div>
-                    <div class="value">Liquidación #{{ payment.pk }}</div>
+                    <div class="label">Referencia</div>
+                    <div class="value">Liquidación diaria {{ liquidation_day|date:"Y-m-d" }}</div>
                 </div>
             </div>
         </div>
@@ -268,7 +137,7 @@
             Este documento se emite para el trámite interno de pago y como soporte para que el adquirente elabore,
             cuando aplique, el documento soporte en adquisiciones a no obligados a facturar.
         </p>
-
+        <br><br>
         <div class="sign-block">
             <div class="sign-line">
                 <strong>{{ advisor.get_full_name|default:advisor.username }}</strong><br>
@@ -277,14 +146,13 @@
         </div>
     </section>
 
-    <!-- Página 2 -->
-    <section class="receipt-page page-break">
+    <section class="page-break">
         <div class="receipt-header">
             <div class="receipt-brand">
                 <img src="{{ company_logo_url }}" alt="Rojoz" class="receipt-logo">
                 <div>
                     <div class="receipt-title">{{ company_name }}</div>
-                    <div class="receipt-sub">Recibo de caja por pago de comisión</div>
+                    <div class="receipt-sub">Recibo de caja consolidado por comisiones del día</div>
                 </div>
             </div>
             <div class="receipt-num">
@@ -295,66 +163,71 @@
         </div>
 
         <div class="amount-highlight">
-            <div class="label">Valor entregado</div>
-            <div class="value">${{ payment.amount_paid|floatformat:0|intcomma }}</div>
+            <div class="label">Valor total entregado</div>
+            <div class="value">${{ total_amount|floatformat:0|intcomma }}</div>
+        </div>
+
+        <p class="paragraph" style="margin-top: 0; margin-bottom: 10px;">
+            El presente recibo de caja certifica la entrega y recepción del valor correspondiente a la
+            liquidación consolidada de comisiones del día {{ liquidation_day|date:"d/m/Y" }}.
+            A continuación se relacionan los pagos incluidos en esta liquidación.
+        </p>
+
+        <div class="box" style="margin-bottom: 10px;">
+            <div class="line-row">
+                <div class="line-item">
+                    <div class="label">Nombre de quien recibe</div>
+                    <div class="value">{{ advisor.get_full_name|default:advisor.username }}</div>
+                </div>
+                <div class="line-item">
+                    <div class="label">Fecha de recibido</div>
+                    <div class="value">{{ issue_date|date:"d/m/Y" }}</div>
+                </div>
+            </div>
         </div>
 
         <table class="table">
             <thead>
                 <tr>
-                    <th>Concepto</th>
-                    <th>Detalle</th>
+                    <th>Liquidación</th>
+                    <th>Proyecto</th>
+                    <th>Contrato</th>
+                    <th>Cargo</th>
+                    <th>Motivo</th>
+                    <th class="text-right">Valor</th>
                 </tr>
             </thead>
             <tbody>
+                {% for item in payments %}
                 <tr>
-                    <td>Beneficiario</td>
-                    <td>{{ advisor.get_full_name|default:advisor.username }}</td>
+                    <td>#{{ item.pk }}</td>
+                    <td>{{ item.participant.sale.project.name }}</td>
+                    <td>#{{ item.participant.sale.contract_number|default:item.participant.sale.id|truncatechars:12 }}</td>
+                    <td>{{ item.participant.role }}</td>
+                    <td>{{ item.trigger }}</td>
+                    <td class="text-right">${{ item.amount_paid|floatformat:0|intcomma }}</td>
                 </tr>
+                {% endfor %}
                 <tr>
-                    <td>NIT beneficiario</td>
-                    <td>{{ advisor.nit|default:"No registrado" }}</td>
-                </tr>
-                <tr>
-                    <td>Proyecto</td>
-                    <td>{{ project.name }}</td>
-                </tr>
-                <tr>
-                    <td>Contrato</td>
-                    <td>#{{ sale.contract_number|default:sale.id|truncatechars:12 }}</td>
-                </tr>
-                <tr>
-                    <td>Motivo</td>
-                    <td>{{ payment.trigger }}</td>
-                </tr>
-                <tr>
-                    <td>Fecha de pago registrada</td>
-                    <td>{{ payment.date_paid|date:"d/m/Y H:i" }}</td>
-                </tr>
-                <tr>
-                    <td>Banco destino</td>
-                    <td>{{ advisor.get_bank_code_display|default:"No registrado" }} - {{ advisor.account_number|default:"No registrado" }}</td>
-                </tr>
-                <tr>
-                    <td><strong>Total</strong></td>
-                    <td class="text-right"><strong>${{ payment.amount_paid|floatformat:0|intcomma }} COP</strong></td>
+                    <td colspan="5" class="text-right"><strong>Total</strong></td>
+                    <td class="text-right"><strong>${{ total_amount|floatformat:0|intcomma }}</strong></td>
                 </tr>
             </tbody>
         </table>
-
+        
         <div class="line-row" style="margin-top: 30px;">
             <div class="line-item" style="margin-right: 20px;">
-                <div class="label">Firma tesorería</div>
+                <div class="label">Firma tesorería</div><br><br>
                 <div style="height: 36px;"></div>
             </div>
             <div class="line-item">
                 <div class="label">Firma beneficiario</div>
-                <div style="height: 36px;"></div>
+                <div style="height: 36px;"></div><br><br>
             </div>
         </div>
 
         <div class="receipt-footer">
-            Documento de soporte interno para la entrega de dinero correspondiente a la comisión liquidada.
+            Documento de soporte interno para la entrega de dinero correspondiente a liquidaciones de comisiones del día.
         </div>
     </section>
 </body>
