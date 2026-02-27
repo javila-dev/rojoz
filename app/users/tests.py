@@ -119,3 +119,58 @@ class UsersAuthAndPermissionTests(BaseAppTestCase):
 
         self.gerente.refresh_from_db()
         self.assertTrue(self.gerente.check_password("pass12345"))
+
+    def test_profile_personal_tab_does_not_clear_banking_fields(self):
+        self.gerente.bank_code = "1007"
+        self.gerente.account_type = "AH"
+        self.gerente.account_number = "1234567890"
+        self.gerente.nit = "900111222-3"
+        self.gerente.save(update_fields=["bank_code", "account_type", "account_number", "nit"])
+
+        self.client.force_login(self.gerente)
+        response = self.client.post(
+            reverse("users:profile"),
+            {
+                "action": "update_profile",
+                "active_tab": "profile",
+                "first_name": "Nuevo",
+                "last_name": "Nombre",
+                "email": "nuevo@example.com",
+                "phone": "3010000000",
+                "nit": "900111222-3",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+
+        self.gerente.refresh_from_db()
+        self.assertEqual(self.gerente.bank_code, "1007")
+        self.assertEqual(self.gerente.account_type, "AH")
+        self.assertEqual(self.gerente.account_number, "1234567890")
+
+    def test_profile_banking_tab_does_not_clear_personal_fields(self):
+        self.gerente.first_name = "NombreBase"
+        self.gerente.last_name = "ApellidoBase"
+        self.gerente.email = "base@example.com"
+        self.gerente.phone = "3000000000"
+        self.gerente.save(update_fields=["first_name", "last_name", "email", "phone"])
+
+        self.client.force_login(self.gerente)
+        response = self.client.post(
+            reverse("users:profile"),
+            {
+                "action": "update_profile",
+                "active_tab": "banking",
+                "nit": "900999888-1",
+                "bank_code": "1007",
+                "account_type": "AH",
+                "account_number": "999888777",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+
+        self.gerente.refresh_from_db()
+        self.assertEqual(self.gerente.first_name, "NombreBase")
+        self.assertEqual(self.gerente.last_name, "ApellidoBase")
+        self.assertEqual(self.gerente.email, "base@example.com")
+        self.assertEqual(self.gerente.phone, "3000000000")
+        self.assertEqual(self.gerente.account_number, "999888777")

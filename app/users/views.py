@@ -86,7 +86,19 @@ def profile_view(request):
 
         if action == "update_profile":
             active_tab = request.POST.get("active_tab", "profile")
-            profile_form = ProfileForm(request.POST, request.FILES, instance=user)
+            post_data = request.POST.copy()
+
+            # Evita que una actualización parcial borre campos de otra pestaña.
+            if active_tab == "profile":
+                for field in ("bank_code", "account_type", "account_number"):
+                    if field not in post_data:
+                        post_data[field] = getattr(user, field) or ""
+            elif active_tab == "banking":
+                for field in ("first_name", "last_name", "email", "phone"):
+                    if field not in post_data:
+                        post_data[field] = getattr(user, field) or ""
+
+            profile_form = ProfileForm(post_data, request.FILES, instance=user)
             if profile_form.is_valid():
                 profile_form.save()
                 messages.success(request, "Perfil actualizado correctamente.")
