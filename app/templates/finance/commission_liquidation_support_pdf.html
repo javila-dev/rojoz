@@ -116,8 +116,7 @@
         <div class="box">
             <h3>Concepto del cobro</h3>
             <p>
-                Cobro por {{ advisory_service|lower }} prestada el día {{ liquidation_day|date:"d/m/Y" }},
-                correspondiente a {{ payments_count }} registro{{ payments_count|pluralize:"s" }} asociados en el sistema.
+                Cobro por asesoria prestada en {{ advisory_service|lower|cut:"Asesoria en "|cut:"asesoria en " }}.
             </p>
             <div class="line-row" style="margin-top: 10px;">
                 <div class="line-item">
@@ -126,7 +125,7 @@
                 </div>
                 <div class="line-item">
                     <div class="label">Referencia</div>
-                    <div class="value">{{ advisory_service }} del {{ liquidation_day|date:"Y-m-d" }}</div>
+                    <div class="value">{{ advisory_service }}</div>
                 </div>
             </div>
         </div>
@@ -169,8 +168,7 @@
 
         <p class="paragraph" style="margin-top: 0; margin-bottom: 10px;">
             El presente recibo de caja certifica la entrega y recepción del valor correspondiente a la
-            prestacion de {{ advisory_service|lower }} del día {{ liquidation_day|date:"d/m/Y" }}.
-            A continuación se relacionan los pagos incluidos en este soporte.
+            prestacion de {{ advisory_service|lower }}.
         </p>
 
         <div class="box" style="margin-bottom: 10px;">
@@ -186,35 +184,6 @@
             </div>
         </div>
 
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Liquidación</th>
-                    <th>Proyecto</th>
-                    <th>Contrato</th>
-                    <th>Cargo</th>
-                    <th>Motivo</th>
-                    <th class="text-right">Valor</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for item in payments %}
-                <tr>
-                    <td>#{{ item.pk }}</td>
-                    <td>{{ item.participant.sale.project.name }}</td>
-                    <td>#{{ item.participant.sale.contract_number|default:item.participant.sale.id|truncatechars:12 }}</td>
-                    <td>{{ item.participant.role }}</td>
-                    <td>{{ item.trigger }}</td>
-                    <td class="text-right">${{ item.amount_paid|floatformat:0|intcomma }}</td>
-                </tr>
-                {% endfor %}
-                <tr>
-                    <td colspan="5" class="text-right"><strong>Total</strong></td>
-                    <td class="text-right"><strong>${{ total_amount|floatformat:0|intcomma }}</strong></td>
-                </tr>
-            </tbody>
-        </table>
-        
         <div class="line-row" style="margin-top: 30px;">
             <div class="line-item" style="margin-right: 20px;">
                 <div class="label">Firma tesorería</div><br><br>
