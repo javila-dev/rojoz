@@ -116,8 +116,8 @@
         <div class="box">
             <h3>Concepto del cobro</h3>
             <p>
-                Cobro consolidado por comisiones liquidadas el día {{ liquidation_day|date:"d/m/Y" }},
-                correspondiente a {{ payments_count }} liquidación{{ payments_count|pluralize:"es" }} registradas en el sistema.
+                Cobro por {{ advisory_service|lower }} prestada el día {{ liquidation_day|date:"d/m/Y" }},
+                correspondiente a {{ payments_count }} registro{{ payments_count|pluralize:"s" }} asociados en el sistema.
             </p>
             <div class="line-row" style="margin-top: 10px;">
                 <div class="line-item">
@@ -126,7 +126,7 @@
                 </div>
                 <div class="line-item">
                     <div class="label">Referencia</div>
-                    <div class="value">Liquidación de comisiones del {{ liquidation_day|date:"Y-m-d" }}</div>
+                    <div class="value">{{ advisory_service }} del {{ liquidation_day|date:"Y-m-d" }}</div>
                 </div>
             </div>
         </div>
@@ -152,7 +152,7 @@
                 <img src="{{ company_logo_url }}" alt="Rojoz" class="receipt-logo">
                 <div>
                     <div class="receipt-title">{{ company_name }}</div>
-                    <div class="receipt-sub">Recibo de caja consolidado por comisiones del día</div>
+                    <div class="receipt-sub">Recibo de caja por servicio de asesoria del dia</div>
                 </div>
             </div>
             <div class="receipt-num">
@@ -169,8 +169,8 @@
 
         <p class="paragraph" style="margin-top: 0; margin-bottom: 10px;">
             El presente recibo de caja certifica la entrega y recepción del valor correspondiente a la
-            liquidación consolidada de comisiones del día {{ liquidation_day|date:"d/m/Y" }}.
-            A continuación se relacionan los pagos incluidos en esta liquidación.
+            prestacion de {{ advisory_service|lower }} del día {{ liquidation_day|date:"d/m/Y" }}.
+            A continuación se relacionan los pagos incluidos en este soporte.
         </p>
 
         <div class="box" style="margin-bottom: 10px;">
@@ -227,7 +227,7 @@
         </div>
 
         <div class="receipt-footer">
-            Documento de soporte interno para la entrega de dinero correspondiente a liquidaciones de comisiones del día.
+            Documento de soporte interno para la entrega de dinero correspondiente al servicio prestado.
         </div>
     </section>
 </body>

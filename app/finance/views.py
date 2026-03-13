@@ -1,4 +1,5 @@
 from datetime import date
+import hashlib
 import uuid
 from decimal import Decimal, ROUND_HALF_UP
 from io import BytesIO
@@ -57,6 +58,30 @@ def _sale_dropdown_label(sale):
     first_party = sale.parties.order_by("id").first()
     titular = first_party.full_name if first_party else "Sin titular"
     return f"Contrato #{sale.contract_number or sale.id} - {titular}"
+
+
+ADVISORY_SERVICES = [
+    "Asesoria en diseno arquitectonico",
+    "Asesoria en estudio de suelos",
+    "Asesoria en planificacion y presupuesto de obra",
+    "Asesoria en diseno estructural",
+    "Asesoria en seleccion de materiales",
+    "Asesoria en eficiencia energetica y sostenibilidad",
+    "Asesoria en instalaciones electricas",
+    "Asesoria en instalaciones hidraulicas",
+    "Asesoria en diseno de interiores y acabados",
+    "Asesoria en sistemas de cimentacion",
+    "Asesoria en control de calidad de materiales",
+    "Asesoria en impermeabilizacion de fachadas",
+]
+
+
+def _advisory_service_for_third_party(user):
+    """Assign a stable service per third party based on a deterministic key."""
+    key = (user.nit or "").strip() or str(user.pk)
+    digest = hashlib.md5(key.encode("utf-8")).hexdigest()
+    index = int(digest[:8], 16) % len(ADVISORY_SERVICES)
+    return ADVISORY_SERVICES[index]
 
 
 def receipt_request_list(request):
@@ -1437,6 +1462,7 @@ def my_commissions(request):
         issue_datetime = timezone.localtime(payments[-1].date_paid)
         account_number = f"CC-{liquidation_day:%Y%m%d}-{advisor.pk:04d}"
         cash_receipt_number = f"RC-{liquidation_day:%Y%m%d}"
+        advisory_service = _advisory_service_for_third_party(advisor)
 
         context = {
             "payments": payments,
@@ -1448,6 +1474,7 @@ def my_commissions(request):
             "city": payments[0].participant.sale.project.city or "__________",
             "issue_date": issue_datetime.date(),
             "liquidation_day": liquidation_day,
+            "advisory_service": advisory_service,
             "company_name": getattr(settings, "ROJOZ_COMPANY_NAME", "Constructora Rojoz"),
             "company_nit": getattr(settings, "ROJOZ_COMPANY_NIT", "________________"),
             "company_address": getattr(settings, "ROJOZ_COMPANY_ADDRESS", "________________"),
