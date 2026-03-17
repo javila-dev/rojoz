@@ -513,7 +513,7 @@ def contract_pdf(request, pk):
     HTML(string=html_content, base_url=str(base_dir)).write_pdf(target=buffer)
     buffer.seek(0)
 
-    filename = f"contrato-{contract.contract_number or contract.id}.pdf"
+    filename = f"contrato-{contract.prefixed_contract_number or contract.id}.pdf"
     response = HttpResponse(buffer.getvalue(), content_type="application/pdf")
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
     return response
@@ -555,7 +555,7 @@ def pagare_pdf(request, pk):
     HTML(string=html_content, base_url=str(base_dir)).write_pdf(target=buffer)
     buffer.seek(0)
 
-    filename = f"pagare-{contract.contract_number or contract.id}.pdf"
+    filename = f"pagare-{contract.prefixed_contract_number or contract.id}.pdf"
     response = HttpResponse(buffer.getvalue(), content_type="application/pdf")
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
     return response

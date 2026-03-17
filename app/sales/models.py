@@ -46,6 +46,22 @@ class Sale(models.Model):
 
     def __str__(self): return f"Venta {self.id}"
 
+    @property
+    def contract_prefix(self):
+        project_name = (getattr(self.project, "name", "") or "").strip().lower()
+        prefixes = {
+            "casas de verano": "CV",
+            "sandville beach": "SB",
+        }
+        return prefixes.get(project_name, "")
+
+    @property
+    def prefixed_contract_number(self):
+        if not self.contract_number:
+            return ""
+        prefix = self.contract_prefix
+        return f"{prefix}-{self.contract_number}" if prefix else str(self.contract_number)
+
     def calculate_final_price(self):
         finishes_total = sum(
             (sf.price_snapshot for sf in self.salefinish_set.all()),

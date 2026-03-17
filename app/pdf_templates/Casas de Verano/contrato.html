@@ -375,7 +375,7 @@ td, th { vertical-align: top; }
     <tr>
       <td class="header-center">
         <div class="header-title">CONTRATO DE CONSTRUCCIÓN DE VIVIENDA LLAVE EN MANO</div>
-        <div class="header-subtitle">Nro. {{ venta.contract_number }}</div>
+        <div class="header-subtitle">Nro. {{ venta.prefixed_contract_number|default:venta.contract_number }}</div>
       </td>
       <td class="header-logo-right">
         <img src="https://s3.2asoft.tech/construccion-media-public/document_assets/logo_rojoz.png" alt="Andina Conceptos"/>
@@ -533,7 +533,7 @@ td, th { vertical-align: top; }
     <tr>
       <td class="header-center">
         <div class="anexo-title">ANEXO No. 1 — ESPECIFICACIONES DE ACABADOS</div>
-        <div class="anexo-subtitle">Contrato Nro. {{ venta.contract_number }}</div>
+        <div class="anexo-subtitle">Contrato Nro. {{ venta.prefixed_contract_number|default:venta.contract_number }}</div>
         <div class="anexo-ref">{{ venta.house_type.name }} — {{ venta.lot_metadata.id_inmueble|default:"" }}</div>
       </td>
       <td class="header-logo-right">
@@ -548,7 +548,7 @@ td, th { vertical-align: top; }
 
 <div class="contract-body">
 
-<p>El presente anexo forma parte integral del contrato de construcción Nro. <b>{{ venta.contract_number }}</b> y detalla las especificaciones de acabados seleccionados por <span class="party-highlight">EL(LOS) CONTRATANTE(S)</span> para la vivienda tipo <b>{{ venta.house_type.name }}</b>.</p>
+<p>El presente anexo forma parte integral del contrato de construcción Nro. <b>{{ venta.prefixed_contract_number|default:venta.contract_number }}</b> y detalla las especificaciones de acabados seleccionados por <span class="party-highlight">EL(LOS) CONTRATANTE(S)</span> para la vivienda tipo <b>{{ venta.house_type.name }}</b>.</p>
 
 <div class="django-template-wrapper">
 <table class="anexo-table">
@@ -626,7 +626,7 @@ td, th { vertical-align: top; }
     <tr>
       <td class="header-center">
         <div class="anexo-title">ANEXO No. 2 — CRONOGRAMA Y CONDICIONES DE PAGO</div>
-        <div class="anexo-subtitle">Contrato Nro. {{ venta.contract_number }}</div>
+        <div class="anexo-subtitle">Contrato Nro. {{ venta.prefixed_contract_number|default:venta.contract_number }}</div>
         <div class="anexo-ref">{{ venta.house_type.name }} — {{ venta.lot_metadata.id_inmueble|default:"" }}</div>
       </td>
       <td class="header-logo-right">
@@ -640,7 +640,7 @@ td, th { vertical-align: top; }
 <hr class="header-divider-accent"/>
 
 <div class="contract-body">
-  <p>El presente anexo forma parte integral del contrato de construcción Nro. <b>{{ venta.contract_number }}</b> y detalla el cronograma y condiciones de pago pactadas entre las partes.</p>
+  <p>El presente anexo forma parte integral del contrato de construcción Nro. <b>{{ venta.prefixed_contract_number|default:venta.contract_number }}</b> y detalla el cronograma y condiciones de pago pactadas entre las partes.</p>
 
   {% if payment_plan %}
   <div class="clientes-list">
