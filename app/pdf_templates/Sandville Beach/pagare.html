@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+<style>
+@page {
+  size: legal portrait;
+  margin: 1.5cm 1.8cm 1.5cm 1.8cm;
+
+  @bottom-center {
+    content: "Página " counter(page) " de " counter(pages);
+    font-family: "Inter", Arial, sans-serif;
+    font-size: 8px;
+    color: #999;
+  }
+}
+
+@font-face {
+  font-family: "Inter";
+  src: url("fonts/Inter_18pt-Regular.ttf");
+  font-weight: 400;
+}
+@font-face {
+  font-family: "Inter";
+  src: url("fonts/Inter_18pt-Medium.ttf");
+  font-weight: 500;
+}
+@font-face {
+  font-family: "Inter";
+  src: url("fonts/Inter_18pt-SemiBold.ttf");
+  font-weight: 600;
+}
+@font-face {
+  font-family: "Inter";
+  src: url("fonts/Inter_18pt-Bold.ttf");
+  font-weight: 700;
+}
+@font-face {
+  font-family: "Inter";
+  src: url("fonts/Inter_18pt-Light.ttf");
+  font-weight: 300;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: "Inter", Arial, Helvetica, sans-serif;
+  font-size: 10.5px;
+  line-height: 1.55;
+  color: #1a1a2e;
+  margin: 0;
+}
+
+/* ── Header ── */
+.header-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 10px;
+}
+
+.header-table td {
+  vertical-align: middle;
+  border: none;
+  padding: 0;
+}
+
+.header-logo-left,
+.header-logo-right {
+  width: 14%;
+  text-align: center;
+}
+
+.header-logo-left img,
+.header-logo-right img {
+  width: 120px;
+  height: auto;
+}
+
+.header-center {
+  width: 72%;
+  text-align: center;
+}
+
+.header-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f2b46;
+  letter-spacing: 0.5px;
+  margin: 0;
+  padding: 0;
+}
+
+.header-subtitle {
+  font-size: 12px;
+  font-weight: 500;
+  color: #3a6b8c;
+  margin-top: 2px;
+}
+
+.header-ref {
+  font-size: 10px;
+  color: #666;
+  margin-top: 4px;
+}
+
+.header-divider {
+  border: none;
+  border-top: 2.5px solid #0f2b46;
+  margin: 10px 0 6px 0;
+}
+
+.header-divider-accent {
+  border: none;
+  border-top: 1px solid #c8a45a;
+  margin: 0 0 18px 0;
+}
+
+/* ── Body ── */
+.doc-body {
+  text-align: justify;
+  font-weight: 400;
+}
+
+.doc-body p {
+  margin-bottom: 8px;
+}
+
+.section-title {
+  font-weight: 700;
+  color: #0f2b46;
+  text-transform: uppercase;
+  font-size: 10.5px;
+}
+
+.field-label {
+  font-weight: 600;
+  color: #3a6b8c;
+}
+
+.party-highlight {
+  font-weight: 700;
+  color: #0f2b46;
+}
+
+/* ── Pagaré blank fields ── */
+.blank-field {
+  display: inline-block;
+  min-width: 180px;
+  border-bottom: 1px solid #999;
+  padding: 0 4px;
+  color: #666;
+  font-size: 10px;
+}
+
+.blank-field-short {
+  display: inline-block;
+  min-width: 100px;
+  border-bottom: 1px solid #999;
+  padding: 0 4px;
+  color: #666;
+  font-size: 10px;
+}
+
+/* ── Info box ── */
+.info-box {
+  background: #f4f7fa;
+  border-left: 3px solid #c8a45a;
+  padding: 10px 14px;
+  margin: 10px 0;
+  font-size: 10.5px;
+}
+
+.info-box b {
+  color: #0f2b46;
+}
+
+/* ── Numbered list ── */
+.numbered-list {
+  margin: 8px 0 10px 18px;
+  padding: 0;
+}
+
+.numbered-list li {
+  margin-bottom: 6px;
+  padding-left: 4px;
+  line-height: 1.6;
+}
+
+/* ── Signatures ── */
+.signatures-section {
+  margin-top: 30px;
+}
+
+.sig-block {
+  display: inline-block;
+  width: 48%;
+  text-align: center;
+  vertical-align: top;
+  margin-bottom: 20px;
+  padding: 0 10px;
+}
+
+.sig-block:nth-child(odd) {
+  margin-right: 3%;
+}
+
+.sig-line {
+  border-top: 1.5px solid #1a1a2e;
+  margin: 50px auto 0 auto;
+  width: 85%;
+  padding-top: 6px;
+  font-size: 10px;
+}
+
+.sig-role {
+  font-weight: 600;
+  color: #0f2b46;
+  font-size: 10px;
+  margin-top: 2px;
+}
+
+/* ── Page break ── */
+.page-break {
+  page-break-before: always;
+}
+
+/* ── Legal note ── */
+.legal-note {
+  font-size: 9.5px;
+  color: #666;
+  margin-top: 14px;
+  font-style: italic;
+  line-height: 1.5;
+}
+
+/* ── Huella box ── */
+.huella-box {
+  display: inline-block;
+  width: 70px;
+  height: 90px;
+  border: 1px solid #ccc;
+  text-align: center;
+  vertical-align: middle;
+  font-size: 8px;
+  color: #999;
+  line-height: 90px;
+  margin-top: 10px;
+}
+
+/* WeasyPrint fixes */
+table { table-layout: fixed; width: 100%; }
+td, th { vertical-align: top; }
+</style>
+</head>
+<body>
+{% load humanize %}
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- ═══════════ PAGARÉ EN BLANCO ═══════════ -->
+<!-- ═══════════════════════════════════════════════════ -->
+
+<table class="header-table">
+  <tbody>
+    <tr>
+      <td class="header-center">
+        <div class="header-title">PAGARÉ No. {{ venta.contract_number }}</div>
+        <div class="header-subtitle">Título Valor — Código de Comercio, Art. 709 y ss.</div>
+      </td>
+      <td class="header-logo-right">
+        <img src="https://s3.2asoft.tech/construccion-media-public/document_assets/logo_rojoz.png" alt="Andina Conceptos"/>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<hr class="header-divider"/>
+<hr class="header-divider-accent"/>
+
+<div class="doc-body">
+
+<div class="info-box">
+  <span class="field-label">Lugar y fecha de suscripción:</span> Medellín, {{ fecha_inicio|date:"d \d\e F \d\e Y" }}<br/>
+  <span class="field-label">Fecha de vencimiento:</span> <span class="blank-field-short"></span><br/>
+  <span class="field-label">Valor:</span> <span class="blank-field"></span>
+</div>
+
+<p>Yo (Nosotros), {% for cliente in clientes %}<span class="party-highlight">{{ cliente.full_name }}</span>, identificado(a) con cédula de ciudadanía No. <b>{{ cliente.document_number }}</b>{% if not forloop.last %}; {% endif %}{% endfor %}, en mi (nuestra) condición de suscriptor(es) y deudor(es) solidario(s), por medio del presente <b>PAGARÉ</b>, me (nos) obligo (obligamos) incondicional, solidaria e indivisiblemente a pagar a la orden de <span class="party-highlight">CONSTRUCTORA ROJOZ S.A.S.</span>, con NIT <b>900.396.340-3</b>, representada legalmente por <span class="party-highlight">EDGAR ROBERT GALEANO ARANGO</span>, identificado con cédula de ciudadanía No. <b>71.335.951</b>, o a su orden, o a quien sus derechos represente, en la ciudad de <b>Medellín</b>, la suma de <span class="blank-field"></span> (<span class="blank-field"></span>), moneda legal colombiana.</p>
+
+<p><span class="section-title">CAUSA Y ORIGEN:</span> Este pagaré se suscribe como garantía de las obligaciones económicas a mi (nuestro) cargo, derivadas del contrato de construcción de vivienda llave en mano Nro. <b>{{ venta.contract_number }}</b>, celebrado entre las partes para la construcción de una vivienda tipo <b>{{ venta.house_type.name }}</b> en el inmueble <b>{{ venta.lot_metadata.id_inmueble|default:"___" }}</b> del Conjunto Residencial Fractal Casas de Verano, municipio de Moñitos, Córdoba.</p>
+
+<p><span class="section-title">INTERESES REMUNERATORIOS:</span> El(los) suscriptor(es) reconocerá(n) y pagará(n) intereses remuneratorios sobre el saldo de capital a la tasa que se indique en la carta de instrucciones anexa, la cual no excederá en ningún caso la tasa máxima legal permitida, certificada periódicamente por la Superintendencia Financiera de Colombia.</p>
+
+<p><span class="section-title">INTERESES MORATORIOS:</span> En caso de mora en el pago, total o parcial, de las obligaciones aquí contenidas, el(los) suscriptor(es) reconocerá(n) y pagará(n) intereses moratorios a la tasa máxima legal permitida, equivalente a una y media (1.5) veces el interés bancario corriente vigente certificado por la Superintendencia Financiera de Colombia, los cuales se causarán desde la fecha de exigibilidad de la obligación hasta el pago total y efectivo de la misma.</p>
+
+<p><span class="section-title">CLÁUSULA ACELERATORIA:</span> La falta de pago oportuno de cualquier cuota o de cualquiera de las obligaciones derivadas del contrato de construcción, dará derecho al acreedor para declarar vencido el plazo y exigir de inmediato el pago de la totalidad del saldo insoluto, junto con los intereses causados, sin necesidad de requerimiento judicial o extrajudicial previo alguno, bastando la simple presentación de este título para el cobro.</p>
+
+<p><span class="section-title">GASTOS DE COBRANZA:</span> En caso de incumplimiento, el(los) suscriptor(es) asumirá(n) todos los gastos que se causen por la cobranza prejudicial y/o judicial del presente título, incluidos honorarios de abogados, costas procesales, gastos notariales y demás erogaciones necesarias para hacer efectivo el pago.</p>
+
+<p><span class="section-title">SOLIDARIDAD:</span> El(los) suscriptor(es) renuncia(n) expresamente al beneficio de excusión y al beneficio de división, de conformidad con los artículos 1571 y 1583 del Código Civil colombiano, obligándose solidaria e indivisiblemente al pago total de las sumas adeudadas.</p>
+
+<p><span class="section-title">AUTORIZACIÓN DE DILIGENCIAMIENTO:</span> El(los) suscriptor(es) autoriza(n) de manera expresa e irrevocable al tenedor legítimo de este pagaré para llenar los espacios en blanco que se dejen al momento de su firma, de conformidad con la carta de instrucciones suscrita simultáneamente y con lo dispuesto en el artículo 622 del Código de Comercio colombiano.</p>
+
+<p><span class="section-title">MÉRITO EJECUTIVO:</span> El presente pagaré presta mérito ejecutivo sin necesidad de requerimiento privado ni judicial para constituir en mora al deudor, a lo cual se renuncia expresamente. Para todos los efectos legales, las partes acuerdan como domicilio contractual la ciudad de <b>Medellín, Antioquia</b>.</p>
+
+<p>En constancia, se firma en la ciudad de Medellín, a los {{ fecha_inicio|date:"d" }} días del mes de {{ fecha_inicio|date:"F" }} de {{ fecha_inicio|date:"Y" }}.</p>
+
+<!-- ── FIRMAS PAGARÉ ── -->
+<div class="signatures-section">
+{% for cliente in clientes %}
+<div class="sig-block">
+  <div class="sig-line">
+    {{ cliente.full_name }}<br/>
+    C.C. {{ cliente.document_number }}{% if cliente.phone or cliente.mobile %}<br/>Tel: {{ cliente.phone|default:cliente.mobile }}{% endif %}{% if cliente.address %}<br/>Dir: {{ cliente.address }}{% if cliente.city %}, {{ cliente.city }}{% endif %}{% endif %}
+    <div class="sig-role">SUSCRIPTOR / DEUDOR SOLIDARIO</div>
+    <div class="huella-box">Huella</div>
+  </div>
+</div>
+{% endfor %}
+</div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- ═══════════ CARTA DE INSTRUCCIONES ═══════════ -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div class="page-break"></div>
+
+<table class="header-table">
+  <tbody>
+    <tr>
+      <td class="header-center">
+        <div class="header-title">CARTA DE INSTRUCCIONES</div>
+        <div class="header-subtitle">Para el diligenciamiento del Pagaré No. {{ venta.contract_number }}</div>
+        <div class="header-ref">Art. 622, Código de Comercio</div>
+      </td>
+      <td class="header-logo-right">
+        <img src="https://s3.2asoft.tech/construccion-media-public/document_assets/logo_rojoz.png" alt="Andina Conceptos"/>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<hr class="header-divider"/>
+<hr class="header-divider-accent"/>
+
+<div class="doc-body">
+
+<p>Medellín, {{ fecha_inicio|date:"d \d\e F \d\e Y" }}</p>
+
+<p>Señores<br/>
+<span class="party-highlight">CONSTRUCTORA ROJOZ S.A.S.</span><br/>
+NIT 900.396.340-3<br/>
+Medellín, Antioquia</p>
+
+<p><b>Ref.:</b> Instrucciones para el diligenciamiento del pagaré en blanco suscrito como garantía del contrato de construcción Nro. <b>{{ venta.contract_number }}</b>.</p>
+
+<p>Yo (Nosotros), {% for cliente in clientes %}<span class="party-highlight">{{ cliente.full_name }}</span>, identificado(a) con cédula de ciudadanía No. <b>{{ cliente.document_number }}</b>{% if not forloop.last %}; {% endif %}{% endfor %}, en mi (nuestra) calidad de suscriptor(es) del pagaré referenciado, emitido a favor de <span class="party-highlight">CONSTRUCTORA ROJOZ S.A.S.</span>, y de conformidad con lo establecido en el artículo 622 del Código de Comercio colombiano, por medio de la presente otorgo (otorgamos) las siguientes instrucciones de manera irrevocable para que el tenedor legítimo del pagaré proceda a llenar los espacios dejados en blanco, bajo las condiciones que a continuación se detallan:</p>
+
+<p><span class="section-title">PRIMERA — ORIGEN DE LA OBLIGACIÓN.</span> El pagaré en blanco fue suscrito como garantía de las obligaciones económicas derivadas del contrato de construcción de vivienda llave en mano Nro. <b>{{ venta.contract_number }}</b>, cuyo objeto es la construcción a todo costo de una vivienda tipo <b>{{ venta.house_type.name }}</b>, en el inmueble <b>{{ venta.lot_metadata.id_inmueble|default:"___" }}</b> del Conjunto Residencial Fractal Casas de Verano, municipio de Moñitos, departamento de Córdoba.</p>
+
+<p><span class="section-title">SEGUNDA — VALOR DEL PAGARÉ.</span> El tenedor legítimo queda autorizado para incluir como valor del pagaré la suma correspondiente a la totalidad de las obligaciones pendientes de pago a cargo del(los) suscriptor(es), derivadas del contrato mencionado, la cual podrá incluir:</p>
+
+<ol class="numbered-list">
+  <li><b>Capital insoluto:</b> El saldo de capital adeudado a la fecha de diligenciamiento, hasta por un monto máximo equivalente al valor total del contrato, esto es, la suma de <b>${{ venta.final_price|floatformat:0|intcomma|default:"________________________" }}</b> ({{ venta.final_price_letters|default:"" }}) moneda legal colombiana.</li>
+  <li><b>Intereses remuneratorios:</b> Liquidados sobre el saldo de capital pendiente de pago, a la tasa pactada en el contrato. En caso de no haberse pactado expresamente, se aplicará la tasa del interés bancario corriente certificada por la Superintendencia Financiera de Colombia vigente a la fecha de su causación.</li>
+  <li><b>Intereses moratorios:</b> En caso de mora, liquidados a la tasa máxima legal permitida, equivalente a una y media (1.5) veces el interés bancario corriente vigente certificado por la Superintendencia Financiera de Colombia.</li>
+  <li><b>Cláusula penal:</b> La suma equivalente al veinte por ciento (20%) del valor total del contrato, cuando hubiere lugar a su cobro conforme a la cláusula Vigésima Cuarta del contrato.</li>
+  <li><b>Gastos de cobranza:</b> Los costos y gastos prejudiciales y judiciales en que incurra el acreedor para hacer efectivo el cobro.</li>
+</ol>
+
+<p><span class="section-title">TERCERA — FECHA DE VENCIMIENTO.</span> El tenedor legítimo queda autorizado para registrar como fecha de vencimiento del pagaré cualquiera de las siguientes:</p>
+
+<ol class="numbered-list">
+  <li>La fecha en que se produzca el incumplimiento de cualquier obligación de pago, total o parcial, derivada del contrato de construcción.</li>
+  <li>La fecha en que el acreedor haga uso de la cláusula aceleratoria por mora en el pago de una o más cuotas.</li>
+  <li>La fecha en que se configure cualquiera de las causales de terminación anticipada del contrato por incumplimiento del contratante, previstas en la cláusula Vigésima Cuarta del contrato.</li>
+</ol>
+
+<p><span class="section-title">CUARTA — LUGAR DE PAGO Y CUMPLIMIENTO.</span> El pagaré será pagadero en la ciudad de <b>Medellín, Antioquia</b>, que las partes fijan como domicilio contractual para todos los efectos legales.</p>
+
+<p><span class="section-title">QUINTA — NOMBRE DEL BENEFICIARIO.</span> El tenedor queda autorizado para incorporar como beneficiario del pagaré a <span class="party-highlight">CONSTRUCTORA ROJOZ S.A.S.</span>, con NIT <b>900.396.340-3</b>, representada legalmente por <span class="party-highlight">EDGAR ROBERT GALEANO ARANGO</span>, identificado con cédula de ciudadanía No. <b>71.335.951</b>, o a quien legítimamente ostente la representación legal de dicha sociedad al momento del diligenciamiento.</p>
+
+<p><span class="section-title">SEXTA — CONDICIONES PARA EL DILIGENCIAMIENTO.</span> El acreedor podrá diligenciar el pagaré cuando se presente cualquiera de las siguientes circunstancias:</p>
+
+<ol class="numbered-list">
+  <li>Mora en el pago de cualquier cuota o suma de dinero derivada del contrato de construcción, superior a sesenta (60) días calendario.</li>
+  <li>Incumplimiento de cualquiera de las obligaciones contractuales a cargo del(los) suscriptor(es).</li>
+  <li>Declaratoria de terminación anticipada del contrato por cualquiera de las causales establecidas en las cláusulas Décima Cuarta y Vigésima Cuarta del contrato.</li>
+  <li>Desistimiento del(los) contratante(s) o determinación de no continuar con las obligaciones del contrato.</li>
+</ol>
+
+<p><span class="section-title">SÉPTIMA — DECLARACIONES DEL(LOS) SUSCRIPTOR(ES).</span> El(los) suscriptor(es) declara(n):</p>
+
+<ol class="numbered-list">
+  <li>Que suscribe(n) el pagaré y la presente carta de instrucciones de manera libre, voluntaria y sin presión alguna.</li>
+  <li>Que conoce(n) y acepta(n) las condiciones bajo las cuales se llenará el pagaré y que los valores incluidos corresponderán a obligaciones reales, líquidas y exigibles.</li>
+  <li>Que renuncia(n) al requerimiento judicial y/o privado para ser constituido(s) en mora, de conformidad con el artículo 826 del Código de Comercio.</li>
+  <li>Que autoriza(n) al acreedor para reportar a las centrales de riesgo el incumplimiento de las obligaciones contenidas en el pagaré, de conformidad con la Ley 1266 de 2008 y demás normas concordantes.</li>
+  <li>Que acepta(n) que la carta de instrucciones forma parte integral del pagaré y del contrato de construcción Nro. <b>{{ venta.contract_number }}</b>.</li>
+</ol>
+
+<p><span class="section-title">OCTAVA — VIGENCIA DE LAS INSTRUCCIONES.</span> Las presentes instrucciones tendrán vigencia desde la fecha de suscripción del pagaré y hasta la extinción total de las obligaciones derivadas del contrato de construcción Nro. <b>{{ venta.contract_number }}</b>, incluidas las garantías de estabilidad y calidad de la obra. Una vez cumplidas la totalidad de las obligaciones, el acreedor procederá a la devolución física del pagaré al(los) suscriptor(es).</p>
+
+<p class="legal-note">Nota: De conformidad con la jurisprudencia de la Corte Suprema de Justicia, Sala de Casación Civil, la presente carta de instrucciones y el pagaré en blanco constituyen un solo negocio jurídico cambiario. El pagaré diligenciado conforme a estas instrucciones presta mérito ejecutivo y constituye título valor autónomo en los términos de los artículos 619, 621, 622 y 709 del Código de Comercio.</p>
+
+<p style="margin-top: 14px;">En constancia de aceptación, se firma en la ciudad de Medellín, a los {{ fecha_inicio|date:"d" }} días del mes de {{ fecha_inicio|date:"F" }} de {{ fecha_inicio|date:"Y" }}.</p>
+
+<!-- ── FIRMAS CARTA DE INSTRUCCIONES ── -->
+<div class="signatures-section">
+{% for cliente in clientes %}
+<div class="sig-block">
+  <div class="sig-line">
+    {{ cliente.full_name }}<br/>
+    C.C. {{ cliente.document_number }}
+    <div class="sig-role">SUSCRIPTOR / OTORGANTE</div>
+  </div>
+</div>
+{% endfor %}
+
+<div class="sig-block">
+  <div class="sig-line">
+    EDGAR ROBERT GALEANO ARANGO<br/>
+    C.C. 71.335.951<br/>
+    Rep. Legal — CONSTRUCTORA ROJOZ S.A.S.<br/>
+    NIT 900.396.340-3
+    <div class="sig-role">ACREEDOR / BENEFICIARIO</div>
+  </div>
+</div>
+</div>
+
+</div>
+
+</body>
+</html>

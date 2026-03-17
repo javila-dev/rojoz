@@ -36,6 +36,11 @@ class Project(models.Model):
         default=6,
         help_text="Duración estimada de la construcción (puede variar por tipo de casa)",
     )
+    include_contract_house_plan = models.BooleanField(
+        "Incluir plano de casas en contrato PDF",
+        default=True,
+        help_text="Si está activo, el contrato insertará la imagen 'plano casas.png' como anexo.",
+    )
 
     # --- Parámetros de pago por proyecto ---
     max_initial_months = models.PositiveIntegerField(
