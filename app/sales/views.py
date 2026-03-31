@@ -491,21 +491,20 @@ def contract_pdf(request, pk):
         html_content = _remove_grapesjs_placeholders(html_content)
         html_content = _unescape_django_templates(html_content)
 
+    # Insertar plano como imagen PNG entre Anexo 1 y Anexo 2
+    plano_path = base_dir / contract.project.name / "plano casas.png"
+    if not plano_path.exists():
+        plano_path = Path(settings.BASE_DIR) / "plano casas.png"
+
     plano_img_tag = ""
-    if contract.project.include_contract_house_plan:
-        # Insertar plano como imagen PNG entre Anexo 1 y Anexo 2
-        plano_path = base_dir / contract.project.name / "plano casas.png"
-        if not plano_path.exists():
-            plano_path = Path(settings.BASE_DIR) / "plano casas.png"
+    if plano_path.exists():
+        from urllib.parse import quote
 
-        if plano_path.exists():
-            from urllib.parse import quote
-
-            png_uri = "file://" + quote(str(plano_path))
-            plano_img_tag = (
-                '<div class="page-break"></div>'
-                f'<img src="{png_uri}" style="width:100%;height:auto;display:block;" />'
-            )
+        png_uri = "file://" + quote(str(plano_path))
+        plano_img_tag = (
+            '<div class="page-break"></div>'
+            f'<img src="{png_uri}" style="width:100%;height:auto;display:block;" />'
+        )
 
     html_content = html_content.replace("<!-- PLANO_CASAS -->", plano_img_tag)
 
@@ -513,7 +512,7 @@ def contract_pdf(request, pk):
     HTML(string=html_content, base_url=str(base_dir)).write_pdf(target=buffer)
     buffer.seek(0)
 
-    filename = f"contrato-{contract.prefixed_contract_number or contract.id}.pdf"
+    filename = f"contrato-{contract.contract_number or contract.id}.pdf"
     response = HttpResponse(buffer.getvalue(), content_type="application/pdf")
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
     return response
@@ -555,7 +554,7 @@ def pagare_pdf(request, pk):
     HTML(string=html_content, base_url=str(base_dir)).write_pdf(target=buffer)
     buffer.seek(0)
 
-    filename = f"pagare-{contract.prefixed_contract_number or contract.id}.pdf"
+    filename = f"pagare-{contract.contract_number or contract.id}.pdf"
     response = HttpResponse(buffer.getvalue(), content_type="application/pdf")
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
     return response

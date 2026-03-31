@@ -18,19 +18,9 @@ class HouseFinishInline(admin.TabularInline):
 
 @admin.register(Project)
 class ProjectAdmin(admin.ModelAdmin):
-    list_display = (
-        "name",
-        "city",
-        "logo",
-        "construction_start_months",
-        "include_contract_house_plan",
-        "max_initial_months",
-        "max_finance_months",
-        "finance_rate_monthly",
-        "amortization_type",
-    )
+    list_display = ("name", "city", "logo", "construction_start_months", "max_initial_months", "max_finance_months", "finance_rate_monthly", "amortization_type")
     search_fields = ("name", "city")
-    list_filter = ("amortization_type", "include_contract_house_plan")
+    list_filter = ("amortization_type",)
 
 
 @admin.register(HouseType)
