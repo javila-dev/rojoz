@@ -328,9 +328,21 @@ def receipt_request_mark_manual_action(request, solicitud_id):
     if request.method != "POST":
         return redirect("finance:receipt_request_detail", solicitud_id=solicitud_id)
     item = get_object_or_404(TreasuryReceiptRequestState, external_request_id=solicitud_id)
+    review_reason = (request.POST.get("review_reason") or "").strip()
+
+    if item.status == TreasuryReceiptRequestState.Status.REQUIRES_MANUAL:
+        item.status = TreasuryReceiptRequestState.Status.VALIDATED
+        item.validation_result = TreasuryReceiptRequestState.ValidationResult.SIN_ALERTAS
+        item.form_token = uuid.uuid4().hex
+        item.review_reason = review_reason or item.review_reason or "Aprobada en revisión manual."
+        item.save(update_fields=["status", "validation_result", "form_token", "review_reason", "updated_at"])
+        messages.success(request, "Revisión manual aprobada. La solicitud quedó habilitada para generar recibo.")
+        return redirect("finance:receipt_request_detail", solicitud_id=solicitud_id)
+
     item.status = TreasuryReceiptRequestState.Status.REQUIRES_MANUAL
-    item.review_reason = (request.POST.get("review_reason") or "").strip() or "Marcada manualmente."
-    item.save(update_fields=["status", "review_reason", "updated_at"])
+    item.form_token = ""
+    item.review_reason = review_reason or "Marcada manualmente."
+    item.save(update_fields=["status", "form_token", "review_reason", "updated_at"])
     messages.info(request, "Solicitud enviada a revisión manual.")
     return redirect("finance:receipt_request_detail", solicitud_id=solicitud_id)
 

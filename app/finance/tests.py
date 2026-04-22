@@ -373,6 +373,43 @@ class TreasuryAPIWrapperTests(BaseAppTestCase):
         state = TreasuryReceiptRequestState.objects.get(external_request_id="sol-9")
         self.assertEqual(state.status, TreasuryReceiptRequestState.Status.BLOCKED)
 
+
+    def test_manual_review_approval_enables_receipt_generation(self):
+        TreasuryReceiptRequestState.objects.create(
+            external_request_id="sol-manual",
+            sale=self.sale,
+            project_name=self.project.name,
+            client_name="Cliente Manual",
+            amount_reported=Decimal("1000000.00"),
+            payment_date=date(2026, 1, 15),
+        )
+
+        validate_response = self.client.post(
+            "/api/tesoreria/solicitudes/sol-manual/validar",
+            data='{"fecha_pago":"2026-01-15","valor":1000000}',
+            content_type="application/json",
+        )
+        self.assertEqual(validate_response.status_code, 200)
+        self.assertEqual(validate_response.json()["resultado"], "con_alertas")
+
+        manual_response = self.client.patch(
+            "/finance/api/receipt-request/sol-manual/status",
+            data=json.dumps({"requiere_revision_manual": True, "motivo_revision": "Revisión completada"}),
+            content_type="application/json",
+        )
+        self.assertEqual(manual_response.status_code, 200)
+        payload = manual_response.json()
+        self.assertEqual(payload["status"], TreasuryReceiptRequestState.Status.VALIDATED)
+        self.assertEqual(payload["validation_result"], TreasuryReceiptRequestState.ValidationResult.SIN_ALERTAS)
+        self.assertTrue(payload["form_token"])
+
+        create_response = self.client.post(
+            "/api/tesoreria/solicitudes/sol-manual/generar-recibo",
+            data=json.dumps({"valor": 1000000, "fecha_pago": "2026-01-15", "form_token": payload["form_token"]}),
+            content_type="application/json",
+        )
+        self.assertEqual(create_response.status_code, 200)
+
     def test_generate_receipt_after_successful_validation_is_idempotent(self):
         TreasuryReceiptRequestState.objects.create(
             external_request_id="sol-10",

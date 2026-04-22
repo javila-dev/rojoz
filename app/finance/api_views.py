@@ -275,13 +275,24 @@ def api_treasury_update_request_status(request, solicitud_id):
 
     state = get_object_or_404(TreasuryReceiptRequestState, external_request_id=str(solicitud_id))
     if data.get("requiere_revision_manual"):
-        state.status = TreasuryReceiptRequestState.Status.REQUIRES_MANUAL
-        state.review_reason = data.get("motivo_revision") or state.review_reason
-        state.save(update_fields=["status", "review_reason", "updated_at"])
+        review_reason = data.get("motivo_revision") or state.review_reason
+        if state.status == TreasuryReceiptRequestState.Status.REQUIRES_MANUAL:
+            state.status = TreasuryReceiptRequestState.Status.VALIDATED
+            state.validation_result = TreasuryReceiptRequestState.ValidationResult.SIN_ALERTAS
+            state.form_token = uuid.uuid4().hex
+            state.review_reason = review_reason or "Aprobada en revisión manual."
+            state.save(update_fields=["status", "validation_result", "form_token", "review_reason", "updated_at"])
+        else:
+            state.status = TreasuryReceiptRequestState.Status.REQUIRES_MANUAL
+            state.form_token = ""
+            state.review_reason = review_reason
+            state.save(update_fields=["status", "form_token", "review_reason", "updated_at"])
     return JsonResponse(
         {
             "id": state.external_request_id,
             "status": state.status,
+            "validation_result": state.validation_result,
+            "form_token": state.form_token or None,
             "motivo_revision": state.review_reason,
         }
     )

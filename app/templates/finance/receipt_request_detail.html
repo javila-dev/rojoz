@@ -138,9 +138,9 @@
             <form method="post" action="{% url 'finance:receipt_request_mark_manual_action' item.external_request_id %}" class="card bg-white border border-gray-200 shadow-sm">
                 {% csrf_token %}
                 <div class="card-body space-y-3">
-                    <h3 class="card-title text-base">Enviar a revisión manual</h3>
+                    <h3 class="card-title text-base">{% if item.status == "REQUIRES_MANUAL" %}Aprobar revisión manual{% else %}Enviar a revisión manual{% endif %}</h3>
                     <textarea class="textarea textarea-bordered w-full" rows="3" name="review_reason" placeholder="Motivo">{{ item.review_reason }}</textarea>
-                    <button class="btn btn-outline w-full" type="submit">Marcar revisión manual</button>
+                    <button class="btn btn-outline w-full" type="submit">{% if item.status == "REQUIRES_MANUAL" %}Aprobar y habilitar recibo{% else %}Marcar revisión manual{% endif %}</button>
                 </div>
             </form>
         </div>
