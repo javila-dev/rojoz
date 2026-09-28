@@ -1,13 +1,18 @@
 from datetime import date
 from decimal import Decimal
 import json
+from django.db.models import Sum
 from django.urls import reverse
+
+from django.db.models import Sum
 
 from finance.models import (
     CommissionPayment,
     CommissionRole,
     PaymentApplication,
+    PaymentReceipt,
     TreasuryReceiptRequestState,
+    reapply_receipts_from,
 )
 from sales.models import PaymentPlan, PaymentSchedule, Sale, SaleLog
 from users.models import RoleCode
@@ -264,6 +269,151 @@ class PaymentReceiptApplicationTests(BaseAppTestCase):
         self.assertEqual(item_2_capital, Decimal("170.00"))
         self.assertEqual(receipt.surplus, Decimal("0.00"))
 
+
+    def test_apply_to_schedule_skip_mora(self):
+        item_1 = PaymentSchedule.objects.create(
+            payment_plan=self.plan,
+            n=1,
+            numero_cuota=1,
+            fecha=date(2026, 1, 1),
+            concepto="FN",
+            valor_total=Decimal("1100.00"),
+            capital=Decimal("1000.00"),
+            interes=Decimal("100.00"),
+            saldo=Decimal("389999000.00"),
+        )
+        item_2 = PaymentSchedule.objects.create(
+            payment_plan=self.plan,
+            n=2,
+            numero_cuota=2,
+            fecha=date(2026, 3, 1),
+            concepto="FN",
+            valor_total=Decimal("2200.00"),
+            capital=Decimal("2000.00"),
+            interes=Decimal("200.00"),
+            saldo=Decimal("389997000.00"),
+        )
+        receipt = Factory.receipt(
+            sale=self.sale,
+            created_by=self.user,
+            amount="1500.00",
+            date_paid_value=date(2026, 1, 31),
+            condonacion_mora=True,
+        )
+
+        receipt.apply_to_schedule()
+
+        self.assertFalse(
+            PaymentApplication.objects.filter(
+                receipt=receipt,
+                concept=PaymentApplication.Concept.MORA,
+            ).exists()
+        )
+        item_1_capital = (
+            PaymentApplication.objects.filter(
+                receipt=receipt,
+                schedule_item=item_1,
+                concept=PaymentApplication.Concept.CAPITAL,
+            )
+            .values_list("amount", flat=True)
+            .first()
+        )
+        item_2_capital = (
+            PaymentApplication.objects.filter(
+                receipt=receipt,
+                schedule_item=item_2,
+                concept=PaymentApplication.Concept.CAPITAL,
+            )
+            .values_list("amount", flat=True)
+            .first()
+        )
+        self.assertEqual(item_1_capital, Decimal("1000.00"))
+        self.assertEqual(item_2_capital, Decimal("200.00"))
+        self.assertEqual(receipt.surplus, Decimal("0.00"))
+
+    def test_reapply_from_middle_receipt(self):
+        item_1 = PaymentSchedule.objects.create(
+            payment_plan=self.plan,
+            n=1,
+            numero_cuota=1,
+            fecha=date(2026, 1, 1),
+            concepto="FN",
+            valor_total=Decimal("1100.00"),
+            capital=Decimal("1000.00"),
+            interes=Decimal("100.00"),
+            saldo=Decimal("389999000.00"),
+        )
+        PaymentSchedule.objects.create(
+            payment_plan=self.plan,
+            n=2,
+            numero_cuota=2,
+            fecha=date(2026, 3, 1),
+            concepto="FN",
+            valor_total=Decimal("2200.00"),
+            capital=Decimal("2000.00"),
+            interes=Decimal("200.00"),
+            saldo=Decimal("389997000.00"),
+        )
+        method = Factory.payment_method(project=self.project, name="Efectivo")
+        receipt_first = Factory.receipt(
+            sale=self.sale,
+            created_by=self.user,
+            payment_method=method,
+            amount="130.00",
+            date_paid_value=date(2026, 1, 31),
+        )
+        receipt_first.apply_to_schedule()
+        receipt_middle = Factory.receipt(
+            sale=self.sale,
+            created_by=self.user,
+            payment_method=method,
+            amount="600.00",
+            date_paid_value=date(2026, 2, 15),
+        )
+        receipt_middle.apply_to_schedule()
+        receipt_last = Factory.receipt(
+            sale=self.sale,
+            created_by=self.user,
+            payment_method=method,
+            amount="1670.00",
+            date_paid_value=date(2026, 3, 15),
+        )
+        receipt_last.apply_to_schedule()
+
+        self.assertTrue(
+            PaymentApplication.objects.filter(
+                receipt=receipt_middle,
+                concept=PaymentApplication.Concept.MORA,
+            ).exists()
+        )
+
+        reapply_receipts_from(receipt_middle, waive_mora_for_target=True)
+
+        receipt_middle.refresh_from_db()
+        receipt_last.refresh_from_db()
+        self.assertTrue(receipt_middle.condonacion_mora)
+        self.assertFalse(
+            PaymentApplication.objects.filter(
+                receipt=receipt_middle,
+                concept=PaymentApplication.Concept.MORA,
+            ).exists()
+        )
+        self.assertTrue(
+            PaymentApplication.objects.filter(
+                receipt=receipt_last,
+                concept=PaymentApplication.Concept.MORA,
+            ).exists()
+        )
+        receipts = [receipt_first, receipt_middle, receipt_last]
+        total_applied = PaymentApplication.objects.filter(
+            receipt__in=receipts
+        ).aggregate(t=Sum("amount"))["t"] or Decimal("0")
+        total_surplus = PaymentReceipt.objects.filter(pk__in=[r.pk for r in receipts]).aggregate(
+            t=Sum("surplus")
+        )["t"] or Decimal("0")
+        total_received = sum(r.amount for r in receipts)
+        self.assertEqual(total_applied + total_surplus, total_received)
+
     def test_apply_to_schedule_sets_surplus_on_overpayment(self):
         PaymentSchedule.objects.create(
             payment_plan=self.plan,
@@ -440,3 +590,52 @@ class TreasuryAPIWrapperTests(BaseAppTestCase):
         self.assertEqual(create_response.status_code, 200)
         self.assertEqual(second_response.status_code, 200)
         self.assertEqual(second_response.json()["idempotent"], True)
+
+    def test_generate_receipt_honors_condonacion_mora(self):
+        self.project.payment_grace_days = 0
+        self.project.mora_rate_monthly = Decimal("3.0000")
+        self.project.save(update_fields=["payment_grace_days", "mora_rate_monthly"])
+
+        create_resp = self.client.post(
+            "/api/tesoreria/solicitudes",
+            data=json.dumps(
+                {
+                    "id": "sol-condonacion",
+                    "sale_id": str(self.sale.id),
+                    "cliente": "Cliente Condonacion",
+                    "valor": 250000,
+                    "fecha_pago": "2026-02-15",
+                    "condonacion_mora": True,
+                }
+            ),
+            content_type="application/json",
+        )
+        self.assertEqual(create_resp.status_code, 201)
+
+        validate_response = self.client.post(
+            "/api/tesoreria/solicitudes/sol-condonacion/validar",
+            data='{"fecha_pago":"2026-02-15","valor":250000}',
+            content_type="application/json",
+        )
+        self.assertEqual(validate_response.status_code, 200)
+        form_token = validate_response.json()["form_token"]
+
+        create_response = self.client.post(
+            "/api/tesoreria/solicitudes/sol-condonacion/generar-recibo",
+            data=json.dumps(
+                {"valor": 250000, "fecha_pago": "2026-02-15", "form_token": form_token}
+            ),
+            content_type="application/json",
+        )
+        self.assertEqual(create_response.status_code, 200)
+
+        state = TreasuryReceiptRequestState.objects.get(external_request_id="sol-condonacion")
+        receipt = PaymentReceipt.objects.get(pk=create_response.json()["id"])
+        self.assertEqual(state.linked_receipt_id, receipt.id)
+        self.assertTrue(receipt.condonacion_mora)
+        self.assertFalse(
+            PaymentApplication.objects.filter(
+                receipt=receipt,
+                concept=PaymentApplication.Concept.MORA,
+            ).exists()
+        )

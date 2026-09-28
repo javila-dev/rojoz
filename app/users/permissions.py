@@ -144,6 +144,7 @@ PERMISSION_LABELS = {
     "finance:receipt_list": "Ver recibos de una venta",
     "finance:receipt_create": "Crear recibo de pago",
     "finance:receipt_detail": "Ver detalle de recibo",
+    "finance:receipt_waive_mora_action": "Condonar mora y reaplicar recibo",
     "finance:receipt_evidence": "Ver soporte de recibo",
     "finance:receipt_pdf": "Descargar recibo PDF",
     "finance:account_statement_pdf": "Descargar estado de cuenta PDF",

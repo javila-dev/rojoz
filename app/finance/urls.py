@@ -34,6 +34,7 @@ urlpatterns = [
     path('recaudos/venta/<uuid:sale_id>/nuevo/', views.receipt_create, name='receipt_create'),
     path('recaudos/venta/<uuid:sale_id>/estado-cuenta/', views.account_statement_pdf, name='account_statement_pdf'),
     path('recaudos/recibo/<int:pk>/', views.receipt_detail, name='receipt_detail'),
+    path('recaudos/recibo/<int:pk>/condonar-mora/', views.receipt_waive_mora_action, name='receipt_waive_mora_action'),
     path('recaudos/recibo/<int:pk>/pdf/', views.receipt_pdf, name='receipt_pdf'),
     path('recaudos/recibo/<int:pk>/soporte/', views.receipt_evidence, name='receipt_evidence'),
     path('solicitudes-recibo/<str:solicitud_id>/soporte/', views.receipt_request_evidence, name='receipt_request_evidence'),

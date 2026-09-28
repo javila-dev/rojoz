@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load permission_tags %}
 
 {% block title %}Recibo #{{ receipt.pk }}{% endblock %}
 
@@ -12,9 +13,16 @@
                 {{ receipt.sale.project.name }}
             </p>
         </div>
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-3 flex-wrap justify-end">
             <a href="{% url 'finance:receipt_list' receipt.sale.id %}" class="btn btn-neutral-elegant">Volver</a>
             <a href="{% url 'finance:receipt_pdf' receipt.pk %}" class="btn btn-neutral-elegant" data-no-loading target="_blank">Imprimir recibo</a>
+            {% if request.user|can_access:"finance:receipt_waive_mora_action" %}
+                {% if has_mora_applied or receipt.condonacion_mora %}
+                <button type="button" class="btn btn-warning" onclick="document.getElementById('waive-mora-modal').showModal()">
+                    Condonar mora y reaplicar
+                </button>
+                {% endif %}
+            {% endif %}
         </div>
     </div>
 
@@ -33,7 +41,14 @@
                 <div>
                     <span class="text-sm text-gray-500">Fecha real de pago</span>
                     <p>{{ receipt.date_paid|date:"d/m/Y" }}</p>
+                    <p class="text-xs text-gray-400 mt-1">La mora se calcula con esta fecha.</p>
                 </div>
+                {% if receipt.condonacion_mora %}
+                <div>
+                    <span class="text-sm text-gray-500">Condonación</span>
+                    <p><span class="badge badge-warning">Condonación de mora</span></p>
+                </div>
+                {% endif %}
                 <div>
                     <span class="text-sm text-gray-500">Fecha de registro</span>
                     <p>{{ receipt.date_registered|date:"d/m/Y H:i" }}</p>
@@ -103,4 +118,31 @@
         </div>
     </div>
 </div>
+
+{% if request.user|can_access:"finance:receipt_waive_mora_action" %}
+{% if has_mora_applied or receipt.condonacion_mora %}
+<dialog id="waive-mora-modal" class="modal">
+    <div class="modal-box">
+        <h3 class="font-bold text-lg">Condonar mora y reaplicar</h3>
+        <p class="py-4 text-sm text-gray-600">
+            Se condonará la mora de este recibo y se reaplicarán este recibo y los posteriores de la venta
+            (en orden de fecha de pago). Los recibos posteriores seguirán calculando mora según su fecha real de pago.
+        </p>
+        <p class="text-sm text-gray-600">
+            Si la mora fue incorrecta por una fecha mal digitada, corrija la fecha real de pago antes de continuar.
+        </p>
+        <div class="modal-action">
+            <form method="dialog">
+                <button class="btn btn-ghost">Cancelar</button>
+            </form>
+            <form method="post" action="{% url 'finance:receipt_waive_mora_action' receipt.pk %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-warning">Confirmar</button>
+            </form>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+{% endif %}
+{% endif %}
 {% endblock %}

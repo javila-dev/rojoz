@@ -68,6 +68,7 @@ class PaymentReceipt(models.Model):
     surplus = models.DecimalField(
         "Saldo a favor", max_digits=14, decimal_places=2, default=0
     )
+    condonacion_mora = models.BooleanField("Condonación de mora", default=False)
     created_by = models.ForeignKey(
         "users.User", on_delete=models.PROTECT, verbose_name="Elaborado por"
     )
@@ -83,7 +84,7 @@ class PaymentReceipt(models.Model):
     # Aplicación automática del pago al cronograma
     # ------------------------------------------------------------------
     @transaction.atomic
-    def apply_to_schedule(self):
+    def apply_to_schedule(self, *, skip_mora=None):
         """Distribuye el monto del recibo en el cronograma de la venta.
 
         Orden de aplicación por cada cuota (cronológico):
@@ -91,6 +92,9 @@ class PaymentReceipt(models.Model):
           2. Interés corriente
           3. Capital
         """
+        if skip_mora is None:
+            skip_mora = self.condonacion_mora
+
         self.applications.all().delete()
 
         plan = self.sale.payment_plan
@@ -106,24 +110,25 @@ class PaymentReceipt(models.Model):
                 break
 
             # --- 1. Mora ---
-            mora_total = _calculate_mora(
-                item, self.date_paid, grace_days, mora_rate
-            )
-            mora_paid = (
-                item.applications.filter(concept=PaymentApplication.Concept.MORA)
-                .aggregate(t=Sum("amount"))["t"]
-                or Decimal("0")
-            )
-            mora_pending = max(mora_total - mora_paid, Decimal("0"))
-            if mora_pending > 0:
-                apply = min(remaining, mora_pending)
-                PaymentApplication.objects.create(
-                    receipt=self,
-                    schedule_item=item,
-                    concept=PaymentApplication.Concept.MORA,
-                    amount=apply,
+            if not skip_mora:
+                mora_total = _calculate_mora(
+                    item, self.date_paid, grace_days, mora_rate
                 )
-                remaining -= apply
+                mora_paid = (
+                    item.applications.filter(concept=PaymentApplication.Concept.MORA)
+                    .aggregate(t=Sum("amount"))["t"]
+                    or Decimal("0")
+                )
+                mora_pending = max(mora_total - mora_paid, Decimal("0"))
+                if mora_pending > 0:
+                    apply = min(remaining, mora_pending)
+                    PaymentApplication.objects.create(
+                        receipt=self,
+                        schedule_item=item,
+                        concept=PaymentApplication.Concept.MORA,
+                        amount=apply,
+                    )
+                    remaining -= apply
 
             if remaining <= 0:
                 break
@@ -308,6 +313,29 @@ class PaymentApplication(models.Model):
 
     def __str__(self):
         return f"{self.get_concept_display()} ${self.amount:,.0f} → Cuota #{self.schedule_item.numero_cuota}"
+
+
+@transaction.atomic
+def reapply_receipts_from(receipt, *, waive_mora_for_target=False):
+    """Desaplica y reaplica este recibo y los posteriores de la misma venta."""
+    ordered = list(
+        PaymentReceipt.objects.filter(sale_id=receipt.sale_id).order_by("date_paid", "pk")
+    )
+    try:
+        start = ordered.index(receipt)
+    except ValueError as exc:
+        raise ValueError("El recibo no pertenece a la venta.") from exc
+
+    batch = ordered[start:]
+    PaymentApplication.objects.filter(receipt__in=batch).delete()
+    for r in batch:
+        r.surplus = Decimal("0")
+
+    for i, r in enumerate(batch):
+        if waive_mora_for_target and i == 0:
+            r.condonacion_mora = True
+            r.save(update_fields=["condonacion_mora"])
+        r.apply_to_schedule()
 
 
 # ---------------------------------------------------------------------------

@@ -421,6 +421,7 @@ def api_treasury_generate_receipt(request, solicitud_id):
             date_paid=paid_date,
             payment_method=method,
             notes=data.get("concepto") or "Pago recibido de cliente",
+            condonacion_mora=state.condonacion_mora,
             created_by=creator,
         )
         receipt.apply_to_schedule()

@@ -30,6 +30,7 @@ from .models import (
     PaymentReceipt,
     PaymentApplication,
     TreasuryReceiptRequestState,
+    reapply_receipts_from,
 )
 from .forms import (
     AdvisorCreateForm,
@@ -312,6 +313,7 @@ def receipt_request_generate_action(request, solicitud_id):
             date_paid=item.payment_date or date.today(),
             payment_method=method,
             notes="Pago recibido de cliente",
+            condonacion_mora=item.condonacion_mora,
             created_by=creator,
         )
         receipt.apply_to_schedule()
@@ -1337,11 +1339,44 @@ def receipt_detail(request, pk):
     applications = receipt.applications.select_related("schedule_item").order_by(
         "schedule_item__n", "concept"
     )
+    has_mora_applied = applications.filter(
+        concept=PaymentApplication.Concept.MORA
+    ).exists()
     return render(
         request,
         "finance/receipt_detail.html",
-        {"receipt": receipt, "applications": applications},
+        {
+            "receipt": receipt,
+            "applications": applications,
+            "has_mora_applied": has_mora_applied,
+        },
     )
+
+
+def receipt_waive_mora_action(request, pk):
+    if request.method != "POST":
+        return redirect("finance:receipt_detail", pk=pk)
+
+    receipt = get_object_or_404(PaymentReceipt, pk=pk)
+    if not hasattr(receipt.sale, "payment_plan"):
+        messages.error(
+            request,
+            "La venta no tiene cronograma de pagos; no se puede reaplicar el recibo.",
+        )
+        return redirect("finance:receipt_detail", pk=pk)
+
+    try:
+        reapply_receipts_from(receipt, waive_mora_for_target=True)
+    except ValueError:
+        messages.error(request, "No se pudo reaplicar el recibo.")
+        return redirect("finance:receipt_detail", pk=pk)
+
+    messages.success(
+        request,
+        "Se condonó la mora de este recibo y se reaplicaron este recibo y los posteriores "
+        "de la venta. Si hubo liquidaciones de comisiones previas, revíselas manualmente.",
+    )
+    return redirect("finance:receipt_detail", pk=pk)
 
 
 def receipt_pdf(request, pk):
