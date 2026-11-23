@@ -17,6 +17,18 @@
         <div class="lg:col-span-2 card bg-white border border-gray-200 shadow-sm">
             <div class="card-body">
                 <h2 class="card-title">Listado</h2>
+                <form method="get" class="flex flex-col sm:flex-row gap-2 sm:items-center mt-2" role="search">
+                    <div class="relative flex-1">
+                        <label class="sr-only" for="filter-q">Buscar</label>
+                        <i class="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true"></i>
+                        <input id="filter-q" type="search" name="q" value="{{ query }}" placeholder="Buscar por nombre o descripción"
+                               class="input input-bordered input-sm w-full pl-9">
+                    </div>
+                    <button type="submit" class="btn btn-sm btn-neutral-elegant">Buscar</button>
+                    {% if filters_active %}
+                    <a href="{% url 'inventory:house_type_list' project.id %}" class="btn btn-sm btn-ghost text-gray-600">Limpiar</a>
+                    {% endif %}
+                </form>
                 <div class="overflow-x-auto mt-4">
                     <table class="table table-zebra w-full text-sm">
                         <thead>
@@ -46,12 +58,20 @@
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="7" class="text-center text-gray-500 py-6">No hay tipos de casa.</td>
+                                <td colspan="7" class="text-center py-8">
+                                    {% if filters_active %}
+                                    <p class="text-gray-700 font-medium">Ningún tipo de casa coincide con "{{ query }}".</p>
+                                    <p class="text-sm text-gray-500 mt-1">Revisa la búsqueda o <a href="{% url 'inventory:house_type_list' project.id %}" class="link">limpia el filtro</a>.</p>
+                                    {% else %}
+                                    <p class="text-gray-500">No hay tipos de casa.</p>
+                                    {% endif %}
+                                </td>
                             </tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
+                {% include "partials/pagination.html" with page_obj=page_obj label="tipos de casa" %}
             </div>
         </div>
 

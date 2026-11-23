@@ -13,7 +13,7 @@
     <!-- Header -->
     <div class="flex flex-wrap items-start justify-between gap-6">
         <div>
-            <h1 class="text-3xl font-bold text-gray-900" style="font-family: 'Playfair Display', serif;">
+            <h1 class="text-3xl font-bold text-gray-900">
                 Assets
             </h1>
             <p class="text-gray-600 mt-1">Imágenes y recursos para usar en plantillas PDF</p>
@@ -30,20 +30,41 @@
         </div>
     </div>
 
-    <!-- Lista de assets por categoría -->
-    {% if categories %}
-    {% for category in categories %}
-    {% if category.assets.all %}
+    {% if has_assets %}
+    <form method="get" class="flex flex-col md:flex-row gap-2 md:items-center" role="search">
+        <label class="sr-only" for="filter-categoria">Categoría</label>
+        <select id="filter-categoria" name="categoria" class="select select-bordered select-sm md:w-56" onchange="this.form.submit()">
+            <option value="">Todas las categorías</option>
+            {% for c in categories %}
+            <option value="{{ c.pk }}"{% if category and c.pk == category.pk %} selected{% endif %}>{{ c.name }}</option>
+            {% endfor %}
+        </select>
+        <div class="relative flex-1">
+            <label class="sr-only" for="filter-q">Buscar</label>
+            <i class="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true"></i>
+            <input id="filter-q" type="search" name="q" value="{{ query }}" placeholder="Buscar por nombre o descripción"
+                   class="input input-bordered input-sm w-full pl-9">
+        </div>
+        <button type="submit" class="btn btn-sm btn-neutral-elegant">Buscar</button>
+        {% if filters_active %}
+        <a href="{% url 'documents:asset_list' %}" class="btn btn-sm btn-ghost text-gray-600">Limpiar</a>
+        {% endif %}
+    </form>
+    {% endif %}
+
+    <!-- Lista de assets por categoría (solo la página actual) -->
+    {% regroup assets by category as asset_groups %}
+    {% for group in asset_groups %}
     <div class="card bg-white border border-gray-200 shadow-sm">
         <div class="card-body">
             <h2 class="card-title text-lg mb-4">
                 <i class="ri-folder-line text-rojoz-600"></i>
-                {{ category.name }}
-                <span class="badge badge-sm">{{ category.assets.count }}</span>
+                {{ group.grouper.name }}
+                <span class="badge badge-sm">{{ group.list|length }}</span>
             </h2>
 
             <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                {% for asset in category.assets.all %}
+                {% for asset in group.list %}
                 <div class="group relative">
                     <div class="aspect-square bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
                         <img src="{{ asset.file.url }}" alt="{{ asset.name }}" class="w-full h-full object-contain">
@@ -68,12 +89,23 @@
             </div>
         </div>
     </div>
-    {% endif %}
     {% endfor %}
+
+    {% if page_obj.paginator.count %}
+    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        {% include "partials/pagination.html" with page_obj=page_obj label="assets" %}
+    </div>
+    {% elif filters_active %}
+    <div class="card bg-white border border-gray-200">
+        <div class="card-body items-center text-center py-12">
+            <p class="text-gray-700 font-medium">Ningún asset coincide con los filtros.</p>
+            <p class="text-sm text-gray-500 mt-1">Revisa la búsqueda o <a href="{% url 'documents:asset_list' %}" class="link">limpia los filtros</a>.</p>
+        </div>
+    </div>
     {% endif %}
 
-    <!-- Assets sin categoría o vacío -->
-    {% if not assets %}
+    <!-- Vacío: todavía no hay assets -->
+    {% if not has_assets %}
     <div class="card bg-white border border-gray-200">
         <div class="card-body items-center text-center py-16">
             <div class="w-20 h-20 rounded-full bg-rojoz-100 flex items-center justify-center mb-4">

@@ -22,7 +22,10 @@ from .models import (
     PageSize,
     Orientation,
     TemplateContextAlias,
+    TemplateStatus,
 )
+from core.listing import paginate, search
+
 from .forms import AssetCategoryForm, TemplateAssetForm, PDFTemplateForm
 from .services.publisher import publish_template
 
@@ -198,12 +201,32 @@ def index(request):
 # =============================================================================
 
 def asset_list(request):
-    """Lista de assets agrupados por categoría."""
-    categories = AssetCategory.objects.prefetch_related("assets").all()
-    assets = TemplateAsset.objects.select_related("category").all()
+    """Lista de assets agrupados por categoría, con filtros y paginación."""
+    categories = list(AssetCategory.objects.all())
+    assets = TemplateAsset.objects.select_related("category").order_by(
+        "category__type", "category__name", "category_id", "name"
+    )
+    has_assets = assets.exists()
+
+    try:
+        category_id = int(request.GET.get("categoria") or 0)
+    except ValueError:
+        category_id = 0
+    category = next((c for c in categories if c.pk == category_id), None)
+    if category:
+        assets = assets.filter(category=category)
+    query = (request.GET.get("q") or "").strip()
+    assets = search(assets, query, ["name", "description"])
+    page_obj = paginate(request, assets, per_page=48)
+
     return render(request, "documents/asset_list.html", {
         "categories": categories,
-        "assets": assets,
+        "category": category,
+        "assets": page_obj.object_list,
+        "page_obj": page_obj,
+        "query": query,
+        "filters_active": bool(category or query),
+        "has_assets": has_assets,
     })
 
 
@@ -266,9 +289,26 @@ def asset_delete(request, pk):
 
 def template_list(request):
     """Lista de plantillas PDF."""
-    templates = PDFTemplate.objects.select_related("created_by").all()
+    templates = PDFTemplate.objects.select_related("created_by").order_by("name")
+    has_templates = templates.exists()
+
+    estado = (request.GET.get("estado") or "").strip()
+    if estado in TemplateStatus.values:
+        templates = templates.filter(status=estado)
+    else:
+        estado = ""
+    query = (request.GET.get("q") or "").strip()
+    templates = search(templates, query, ["name", "description", "target_path"])
+    page_obj = paginate(request, templates, per_page=24)
+
     return render(request, "documents/template_list.html", {
-        "templates": templates,
+        "templates": page_obj.object_list,
+        "page_obj": page_obj,
+        "query": query,
+        "estado": estado,
+        "status_choices": TemplateStatus.choices,
+        "filters_active": bool(query or estado),
+        "has_templates": has_templates,
     })
 
 
@@ -842,10 +882,35 @@ def template_publish(request, pk):
 def version_list(request, pk):
     """Lista de versiones de una plantilla."""
     template = get_object_or_404(PDFTemplate, pk=pk)
-    versions = template.versions.select_related("created_by").all()
+    versions = template.versions.select_related("created_by").order_by("-version_number")
+    has_versions = versions.exists()
+    query = (request.GET.get("q") or "").strip()
+    if query:
+        condition = dj_models.Q(
+            pk__in=search(
+                TemplateVersion.objects.filter(template=template),
+                query,
+                [
+                    "change_description",
+                    "created_by__first_name",
+                    "created_by__last_name",
+                    "created_by__username",
+                ],
+            ).values("pk")
+        )
+        number = query.lstrip("vV#")
+        if number.isdigit() and len(number) <= 9:
+            # "v3" o "3" también encuentran la versión por número.
+            condition |= dj_models.Q(version_number=int(number))
+        versions = versions.filter(condition)
+    page_obj = paginate(request, versions, per_page=20)
     return render(request, "documents/version_list.html", {
         "template": template,
-        "versions": versions,
+        "versions": page_obj.object_list,
+        "page_obj": page_obj,
+        "query": query,
+        "filters_active": bool(query),
+        "has_versions": has_versions,
     })
 
 

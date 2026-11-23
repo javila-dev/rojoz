@@ -12,6 +12,19 @@
         <div class="badge badge-neutral-elegant">Inventario</div>
     </div>
 
+    <form method="get" class="flex flex-col md:flex-row gap-2 md:items-center" role="search">
+        <div class="relative flex-1">
+            <label class="sr-only" for="filter-q">Buscar</label>
+            <i class="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true"></i>
+            <input id="filter-q" type="search" name="q" value="{{ query }}" placeholder="Buscar por nombre o ciudad"
+                   class="input input-bordered input-sm w-full pl-9">
+        </div>
+        <button type="submit" class="btn btn-sm btn-neutral-elegant">Buscar</button>
+        {% if filters_active %}
+        <a href="{% url 'inventory:project_list' %}" class="btn btn-sm btn-ghost text-gray-600">Limpiar</a>
+        {% endif %}
+    </form>
+
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {% for project in projects %}
         <div class="card bg-white border border-gray-200 shadow-sm">
@@ -39,12 +52,23 @@
             </div>
         </div>
         {% empty %}
-        <div class="card bg-white border border-gray-200 shadow-sm">
+        <div class="card bg-white border border-gray-200 shadow-sm lg:col-span-2">
             <div class="card-body">
+                {% if filters_active %}
+                <p class="text-gray-700 font-medium">Ningún proyecto coincide con "{{ query }}".</p>
+                <p class="text-sm text-gray-500">Revisa la búsqueda o <a href="{% url 'inventory:project_list' %}" class="link">limpia el filtro</a>.</p>
+                {% else %}
                 <p class="text-gray-500">No hay proyectos registrados.</p>
+                {% endif %}
             </div>
         </div>
         {% endfor %}
     </div>
+
+    {% if page_obj.paginator.count %}
+    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        {% include "partials/pagination.html" with page_obj=page_obj label="proyectos" %}
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

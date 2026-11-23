@@ -85,3 +85,36 @@ class InventoryFlowTests(BaseAppTestCase):
         self.assertEqual(option_response.status_code, 302)
         option = FinishOption.objects.get(category=category, name="Porcelanato")
         self.assertEqual(option.price, Decimal("1800000"))
+
+
+class InventoryListFilterTests(BaseAppTestCase):
+    def setUp(self):
+        self.project = Factory.project(name="Proyecto Filtros")
+        self.other = Factory.project(name="Otro Proyecto", city="Cartagena")
+        self.user = self.make_user(role=RoleCode.GERENTE, username="inv_filtros")
+        self.login_as(self.user)
+        self.grant_permissions(
+            RoleCode.GERENTE, ["inventory:project_list", "inventory:finish_option_list"]
+        )
+
+    def test_project_list_search(self):
+        response = self.client.get(reverse("inventory:project_list"), {"q": "cartagena"})
+        self.assertEqual(list(response.context["projects"]), [self.other])
+
+    def test_finish_option_list_filters_by_category_and_keeps_project_scope(self):
+        pisos = FinishCategory.objects.create(project=self.project, name="Pisos")
+        puertas = FinishCategory.objects.create(project=self.project, name="Puertas")
+        foreign = FinishCategory.objects.create(project=self.other, name="Pisos")
+        porcelanato = FinishOption.objects.create(category=pisos, name="Porcelanato", price=Decimal("1"))
+        FinishOption.objects.create(category=puertas, name="Puerta roble", price=Decimal("1"))
+        FinishOption.objects.create(category=foreign, name="Porcelanato", price=Decimal("1"))
+        url = reverse("inventory:finish_option_list", kwargs={"project_id": self.project.pk})
+
+        response = self.client.get(url, {"q": "porcelanato"})
+        self.assertEqual(list(response.context["options"]), [porcelanato])
+        response = self.client.get(url, {"categoria": puertas.pk})
+        self.assertEqual([o.name for o in response.context["options"]], ["Puerta roble"])
+        # Una categoría de otro proyecto no filtra (se ignora).
+        response = self.client.get(url, {"categoria": foreign.pk})
+        self.assertIsNone(response.context["category"])
+        self.assertEqual(len(response.context["options"]), 2)

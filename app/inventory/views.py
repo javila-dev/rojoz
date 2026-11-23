@@ -1,12 +1,30 @@
 from django.shortcuts import render, redirect, get_object_or_404
 
+from core.listing import paginate, search
+
 from .forms import ProjectSettingsForm, HouseTypeForm, FinishCategoryForm, FinishOptionForm
 from .models import Project, HouseType, FinishCategory, FinishOption
 
 
+def _listing_context(request, queryset, search_fields, *, per_page=25, extra_active=False):
+    """Aplica ``q`` + paginación y devuelve el contexto común de los listados."""
+    query = (request.GET.get("q") or "").strip()
+    page_obj = paginate(request, search(queryset, query, search_fields), per_page=per_page)
+    return {
+        "page_obj": page_obj,
+        "query": query,
+        "filters_active": bool(query) or extra_active,
+    }
+
+
 def project_list(request):
     projects = Project.objects.all().order_by("name")
-    return render(request, "inventory/project_list.html", {"projects": projects})
+    listing = _listing_context(request, projects, ["name", "city"], per_page=24)
+    return render(
+        request,
+        "inventory/project_list.html",
+        {"projects": listing["page_obj"].object_list, **listing},
+    )
 
 
 def project_settings(request, project_id):
@@ -36,10 +54,16 @@ def house_type_list(request, project_id):
     else:
         form = HouseTypeForm(project=project)
 
+    listing = _listing_context(request, house_types, ["name", "description"])
     return render(
         request,
         "inventory/house_type_list.html",
-        {"project": project, "house_types": house_types, "form": form},
+        {
+            "project": project,
+            "house_types": listing["page_obj"].object_list,
+            "form": form,
+            **listing,
+        },
     )
 
 
@@ -95,10 +119,22 @@ def finish_category_list(request, project_id):
     else:
         form = FinishCategoryForm()
 
+    estado = (request.GET.get("estado") or "").strip()
+    if estado in ("activa", "inactiva"):
+        categories = categories.filter(is_active=(estado == "activa"))
+    else:
+        estado = ""
+    listing = _listing_context(request, categories, ["name"], extra_active=bool(estado))
     return render(
         request,
         "inventory/finish_category_list.html",
-        {"project": project, "categories": categories, "form": form},
+        {
+            "project": project,
+            "categories": listing["page_obj"].object_list,
+            "form": form,
+            "estado": estado,
+            **listing,
+        },
     )
 
 
@@ -154,10 +190,28 @@ def finish_option_list(request, project_id):
         form = FinishOptionForm()
         form.fields["category"].queryset = project.finish_categories.all().order_by("order", "name")
 
+    categories = list(project.finish_categories.all().order_by("order", "name"))
+    try:
+        category_id = int(request.GET.get("categoria") or 0)
+    except ValueError:
+        category_id = 0
+    category = next((c for c in categories if c.pk == category_id), None)
+    if category:
+        options = options.filter(category=category)
+    listing = _listing_context(
+        request, options, ["name", "unit", "category__name"], extra_active=bool(category)
+    )
     return render(
         request,
         "inventory/finish_option_list.html",
-        {"project": project, "options": options, "form": form},
+        {
+            "project": project,
+            "options": listing["page_obj"].object_list,
+            "form": form,
+            "categories": categories,
+            "category": category,
+            **listing,
+        },
     )
 
 

@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 from django.urls import reverse
 
-from documents.models import PDFTemplate
+from documents.models import PDFTemplate, TemplateStatus, TemplateVersion
 from users.models import RoleCode
 from tests.base import BaseAppTestCase
 from tests.factories import Factory
@@ -104,3 +104,45 @@ class DocumentsModuleTests(BaseAppTestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertFalse(PDFTemplate.objects.filter(name="Plantilla Invalida").exists())
+
+
+class DocumentsListFilterTests(BaseAppTestCase):
+    def setUp(self):
+        self.user = self.make_user(role=RoleCode.ADMIN, username="doclists")
+        self.login_as(self.user)
+        self.grant_permissions(
+            RoleCode.ADMIN, ["documents:template_list", "documents:version_list"]
+        )
+
+    def test_template_list_filters_by_status_and_query(self):
+        published = Factory.pdf_template(
+            created_by=self.user, name="Contrato Verano", status=TemplateStatus.PUBLISHED
+        )
+        Factory.pdf_template(created_by=self.user, name="Pagaré borrador")
+        url = reverse("documents:template_list")
+        response = self.client.get(url, {"estado": TemplateStatus.PUBLISHED})
+        self.assertEqual(list(response.context["templates"]), [published])
+        response = self.client.get(url, {"q": "pagaré"})
+        self.assertEqual([t.name for t in response.context["templates"]], ["Pagaré borrador"])
+        response = self.client.get(url, {"q": "nada"})
+        self.assertContains(response, "Ninguna plantilla coincide con los filtros.")
+
+    def test_version_list_search_and_pagination(self):
+        template = Factory.pdf_template(created_by=self.user)
+        for number in range(1, 23):
+            TemplateVersion.objects.create(
+                template=template,
+                version_number=number,
+                html_content="<p></p>",
+                change_description="Ajuste cláusula" if number == 5 else "Cambio menor",
+                created_by=self.user,
+            )
+        url = reverse("documents:version_list", kwargs={"pk": template.pk})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["versions"]), 20)
+        self.assertEqual(response.context["page_obj"].paginator.count, 22)
+        response = self.client.get(url, {"q": "cláusula"})
+        self.assertEqual([v.version_number for v in response.context["versions"]], [5])
+        response = self.client.get(url, {"q": "v12"})
+        self.assertEqual([v.version_number for v in response.context["versions"]], [12])
