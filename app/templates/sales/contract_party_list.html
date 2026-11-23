@@ -7,21 +7,30 @@
     <div class="rounded-2xl border border-gray-200 bg-white/80 backdrop-blur-xl shadow-sm p-6 lg:p-8">
         <div class="flex flex-wrap items-end justify-between gap-4">
             <div>
-                <h1 class="text-3xl lg:text-4xl font-bold text-gray-900">Terceros</h1>
-                <p class="text-sm text-gray-600 mt-1">Base unificada de titulares vinculados a contratos.</p>
+                <h1 class="text-2xl font-semibold tracking-tight text-gray-900">Clientes</h1>
+                <p class="text-sm text-gray-600 mt-1">Titulares vinculados a contratos.</p>
             </div>
-            <div class="text-sm text-gray-600">Total: <span class="font-semibold">{{ total_parties }}</span></div>
         </div>
 
-        <form method="get" class="mt-6 grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3">
-            <input
-                type="text"
-                name="q"
-                value="{{ query }}"
-                placeholder="Buscar por nombre, documento, email, celular o ciudad"
-                class="input input-bordered w-full"
-            >
-            <button type="submit" class="btn btn-neutral-elegant">Buscar</button>
+        <form method="get" class="mt-5 flex flex-col md:flex-row gap-2 md:items-center" role="search">
+            <label class="sr-only" for="filter-project">Proyecto</label>
+            <select id="filter-project" name="proyecto" class="select select-bordered select-sm md:w-60" onchange="this.form.submit()">
+                <option value="">Todos los proyectos</option>
+                {% for p in projects %}
+                <option value="{{ p.pk }}"{% if project_id == p.pk|stringformat:"s" %} selected{% endif %}>{{ p.name }}</option>
+                {% endfor %}
+            </select>
+            <div class="relative flex-1">
+                <label class="sr-only" for="filter-q">Buscar</label>
+                <i class="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true"></i>
+                <input id="filter-q" type="search" name="q" value="{{ query }}"
+                       placeholder="Buscar por nombre, documento, email, celular o ciudad"
+                       class="input input-bordered input-sm w-full pl-9">
+            </div>
+            <button type="submit" class="btn btn-sm btn-neutral-elegant">Buscar</button>
+            {% if query or project_id %}
+            <a href="{% url 'sales:contract_party_list' %}" class="btn btn-sm btn-ghost text-gray-600">Limpiar</a>
+            {% endif %}
         </form>
     </div>
 
@@ -55,26 +64,17 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="7" class="text-center text-gray-500 py-8">No hay terceros registrados.</td>
+                            <td colspan="7" class="text-center text-gray-500 py-8">
+                                {% if query or project_id %}Ningún cliente coincide con los filtros.{% else %}Aún no hay clientes registrados.{% endif %}
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
+            {% include "partials/pagination.html" with page_obj=page_obj label="clientes" %}
         </div>
     </div>
-
-    {% if page_obj.paginator.num_pages > 1 %}
-    <div class="flex items-center justify-end gap-2">
-        {% if page_obj.has_previous %}
-        <a class="btn btn-sm btn-neutral-elegant" href="?q={{ query|urlencode }}&page={{ page_obj.previous_page_number }}">Anterior</a>
-        {% endif %}
-        <span class="text-sm text-gray-600">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
-        {% if page_obj.has_next %}
-        <a class="btn btn-sm btn-neutral-elegant" href="?q={{ query|urlencode }}&page={{ page_obj.next_page_number }}">Siguiente</a>
-        {% endif %}
-    </div>
-    {% endif %}
 
     {% for party in page_obj %}
     <input type="checkbox" id="party_detail_modal_{{ party.id }}" class="modal-toggle">

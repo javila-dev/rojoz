@@ -12,15 +12,16 @@ import re
 from django.db import transaction
 from django.http import JsonResponse, HttpResponse, FileResponse
 from django.shortcuts import get_object_or_404, render, redirect
+from django.urls import reverse
 from django.http import Http404
 from django.template.loader import render_to_string
 from django.template import engines
-from django.core.paginator import Paginator
 from django.conf import settings
 from pathlib import Path
 from io import BytesIO
 from weasyprint import HTML
 
+from core.listing import paginate, search
 from inventory.models import Project, House, FinishCategory, FinishOption, HouseType
 from core.normalization import (
     normalize_document_number,
@@ -130,14 +131,138 @@ def _normalize_asset_urls(html: str) -> str:
     return html
 
 
+CURRENT_PROJECT_SESSION_KEY = "current_project_id"
+
+# Pestañas de la lista de contratos: (clave URL, etiqueta, estados, permiso requerido).
+# Se conservan los permisos de las antiguas listas por estado.
+CONTRACT_LIST_TABS = (
+    ("pendientes", "Pendientes", (Sale.State.PENDING,), "sales:contract_list_pending"),
+    ("aprobados", "Aprobados", (Sale.State.APPROVED,), "sales:contract_list_approved"),
+    (
+        "cerrados",
+        "Desistidos y anulados",
+        (Sale.State.DESISTED, Sale.State.ANNULLED, Sale.State.CANCELLED),
+        "sales:contract_list_approved",
+    ),
+)
+
+
+def _is_sales_elevated(user):
+    return (
+        user.is_superuser
+        or user.has_role(RoleCode.ADMIN)
+        or user.has_role(RoleCode.GERENTE)
+        or user.has_role(RoleCode.DIRECTOR)
+        or user.has_role(RoleCode.SUPERVISOR)
+        or user.has_role(RoleCode.TESORERIA)
+    )
+
+
+def _resolve_current_project(request, projects):
+    """Proyecto activo: ?proyecto= tiene prioridad y se recuerda en la sesión.
+
+    ``?proyecto=todos`` limpia el filtro. Devuelve ``None`` para "todos".
+    """
+    raw = request.GET.get("proyecto")
+    if raw is None:
+        raw = request.session.get(CURRENT_PROJECT_SESSION_KEY) or ""
+    if raw in ("", "todos"):
+        request.session.pop(CURRENT_PROJECT_SESSION_KEY, None)
+        return None
+    project = next((p for p in projects if str(p.pk) == str(raw)), None)
+    if project is None:
+        request.session.pop(CURRENT_PROJECT_SESSION_KEY, None)
+        return None
+    request.session[CURRENT_PROJECT_SESSION_KEY] = project.pk
+    return project
+
+
+def contract_list(request):
+    """Lista única de contratos con filtros de proyecto, estado y búsqueda."""
+    from users.permissions import user_has_permission
+
+    projects = list(Project.objects.all().order_by("name"))
+    project = _resolve_current_project(request, projects)
+
+    tabs = [t for t in CONTRACT_LIST_TABS if user_has_permission(request.user, t[3])]
+    if not tabs:
+        return render(request, "users/403.html", {"view_name": "sales:contract_list"}, status=403)
+
+    query = (request.GET.get("q") or "").strip()
+    base_qs = Sale.objects.all()
+    if project:
+        base_qs = base_qs.filter(project=project)
+    if request.user.has_role(RoleCode.ASESOR) and not _is_sales_elevated(request.user):
+        base_qs = base_qs.filter(
+            logs__action=SaleLog.Action.CREATED, logs__created_by=request.user
+        )
+    if query:
+        search = (
+            Q(parties__full_name__icontains=query)
+            | Q(parties__document_number__icontains=query)
+            | Q(lot_metadata__id_inmueble__icontains=query)
+        )
+        if query.isdigit():
+            search |= Q(contract_number=int(query))
+        base_qs = base_qs.filter(search)
+    base_qs = base_qs.distinct()
+
+    counts = {
+        key: base_qs.filter(status__in=states).count() for key, _label, states, _perm in tabs
+    }
+    requested = request.GET.get("estado")
+    tab_keys = [t[0] for t in tabs]
+    if requested in tab_keys:
+        current_tab = requested
+    else:
+        # Por defecto la primera pestaña con contratos, para no aterrizar en una lista vacía.
+        current_tab = next((k for k in tab_keys if counts[k]), tab_keys[0])
+    current_states = next(t[2] for t in tabs if t[0] == current_tab)
+
+    contracts = (
+        base_qs.filter(status__in=current_states)
+        .select_related("house_type", "project")
+        .prefetch_related("parties")
+        .order_by("-date_created")
+    )
+    page_obj = paginate(request, contracts)
+
+    return render(
+        request,
+        "sales/contract_list.html",
+        {
+            "projects": projects,
+            "project": project,
+            "tabs": [
+                {"key": key, "label": label, "count": counts[key], "active": key == current_tab}
+                for key, label, _states, _perm in tabs
+            ],
+            "current_tab": current_tab,
+            "query": query,
+            "page_obj": page_obj,
+            "contracts": page_obj.object_list,
+        },
+    )
+
+
+def _contract_list_redirect(project_id=None, estado=None):
+    params = {}
+    if project_id:
+        params["proyecto"] = project_id
+    if estado:
+        params["estado"] = estado
+    url = reverse("sales:contract_list")
+    return redirect(f"{url}?{urlencode(params)}" if params else url)
+
+
 def contract_project_select(request):
-    projects = Project.objects.all().order_by("name")
-    return render(request, "sales/contract_project_select.html", {"projects": projects})
+    """Ruta antigua: ahora es la lista única de contratos."""
+    return _contract_list_redirect()
 
 
 def contract_status_select(request, project_id):
-    project = get_object_or_404(Project, pk=project_id)
-    return render(request, "sales/contract_status_select.html", {"project": project})
+    """Ruta antigua: lista de contratos filtrada por proyecto."""
+    return _contract_list_redirect(project_id)
 
 def contract_party_list(request):
     query = (request.GET.get("q") or "").strip()
@@ -147,64 +272,38 @@ def contract_party_list(request):
         .order_by("full_name", "document_number")
     )
 
-    if query:
-        parties_qs = parties_qs.filter(
-            Q(full_name__icontains=query)
-            | Q(document_number__icontains=query)
-            | Q(email__icontains=query)
-            | Q(mobile__icontains=query)
-            | Q(city_name__icontains=query)
-        )
+    parties_qs = search(
+        parties_qs, query, ["full_name", "document_number", "email", "mobile", "city_name"]
+    )
+    projects = Project.objects.order_by("name")
+    project_id = request.GET.get("proyecto") or ""
+    if project_id.isdigit():
+        parties_qs = parties_qs.filter(sales__project_id=int(project_id)).distinct()
+    else:
+        project_id = ""
 
-    paginator = Paginator(parties_qs, 25)
-    page_obj = paginator.get_page(request.GET.get("page"))
+    page_obj = paginate(request, parties_qs)
     return render(
         request,
         "sales/contract_party_list.html",
         {
             "page_obj": page_obj,
             "query": query,
-            "total_parties": parties_qs.count(),
+            "projects": projects,
+            "project_id": project_id,
+            "total_parties": page_obj.paginator.count,
         },
     )
 
 
 def contract_list_pending(request, project_id):
-    project = get_object_or_404(Project, pk=project_id)
-    contracts = (
-        Sale.objects.select_related("house_type", "project")
-        .filter(project=project, status=Sale.State.PENDING)
-        .prefetch_related("parties", "salefinish_set__finish", "payment_plan")
-        .order_by("-date_created")
-    )
-    return render(
-        request,
-        "sales/contract_list.html",
-        {
-            "project": project,
-            "contracts": contracts,
-            "list_label": "Pendientes de aprobación",
-        },
-    )
+    """Ruta antigua: lista de contratos pendientes del proyecto."""
+    return _contract_list_redirect(project_id, "pendientes")
 
 
 def contract_list_approved(request, project_id):
-    project = get_object_or_404(Project, pk=project_id)
-    contracts = (
-        Sale.objects.select_related("house_type", "project")
-        .filter(project=project, status=Sale.State.APPROVED)
-        .prefetch_related("parties", "salefinish_set__finish", "payment_plan")
-        .order_by("-date_created")
-    )
-    return render(
-        request,
-        "sales/contract_list.html",
-        {
-            "project": project,
-            "contracts": contracts,
-            "list_label": "Aprobados",
-        },
-    )
+    """Ruta antigua: lista de contratos aprobados del proyecto."""
+    return _contract_list_redirect(project_id, "aprobados")
 
 
 def _build_contract_detail_context(contract, request, document_form=None, party_form=None, open_parties_modal=False):
@@ -491,20 +590,21 @@ def contract_pdf(request, pk):
         html_content = _remove_grapesjs_placeholders(html_content)
         html_content = _unescape_django_templates(html_content)
 
-    # Insertar plano como imagen PNG entre Anexo 1 y Anexo 2
-    plano_path = base_dir / contract.project.name / "plano casas.png"
-    if not plano_path.exists():
-        plano_path = Path(settings.BASE_DIR) / "plano casas.png"
-
     plano_img_tag = ""
-    if plano_path.exists():
-        from urllib.parse import quote
+    if contract.project.include_contract_house_plan:
+        # Insertar plano como imagen PNG entre Anexo 1 y Anexo 2
+        plano_path = base_dir / contract.project.name / "plano casas.png"
+        if not plano_path.exists():
+            plano_path = Path(settings.BASE_DIR) / "plano casas.png"
 
-        png_uri = "file://" + quote(str(plano_path))
-        plano_img_tag = (
-            '<div class="page-break"></div>'
-            f'<img src="{png_uri}" style="width:100%;height:auto;display:block;" />'
-        )
+        if plano_path.exists():
+            from urllib.parse import quote
+
+            png_uri = "file://" + quote(str(plano_path))
+            plano_img_tag = (
+                '<div class="page-break"></div>'
+                f'<img src="{png_uri}" style="width:100%;height:auto;display:block;" />'
+            )
 
     html_content = html_content.replace("<!-- PLANO_CASAS -->", plano_img_tag)
 
@@ -512,7 +612,7 @@ def contract_pdf(request, pk):
     HTML(string=html_content, base_url=str(base_dir)).write_pdf(target=buffer)
     buffer.seek(0)
 
-    filename = f"contrato-{contract.contract_number or contract.id}.pdf"
+    filename = f"contrato-{contract.prefixed_contract_number or contract.id}.pdf"
     response = HttpResponse(buffer.getvalue(), content_type="application/pdf")
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
     return response
@@ -554,7 +654,7 @@ def pagare_pdf(request, pk):
     HTML(string=html_content, base_url=str(base_dir)).write_pdf(target=buffer)
     buffer.seek(0)
 
-    filename = f"pagare-{contract.contract_number or contract.id}.pdf"
+    filename = f"pagare-{contract.prefixed_contract_number or contract.id}.pdf"
     response = HttpResponse(buffer.getvalue(), content_type="application/pdf")
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
     return response
@@ -2009,4 +2109,4 @@ def sale_flow_payment_confirm(request, project_id, adjudicacion_id):
 
     if edit_sale_id:
         return redirect("sales:contract_detail", pk=sale.id)
-    return redirect("sales:contract_list_pending", project_id=project.id)
+    return _contract_list_redirect(project.id, "pendientes")

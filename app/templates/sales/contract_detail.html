@@ -20,7 +20,7 @@
                 <p class="text-sm text-gray-600">Proyecto: <span class="font-semibold">{{ contract.project.name }}</span> · {{ contract.project.city }}</p>
             </div>
             <div class="flex flex-wrap items-center gap-2 sm:gap-3">
-                <a href="{% url 'sales:contract_status_select' contract.project.id %}" class="btn btn-neutral-elegant btn-sm sm:btn-md">Volver</a>
+                <a href="{% url 'sales:contract_list' %}?proyecto={{ contract.project.id }}" class="btn btn-neutral-elegant btn-sm sm:btn-md">Volver a contratos</a>
 
                 <div class="dropdown dropdown-end">
                     <div tabindex="0" role="button" class="btn btn-neutral-elegant btn-sm sm:btn-md">Contrato</div>

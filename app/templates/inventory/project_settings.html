@@ -68,6 +68,15 @@
                         <label class="label"><span class="label-text font-medium">{{ form.construction_duration_months.label }}</span></label>
                         {{ form.construction_duration_months }}
                     </div>
+                    <div class="form-control">
+                        <label class="label cursor-pointer justify-start gap-3">
+                            {{ form.include_contract_house_plan }}
+                            <span class="label-text font-medium">{{ form.include_contract_house_plan.label }}</span>
+                        </label>
+                        {% if form.include_contract_house_plan.help_text %}
+                        <span class="text-xs text-gray-500 mt-1">{{ form.include_contract_house_plan.help_text }}</span>
+                        {% endif %}
+                    </div>
                 </div>
 
                 <div class="divider text-sm text-gray-400">Parámetros financieros</div>

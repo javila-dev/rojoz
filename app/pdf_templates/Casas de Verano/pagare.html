@@ -267,7 +267,7 @@ td, th { vertical-align: top; }
   <tbody>
     <tr>
       <td class="header-center">
-        <div class="header-title">PAGARÉ No. {{ venta.contract_number }}</div>
+        <div class="header-title">PAGARÉ No. {{ venta.prefixed_contract_number|default:venta.contract_number }}</div>
         <div class="header-subtitle">Título Valor — Código de Comercio, Art. 709 y ss.</div>
       </td>
       <td class="header-logo-right">
@@ -290,7 +290,7 @@ td, th { vertical-align: top; }
 
 <p>Yo (Nosotros), {% for cliente in clientes %}<span class="party-highlight">{{ cliente.full_name }}</span>, identificado(a) con cédula de ciudadanía No. <b>{{ cliente.document_number }}</b>{% if not forloop.last %}; {% endif %}{% endfor %}, en mi (nuestra) condición de suscriptor(es) y deudor(es) solidario(s), por medio del presente <b>PAGARÉ</b>, me (nos) obligo (obligamos) incondicional, solidaria e indivisiblemente a pagar a la orden de <span class="party-highlight">CONSTRUCTORA ROJOZ S.A.S.</span>, con NIT <b>900.396.340-3</b>, representada legalmente por <span class="party-highlight">EDGAR ROBERT GALEANO ARANGO</span>, identificado con cédula de ciudadanía No. <b>71.335.951</b>, o a su orden, o a quien sus derechos represente, en la ciudad de <b>Medellín</b>, la suma de <span class="blank-field"></span> (<span class="blank-field"></span>), moneda legal colombiana.</p>
 
-<p><span class="section-title">CAUSA Y ORIGEN:</span> Este pagaré se suscribe como garantía de las obligaciones económicas a mi (nuestro) cargo, derivadas del contrato de construcción de vivienda llave en mano Nro. <b>{{ venta.contract_number }}</b>, celebrado entre las partes para la construcción de una vivienda tipo <b>{{ venta.house_type.name }}</b> en el inmueble <b>{{ venta.lot_metadata.id_inmueble|default:"___" }}</b> del Conjunto Residencial Fractal Casas de Verano, municipio de Moñitos, Córdoba.</p>
+<p><span class="section-title">CAUSA Y ORIGEN:</span> Este pagaré se suscribe como garantía de las obligaciones económicas a mi (nuestro) cargo, derivadas del contrato de construcción de vivienda llave en mano Nro. <b>{{ venta.prefixed_contract_number|default:venta.contract_number }}</b>, celebrado entre las partes para la construcción de una vivienda tipo <b>{{ venta.house_type.name }}</b> en el inmueble <b>{{ venta.lot_metadata.id_inmueble|default:"___" }}</b> del Conjunto Residencial Fractal Casas de Verano, municipio de Moñitos, Córdoba.</p>
 
 <p><span class="section-title">INTERESES REMUNERATORIOS:</span> El(los) suscriptor(es) reconocerá(n) y pagará(n) intereses remuneratorios sobre el saldo de capital a la tasa que se indique en la carta de instrucciones anexa, la cual no excederá en ningún caso la tasa máxima legal permitida, certificada periódicamente por la Superintendencia Financiera de Colombia.</p>
 
@@ -334,7 +334,7 @@ td, th { vertical-align: top; }
     <tr>
       <td class="header-center">
         <div class="header-title">CARTA DE INSTRUCCIONES</div>
-        <div class="header-subtitle">Para el diligenciamiento del Pagaré No. {{ venta.contract_number }}</div>
+        <div class="header-subtitle">Para el diligenciamiento del Pagaré No. {{ venta.prefixed_contract_number|default:venta.contract_number }}</div>
         <div class="header-ref">Art. 622, Código de Comercio</div>
       </td>
       <td class="header-logo-right">
@@ -356,11 +356,11 @@ td, th { vertical-align: top; }
 NIT 900.396.340-3<br/>
 Medellín, Antioquia</p>
 
-<p><b>Ref.:</b> Instrucciones para el diligenciamiento del pagaré en blanco suscrito como garantía del contrato de construcción Nro. <b>{{ venta.contract_number }}</b>.</p>
+<p><b>Ref.:</b> Instrucciones para el diligenciamiento del pagaré en blanco suscrito como garantía del contrato de construcción Nro. <b>{{ venta.prefixed_contract_number|default:venta.contract_number }}</b>.</p>
 
 <p>Yo (Nosotros), {% for cliente in clientes %}<span class="party-highlight">{{ cliente.full_name }}</span>, identificado(a) con cédula de ciudadanía No. <b>{{ cliente.document_number }}</b>{% if not forloop.last %}; {% endif %}{% endfor %}, en mi (nuestra) calidad de suscriptor(es) del pagaré referenciado, emitido a favor de <span class="party-highlight">CONSTRUCTORA ROJOZ S.A.S.</span>, y de conformidad con lo establecido en el artículo 622 del Código de Comercio colombiano, por medio de la presente otorgo (otorgamos) las siguientes instrucciones de manera irrevocable para que el tenedor legítimo del pagaré proceda a llenar los espacios dejados en blanco, bajo las condiciones que a continuación se detallan:</p>
 
-<p><span class="section-title">PRIMERA — ORIGEN DE LA OBLIGACIÓN.</span> El pagaré en blanco fue suscrito como garantía de las obligaciones económicas derivadas del contrato de construcción de vivienda llave en mano Nro. <b>{{ venta.contract_number }}</b>, cuyo objeto es la construcción a todo costo de una vivienda tipo <b>{{ venta.house_type.name }}</b>, en el inmueble <b>{{ venta.lot_metadata.id_inmueble|default:"___" }}</b> del Conjunto Residencial Fractal Casas de Verano, municipio de Moñitos, departamento de Córdoba.</p>
+<p><span class="section-title">PRIMERA — ORIGEN DE LA OBLIGACIÓN.</span> El pagaré en blanco fue suscrito como garantía de las obligaciones económicas derivadas del contrato de construcción de vivienda llave en mano Nro. <b>{{ venta.prefixed_contract_number|default:venta.contract_number }}</b>, cuyo objeto es la construcción a todo costo de una vivienda tipo <b>{{ venta.house_type.name }}</b>, en el inmueble <b>{{ venta.lot_metadata.id_inmueble|default:"___" }}</b> del Conjunto Residencial Fractal Casas de Verano, municipio de Moñitos, departamento de Córdoba.</p>
 
 <p><span class="section-title">SEGUNDA — VALOR DEL PAGARÉ.</span> El tenedor legítimo queda autorizado para incluir como valor del pagaré la suma correspondiente a la totalidad de las obligaciones pendientes de pago a cargo del(los) suscriptor(es), derivadas del contrato mencionado, la cual podrá incluir:</p>
 
@@ -400,10 +400,10 @@ Medellín, Antioquia</p>
   <li>Que conoce(n) y acepta(n) las condiciones bajo las cuales se llenará el pagaré y que los valores incluidos corresponderán a obligaciones reales, líquidas y exigibles.</li>
   <li>Que renuncia(n) al requerimiento judicial y/o privado para ser constituido(s) en mora, de conformidad con el artículo 826 del Código de Comercio.</li>
   <li>Que autoriza(n) al acreedor para reportar a las centrales de riesgo el incumplimiento de las obligaciones contenidas en el pagaré, de conformidad con la Ley 1266 de 2008 y demás normas concordantes.</li>
-  <li>Que acepta(n) que la carta de instrucciones forma parte integral del pagaré y del contrato de construcción Nro. <b>{{ venta.contract_number }}</b>.</li>
+  <li>Que acepta(n) que la carta de instrucciones forma parte integral del pagaré y del contrato de construcción Nro. <b>{{ venta.prefixed_contract_number|default:venta.contract_number }}</b>.</li>
 </ol>
 
-<p><span class="section-title">OCTAVA — VIGENCIA DE LAS INSTRUCCIONES.</span> Las presentes instrucciones tendrán vigencia desde la fecha de suscripción del pagaré y hasta la extinción total de las obligaciones derivadas del contrato de construcción Nro. <b>{{ venta.contract_number }}</b>, incluidas las garantías de estabilidad y calidad de la obra. Una vez cumplidas la totalidad de las obligaciones, el acreedor procederá a la devolución física del pagaré al(los) suscriptor(es).</p>
+<p><span class="section-title">OCTAVA — VIGENCIA DE LAS INSTRUCCIONES.</span> Las presentes instrucciones tendrán vigencia desde la fecha de suscripción del pagaré y hasta la extinción total de las obligaciones derivadas del contrato de construcción Nro. <b>{{ venta.prefixed_contract_number|default:venta.contract_number }}</b>, incluidas las garantías de estabilidad y calidad de la obra. Una vez cumplidas la totalidad de las obligaciones, el acreedor procederá a la devolución física del pagaré al(los) suscriptor(es).</p>
 
 <p class="legal-note">Nota: De conformidad con la jurisprudencia de la Corte Suprema de Justicia, Sala de Casación Civil, la presente carta de instrucciones y el pagaré en blanco constituyen un solo negocio jurídico cambiario. El pagaré diligenciado conforme a estas instrucciones presta mérito ejecutivo y constituye título valor autónomo en los términos de los artículos 619, 621, 622 y 709 del Código de Comercio.</p>
 

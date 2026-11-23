@@ -14,7 +14,9 @@ urlpatterns = [
     # path('cotizar/resumen/', views.quote_summary, name='quote_summary'),
 
     # Contratos
-    path('contratos/', views.contract_project_select, name='contract_project_select'),
+    path('contratos/', views.contract_list, name='contract_list'),
+    # Rutas antiguas (proyecto → estado → lista): redirigen a la lista única
+    path('contratos/proyectos/', views.contract_project_select, name='contract_project_select'),
     path('terceros/', views.contract_party_list, name='contract_party_list'),
     path('contratos/<int:project_id>/', views.contract_status_select, name='contract_status_select'),
     path('contratos/<int:project_id>/pendientes/', views.contract_list_pending, name='contract_list_pending'),

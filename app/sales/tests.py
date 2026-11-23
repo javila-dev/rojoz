@@ -758,3 +758,87 @@ class SalesFlowTests(BaseAppTestCase):
         filtered = self.client.get(reverse("sales:contract_party_list"), {"q": "777888"})
         self.assertEqual(filtered.status_code, 200)
         self.assertContains(filtered, "Carlos Tercero")
+
+
+class ContractListTests(BaseAppTestCase):
+    def setUp(self):
+        self.project = Factory.project(name="Proyecto Norte")
+        self.other_project = Factory.project(name="Proyecto Playa")
+        self.house_type = Factory.house_type(project=self.project)
+        self.other_house_type = Factory.house_type(project=self.other_project)
+        self.pending = Factory.sale(project=self.project, house_type=self.house_type)
+        self.approved = Factory.sale(
+            project=self.project, house_type=self.house_type, status=Sale.State.APPROVED
+        )
+        self.other_pending = Factory.sale(project=self.other_project, house_type=self.other_house_type)
+        self.director = self.make_user(role=RoleCode.DIRECTOR, username="director_lista")
+        self.grant_permissions(
+            RoleCode.DIRECTOR,
+            ["sales:contract_list", "sales:contract_list_pending", "sales:contract_list_approved",
+             "sales:contract_project_select", "sales:contract_list_pending"],
+        )
+
+    def _ids(self, response):
+        return {c.id for c in response.context["contracts"]}
+
+    def test_list_filters_by_project_and_status_with_counts(self):
+        self.login_as(self.director)
+        url = reverse("sales:contract_list")
+
+        response = self.client.get(url, {"proyecto": self.project.pk, "estado": "pendientes"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self._ids(response), {self.pending.id})
+        counts = {t["key"]: t["count"] for t in response.context["tabs"]}
+        self.assertEqual(counts, {"pendientes": 1, "aprobados": 1, "cerrados": 0})
+
+        response = self.client.get(url, {"proyecto": "todos", "estado": "pendientes"})
+        self.assertEqual(self._ids(response), {self.pending.id, self.other_pending.id})
+
+    def test_project_is_remembered_in_session(self):
+        self.login_as(self.director)
+        url = reverse("sales:contract_list")
+        self.client.get(url, {"proyecto": self.other_project.pk})
+        response = self.client.get(url, {"estado": "pendientes"})
+        self.assertEqual(response.context["project"], self.other_project)
+        self.assertEqual(self._ids(response), {self.other_pending.id})
+
+    def test_search_by_client_and_contract_number(self):
+        party = ContractParty.objects.create(document_number="1065", full_name="Lucía Ríos")
+        self.approved.parties.add(party)
+        self.login_as(self.director)
+        url = reverse("sales:contract_list")
+
+        response = self.client.get(url, {"proyecto": "todos", "estado": "aprobados", "q": "lucía"})
+        self.assertEqual(self._ids(response), {self.approved.id})
+
+        response = self.client.get(
+            url, {"proyecto": "todos", "estado": "pendientes", "q": str(self.pending.contract_number)}
+        )
+        self.assertEqual(self._ids(response), {self.pending.id})
+
+    def test_tabs_follow_status_permissions(self):
+        treasury = self.make_user(role=RoleCode.TESORERIA, username="teso_lista")
+        self.grant_permissions(RoleCode.TESORERIA, ["sales:contract_list", "sales:contract_list_approved"])
+        self.login_as(treasury)
+        response = self.client.get(reverse("sales:contract_list"), {"proyecto": "todos", "estado": "pendientes"})
+        self.assertEqual([t["key"] for t in response.context["tabs"]], ["aprobados", "cerrados"])
+        self.assertEqual(self._ids(response), {self.approved.id})
+
+    def test_advisor_only_sees_own_contracts(self):
+        advisor = self.make_user(role=RoleCode.ASESOR, username="asesor_lista")
+        self.grant_permissions(RoleCode.ASESOR, ["sales:contract_list", "sales:contract_list_pending"])
+        SaleLog.objects.create(sale=self.pending, action=SaleLog.Action.CREATED, created_by=advisor)
+        self.login_as(advisor)
+        response = self.client.get(reverse("sales:contract_list"), {"proyecto": "todos", "estado": "pendientes"})
+        self.assertEqual(self._ids(response), {self.pending.id})
+
+    def test_old_routes_redirect_to_unified_list(self):
+        self.login_as(self.director)
+        response = self.client.get(reverse("sales:contract_list_pending", args=[self.project.pk]))
+        self.assertRedirects(
+            response,
+            f"{reverse('sales:contract_list')}?proyecto={self.project.pk}&estado=pendientes",
+            fetch_redirect_response=False,
+        )
+        response = self.client.get(reverse("sales:contract_project_select"))
+        self.assertRedirects(response, reverse("sales:contract_list"), fetch_redirect_response=False)
