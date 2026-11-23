@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load permission_tags %}
 
 {% block title %}Finanzas{% endblock %}
 
@@ -10,28 +11,36 @@
     </div>
 
     <!-- Recaudos -->
+    {% if request.user|can_access:"finance:receipt_request_list" or request.user|can_access:"finance:receipt_project_select" %}
     <div>
         <h2 class="text-lg font-semibold text-gray-800 mb-3">Recaudos</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {% if request.user|can_access:"finance:receipt_request_list" %}
             <a href="{% url 'finance:receipt_request_list' %}" class="card bg-white border border-gray-200 shadow-sm hover:border-rojoz-300 transition">
                 <div class="card-body space-y-2">
                     <h3 class="text-xl font-semibold text-gray-900">Solicitudes de recibo</h3>
                     <p class="text-sm text-gray-600">Bandeja humana para validar soportes, alertas y generar recibos.</p>
                 </div>
             </a>
+            {% endif %}
+            {% if request.user|can_access:"finance:receipt_project_select" %}
             <a href="{% url 'finance:receipt_project_select' %}" class="card bg-white border border-gray-200 shadow-sm hover:border-rojoz-300 transition">
                 <div class="card-body space-y-2">
                     <h3 class="text-xl font-semibold text-gray-900">Recibos de caja</h3>
                     <p class="text-sm text-gray-600">Los recaudos se registran desde el detalle de cada contrato aprobado.</p>
                 </div>
             </a>
+            {% endif %}
         </div>
     </div>
+    {% endif %}
 
     <!-- Comisiones -->
+    {% if request.user|can_access:"users:advisor_pending_list" or request.user|can_access:"finance:advisor_list" or request.user|can_access:"finance:commission_role_list" or request.user|can_access:"finance:commission_liquidation_queue" or request.user|can_access:"finance:commission_report" or request.user|can_access:"finance:my_commissions" %}
     <div>
         <h2 class="text-lg font-semibold text-gray-800 mb-3">Comisiones</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {% if request.user|can_access:"users:advisor_pending_list" %}
             <a href="{% url 'users:advisor_pending_list' %}" class="card bg-white border border-gray-200 shadow-sm hover:border-rojoz-300 transition">
                 <div class="card-body space-y-2">
                     <div class="flex items-center justify-between">
@@ -43,32 +52,50 @@
                     <p class="text-sm text-gray-600">Valida y aprueba registros de nuevos asesores.</p>
                 </div>
             </a>
+            {% endif %}
+            {% if request.user|can_access:"finance:advisor_list" %}
             <a href="{% url 'finance:advisor_list' %}" class="card bg-white border border-gray-200 shadow-sm hover:border-rojoz-300 transition">
                 <div class="card-body space-y-2">
                     <h3 class="text-xl font-semibold text-gray-900">Asesores</h3>
                     <p class="text-sm text-gray-600">Datos basicos y bancarios de gestores.</p>
                 </div>
             </a>
+            {% endif %}
+            {% if request.user|can_access:"finance:commission_role_list" %}
             <a href="{% url 'finance:commission_role_list' %}" class="card bg-white border border-gray-200 shadow-sm hover:border-rojoz-300 transition">
                 <div class="card-body space-y-2">
                     <h3 class="text-xl font-semibold text-gray-900">Cargos</h3>
                     <p class="text-sm text-gray-600">Catalogo de cargos para comisiones.</p>
                 </div>
             </a>
+            {% endif %}
+            {% if request.user|can_access:"finance:commission_liquidation_queue" %}
             <a href="{% url 'finance:commission_liquidation_queue' %}" class="card bg-white border border-gray-200 shadow-sm hover:border-rojoz-300 transition">
                 <div class="card-body space-y-2">
                     <h3 class="text-xl font-semibold text-gray-900">Liquidacion</h3>
                     <p class="text-sm text-gray-600">Ventas listas para liquidar comisiones y registrar el pago.</p>
                 </div>
             </a>
+            {% endif %}
+            {% if request.user|can_access:"finance:commission_report" %}
             <a href="{% url 'finance:commission_report' %}" class="card bg-white border border-gray-200 shadow-sm hover:border-rojoz-300 transition">
                 <div class="card-body space-y-2">
                     <h3 class="text-xl font-semibold text-gray-900">Reporte de comisiones</h3>
                     <p class="text-sm text-gray-600">Genera un PDF con las comisiones liquidadas por asesor y rango de fechas.</p>
                 </div>
             </a>
+            {% endif %}
+            {% if request.user|can_access:"finance:my_commissions" %}
+            <a href="{% url 'finance:my_commissions' %}" class="card bg-white border border-gray-200 shadow-sm hover:border-rojoz-300 transition">
+                <div class="card-body space-y-2">
+                    <h3 class="text-xl font-semibold text-gray-900">Mis comisiones</h3>
+                    <p class="text-sm text-gray-600">Consulta tus liquidaciones y descarga el soporte de pago.</p>
+                </div>
+            </a>
+            {% endif %}
         </div>
     </div>
+    {% endif %}
 
 </div>
 {% endblock %}

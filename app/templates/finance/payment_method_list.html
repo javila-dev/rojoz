@@ -12,8 +12,27 @@
         <a href="{% url 'finance:payment_method_create' project.id %}" class="btn btn-primary">Nueva forma de pago</a>
     </div>
 
-    <div class="card bg-white border border-gray-200 shadow-sm">
-        <div class="card-body">
+    <form method="get" class="flex flex-col md:flex-row gap-2 md:items-center" role="search">
+        <label class="sr-only" for="filter-estado">Estado</label>
+        <select id="filter-estado" name="estado" class="select select-bordered select-sm md:w-48" onchange="this.form.submit()">
+            <option value="">Todos los estados</option>
+            <option value="activo"{% if estado == "activo" %} selected{% endif %}>Activas</option>
+            <option value="inactivo"{% if estado == "inactivo" %} selected{% endif %}>Inactivas</option>
+        </select>
+        <div class="relative flex-1">
+            <label class="sr-only" for="filter-q">Buscar</label>
+            <i class="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true"></i>
+            <input id="filter-q" type="search" name="q" value="{{ query }}" placeholder="Buscar por nombre"
+                   class="input input-bordered input-sm w-full pl-9">
+        </div>
+        <button type="submit" class="btn btn-sm btn-neutral-elegant">Buscar</button>
+        {% if filters_active %}
+        <a href="{% url 'finance:payment_method_list' project.id %}" class="btn btn-sm btn-ghost text-gray-600">Limpiar</a>
+        {% endif %}
+    </form>
+
+    <div class="card bg-white border border-gray-200 shadow-sm overflow-hidden">
+        <div class="card-body p-0">
             <div class="overflow-x-auto">
                 <table class="table table-zebra w-full text-sm">
                     <thead>
@@ -35,12 +54,21 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="3" class="text-center text-gray-500 py-8">No hay formas de pago registradas.</td>
+                            <td colspan="3" class="py-12 text-center">
+                                {% if filters_active %}
+                                <p class="text-gray-700 font-medium">Ninguna forma de pago coincide con los filtros.</p>
+                                <p class="text-sm text-gray-500 mt-1">Revisa la búsqueda o <a href="{% url 'finance:payment_method_list' project.id %}" class="link">limpia los filtros</a>.</p>
+                                {% else %}
+                                <p class="text-gray-700 font-medium">No hay formas de pago registradas.</p>
+                                <p class="text-sm text-gray-500 mt-1">Crea la primera con “Nueva forma de pago”.</p>
+                                {% endif %}
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
+            {% include "partials/pagination.html" with page_obj=page_obj label="formas de pago" %}
         </div>
     </div>
 </div>

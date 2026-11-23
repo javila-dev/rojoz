@@ -20,8 +20,8 @@
     <h1>Recibos de caja</h1>
     <div class="meta">
         Proyecto: <strong>{{ project.name }}</strong> · {{ project.city }}
-        {% if filters.from or filters.to or filters.method %}
-        <div>Filtros: {{ filters.from|default:"-" }} a {{ filters.to|default:"-" }}{% if filters.method %} · Forma de pago: {{ filters.method_name|default:filters.method }}{% endif %}</div>
+        {% if filters.from or filters.to or filters.method or filters.q %}
+        <div>Filtros: {{ filters.from|default:"-" }} a {{ filters.to|default:"-" }}{% if filters.method %} · Forma de pago: {{ filters.method_name|default:filters.method }}{% endif %}{% if filters.q %} · Búsqueda: "{{ filters.q }}"{% endif %}</div>
         {% endif %}
     </div>
 

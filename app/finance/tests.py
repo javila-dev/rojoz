@@ -1,7 +1,9 @@
+import csv
 from datetime import date
 from decimal import Decimal
 import json
 from django.db.models import Sum
+from django.test import override_settings
 from django.urls import reverse
 
 from django.db.models import Sum
@@ -14,7 +16,7 @@ from finance.models import (
     TreasuryReceiptRequestState,
     reapply_receipts_from,
 )
-from sales.models import PaymentPlan, PaymentSchedule, Sale, SaleLog
+from sales.models import ContractParty, PaymentPlan, PaymentSchedule, Sale, SaleLog
 from users.models import RoleCode
 from tests.base import BaseAppTestCase
 from tests.factories import Factory
@@ -438,8 +440,10 @@ class PaymentReceiptApplicationTests(BaseAppTestCase):
         self.assertEqual(receipt.surplus, Decimal("100.00"))
 
 
+@override_settings(TESORERIA_API_TOKEN="test-token")
 class TreasuryAPIWrapperTests(BaseAppTestCase):
     def setUp(self):
+        self.client.defaults["HTTP_AUTHORIZATION"] = "Bearer test-token"
         self.project = Factory.project(name="Proyecto API")
         self.house_type = Factory.house_type(project=self.project, name="Tipo API")
         self.user = self.make_user(role=RoleCode.TESORERIA, username="teso_api")
@@ -479,6 +483,37 @@ class TreasuryAPIWrapperTests(BaseAppTestCase):
                 interes=Decimal("0.00"),
                 saldo=Decimal("1000000.00") - Decimal(idx * 250000),
             )
+
+    def test_api_rejects_missing_or_invalid_token(self):
+        self.client.defaults.pop("HTTP_AUTHORIZATION")
+        response = self.client.get("/api/tesoreria/solicitudes/pendientes")
+        self.assertEqual(response.status_code, 401)
+
+        response = self.client.get(
+            "/api/tesoreria/solicitudes/pendientes",
+            HTTP_AUTHORIZATION="Bearer otro-token",
+        )
+        self.assertEqual(response.status_code, 401)
+
+        response = self.client.get(
+            "/api/tesoreria/solicitudes/pendientes",
+            HTTP_X_API_KEY="test-token",
+        )
+        self.assertEqual(response.status_code, 200)
+
+        # Rutas legadas de n8n: token, no redirección al login de sesión.
+        response = self.client.get("/finance/api/pending-receipts")
+        self.assertEqual(response.status_code, 401)
+        response = self.client.get(
+            "/finance/api/pending-receipts",
+            HTTP_AUTHORIZATION="Bearer test-token",
+        )
+        self.assertEqual(response.status_code, 200)
+
+    @override_settings(TESORERIA_API_TOKEN="")
+    def test_api_disabled_when_token_not_configured(self):
+        response = self.client.get("/api/tesoreria/solicitudes/pendientes")
+        self.assertEqual(response.status_code, 503)
 
     def test_pending_requests_maps_items(self):
         create_resp = self.client.post(
@@ -639,3 +674,275 @@ class TreasuryAPIWrapperTests(BaseAppTestCase):
                 concept=PaymentApplication.Concept.MORA,
             ).exists()
         )
+
+
+class ReceiptRequestListFilterTests(BaseAppTestCase):
+    def setUp(self):
+        self.user = self.make_user(role=RoleCode.TESORERIA, username="teso_list")
+        self.login_as(self.user)
+        self.grant_permissions(RoleCode.TESORERIA, ["finance:receipt_request_list"])
+        self.project_a = Factory.project(name="Proyecto Alfa")
+        self.project_b = Factory.project(name="Proyecto Beta")
+        house_a = Factory.house_type(project=self.project_a)
+        house_b = Factory.house_type(project=self.project_b)
+        self.sale_a = Factory.sale(project=self.project_a, house_type=house_a, contract_number=7001)
+        self.sale_b = Factory.sale(project=self.project_b, house_type=house_b, contract_number=7002)
+
+    def _request(self, ext_id, sale, **kwargs):
+        defaults = {
+            "external_request_id": ext_id,
+            "sale": sale,
+            "project_name": sale.project.name,
+            "client_name": "Cliente",
+            "advisor_name": "Asesor",
+            "amount_reported": Decimal("100000.00"),
+            "payment_date": date(2026, 3, 10),
+        }
+        defaults.update(kwargs)
+        return TreasuryReceiptRequestState.objects.create(**defaults)
+
+    def _ids(self, response):
+        return {item.external_request_id for item in response.context["requests"]}
+
+    def test_filters_by_status_project_dates_and_query(self):
+        self._request("sol-1", self.sale_a, client_name="Ana Gómez", advisor_name="Pedro Pérez")
+        self._request(
+            "sol-2",
+            self.sale_b,
+            status=TreasuryReceiptRequestState.Status.BLOCKED,
+            payment_date=date(2026, 5, 1),
+        )
+        self._request("sol-3", self.sale_a, payment_date=date(2026, 1, 5))
+        url = reverse("finance:receipt_request_list")
+
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self._ids(response), {"sol-1", "sol-2", "sol-3"})
+        self.assertFalse(response.context["filters_active"])
+
+        response = self.client.get(url, {"status": "BLOCKED"})
+        self.assertEqual(self._ids(response), {"sol-2"})
+
+        response = self.client.get(url, {"proyecto": self.project_a.pk})
+        self.assertEqual(self._ids(response), {"sol-1", "sol-3"})
+
+        response = self.client.get(url, {"desde": "2026-02-01", "hasta": "2026-04-30"})
+        self.assertEqual(self._ids(response), {"sol-1"})
+
+        # Búsqueda por asesor (nueva), por cliente y por número de contrato.
+        self.assertEqual(self._ids(self.client.get(url, {"q": "pedro"})), {"sol-1"})
+        self.assertEqual(self._ids(self.client.get(url, {"q": "ana gómez"})), {"sol-1"})
+        self.assertEqual(self._ids(self.client.get(url, {"q": "7002"})), {"sol-2"})
+
+        response = self.client.get(url, {"q": "nadie"})
+        self.assertTrue(response.context["filters_active"])
+        self.assertContains(response, "Ninguna solicitud coincide con los filtros.")
+
+    def test_invalid_filter_values_are_ignored(self):
+        self._request("sol-x", self.sale_a)
+        response = self.client.get(
+            reverse("finance:receipt_request_list"),
+            {"status": "NOPE", "proyecto": "abc", "desde": "31/12/2026"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self._ids(response), {"sol-x"})
+        self.assertFalse(response.context["filters_active"])
+
+    def test_paginates_requests(self):
+        for idx in range(30):
+            self._request(f"sol-p{idx}", self.sale_a)
+        url = reverse("finance:receipt_request_list")
+        first = self.client.get(url)
+        self.assertEqual(len(first.context["requests"]), 25)
+        self.assertEqual(first.context["page_obj"].paginator.count, 30)
+        second = self.client.get(url, {"page": 2})
+        self.assertEqual(len(second.context["requests"]), 5)
+
+
+class ReceiptProjectListFilterTests(BaseAppTestCase):
+    def setUp(self):
+        self.user = self.make_user(role=RoleCode.TESORERIA, username="teso_recaudos")
+        self.login_as(self.user)
+        self.grant_permissions(
+            RoleCode.TESORERIA,
+            [
+                "finance:receipt_project_list",
+                "finance:receipt_project_export_excel",
+                "finance:receipt_project_export_pdf",
+            ],
+        )
+        self.project = Factory.project(name="Proyecto Recaudo")
+        house = Factory.house_type(project=self.project)
+        self.method = Factory.payment_method(project=self.project, name="Transferencia")
+        self.sale_ana = Factory.sale(project=self.project, house_type=house, contract_number=8101)
+        self.sale_luis = Factory.sale(project=self.project, house_type=house, contract_number=8102)
+        self.sale_ana.parties.add(
+            ContractParty.objects.create(full_name="Ana María Gómez", document_number="1010")
+        )
+        self.sale_luis.parties.add(
+            ContractParty.objects.create(full_name="Luis Torres", document_number="2020")
+        )
+        self.receipt_ana = self._receipt(self.sale_ana, "1000000.00")
+        self.receipt_luis = self._receipt(self.sale_luis, "2000000.00")
+
+    def _receipt(self, sale, amount, **kwargs):
+        kwargs.setdefault("payment_method", self.method)
+        return Factory.receipt(
+            sale=sale,
+            created_by=self.user,
+            amount=amount,
+            **kwargs,
+        )
+
+    def _url(self, name="finance:receipt_project_list"):
+        return reverse(name, kwargs={"project_id": self.project.pk})
+
+    def test_query_filters_by_client_contract_and_receipt_number(self):
+        response = self.client.get(self._url(), {"q": "ana gómez"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(list(response.context["receipts"]), [self.receipt_ana])
+        self.assertEqual(response.context["total_paid"], Decimal("1000000.00"))
+
+        response = self.client.get(self._url(), {"q": "8102"})
+        self.assertEqual(list(response.context["receipts"]), [self.receipt_luis])
+
+        response = self.client.get(self._url(), {"q": str(self.receipt_ana.pk)})
+        self.assertIn(self.receipt_ana, list(response.context["receipts"]))
+
+        response = self.client.get(self._url(), {"q": "nadie"})
+        self.assertEqual(list(response.context["receipts"]), [])
+        self.assertContains(response, "Ningún recibo coincide con los filtros.")
+
+    def test_totals_use_full_filtered_queryset_not_page(self):
+        for _ in range(26):
+            self._receipt(self.sale_luis, "10.00")
+        response = self.client.get(self._url())
+        self.assertEqual(len(response.context["receipts"]), 25)
+        self.assertEqual(response.context["page_obj"].paginator.count, 28)
+        self.assertEqual(response.context["total_paid"], Decimal("3000260.00"))
+
+    def test_excel_export_applies_query_and_ignores_pagination(self):
+        for _ in range(26):
+            self._receipt(self.sale_luis, "10.00")
+        response = self.client.get(
+            self._url("finance:receipt_project_export_excel"), {"q": "torres", "page": 2}
+        )
+        self.assertEqual(response.status_code, 200)
+        rows = list(csv.reader(response.content.decode("utf-8").splitlines()))
+        self.assertEqual(rows[0][0], "Recibo")
+        # 27 recibos de Luis (1 + 26), ninguno de Ana, sin cortar por página.
+        self.assertEqual(len(rows) - 1, 27)
+        self.assertNotIn(str(self.receipt_ana.pk), [row[0] for row in rows[1:]])
+
+    def test_excel_export_keeps_date_and_method_filters(self):
+        other_method = Factory.payment_method(project=self.project, name="Efectivo")
+        old = self._receipt(self.sale_ana, "5.00", date_paid_value=date(2025, 1, 1))
+        cash = self._receipt(self.sale_ana, "7.00", payment_method=other_method)
+        response = self.client.get(
+            self._url("finance:receipt_project_export_excel"),
+            {"from": "2026-01-01", "method": other_method.pk},
+        )
+        ids = [row[0] for row in csv.reader(response.content.decode("utf-8").splitlines())][1:]
+        self.assertEqual(ids, [str(cash.pk)])
+        self.assertNotIn(str(old.pk), ids)
+
+
+class CommissionLiquidationQueueFilterTests(BaseAppTestCase):
+    def setUp(self):
+        self.user = self.make_user(role=RoleCode.TESORERIA, username="teso_cola")
+        self.login_as(self.user)
+        self.grant_permissions(RoleCode.TESORERIA, ["finance:commission_liquidation_queue"])
+        self.advisor = self.make_user(
+            role=RoleCode.ASESOR, username="asesor_cola", first_name="Marta", last_name="Ríos"
+        )
+        self.project_a = Factory.project(name="Proyecto Cola A")
+        self.project_b = Factory.project(name="Proyecto Cola B")
+        role = Factory.commission_role(name="Asesor cola")
+        self.ready = self._sale(self.project_a, 9101)
+        self.idle = self._sale(self.project_a, 9102)
+        self.other = self._sale(self.project_b, 9103)
+        Factory.commission_scale(sale=self.ready, user=self.advisor, role=role)
+        Factory.commission_scale(sale=self.idle, user=self.user, role=role)
+        Factory.commission_scale(sale=self.other, user=self.user, role=role)
+        method = Factory.payment_method(project=self.project_a)
+        Factory.receipt(sale=self.ready, created_by=self.user, payment_method=method)
+
+    def _sale(self, project, number):
+        return Factory.sale(
+            project=project,
+            house_type=Factory.house_type(project=project),
+            status=Sale.State.APPROVED,
+            contract_number=number,
+        )
+
+    def _sales(self, response):
+        return {row["sale"].contract_number for row in response.context["rows"]}
+
+    def test_filters_by_state_project_and_query(self):
+        url = reverse("finance:commission_liquidation_queue")
+
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self._sales(response), {9101, 9102, 9103})
+        counts = {opt["key"]: opt["count"] for opt in response.context["state_options"]}
+        self.assertEqual(counts, {"lista": 1, "sin_saldo": 2, "liquidada": 0})
+
+        response = self.client.get(url, {"estado": "lista"})
+        self.assertEqual(self._sales(response), {9101})
+        self.assertEqual(response.context["ready_count"], 1)
+        self.assertEqual(response.context["sales_count"], 1)
+
+        response = self.client.get(url, {"estado": "sin_saldo"})
+        self.assertEqual(self._sales(response), {9102, 9103})
+        self.assertEqual(response.context["total_pending"], Decimal("0"))
+
+        response = self.client.get(url, {"proyecto": self.project_b.pk})
+        self.assertEqual(self._sales(response), {9103})
+
+        # Búsqueda por asesor de la escala y por número de contrato.
+        self.assertEqual(self._sales(self.client.get(url, {"q": "marta"})), {9101})
+        self.assertEqual(self._sales(self.client.get(url, {"q": "#9102"})), {9102})
+
+        response = self.client.get(url, {"q": "nadie"})
+        self.assertEqual(self._sales(response), set())
+        self.assertContains(response, "Ninguna venta coincide con los filtros.")
+
+    def test_paginates_rows(self):
+        role = Factory.commission_role()
+        for number in range(9200, 9225):
+            Factory.commission_scale(sale=self._sale(self.project_a, number), user=self.user, role=role)
+        url = reverse("finance:commission_liquidation_queue")
+        first = self.client.get(url)
+        self.assertEqual(len(first.context["rows"]), 25)
+        self.assertEqual(first.context["sales_count"], 28)
+        self.assertEqual(len(self.client.get(url, {"page": 2}).context["rows"]), 3)
+
+
+class FinanceCatalogFilterTests(BaseAppTestCase):
+    def setUp(self):
+        self.user = self.make_user(role=RoleCode.ADMIN, username="fin_catalogos")
+        self.login_as(self.user)
+        self.grant_permissions(
+            RoleCode.ADMIN,
+            ["finance:advisor_list", "finance:commission_role_list", "finance:payment_method_list"],
+        )
+
+    def test_advisor_list_filters_by_query_and_state(self):
+        active = self.make_user(role=RoleCode.ASESOR, username="asesor_activo", nit="900123")
+        inactive = self.make_user(role=RoleCode.ASESOR, username="asesor_inactivo", is_active=False)
+        url = reverse("finance:advisor_list")
+        response = self.client.get(url, {"q": "900123"})
+        self.assertEqual(list(response.context["advisors"]), [active])
+        response = self.client.get(url, {"estado": "inactivo"})
+        self.assertEqual(list(response.context["advisors"]), [inactive])
+
+    def test_payment_method_list_keeps_project_scope(self):
+        project = Factory.project()
+        other = Factory.project()
+        mine = Factory.payment_method(project=project, name="Consignación")
+        Factory.payment_method(project=other, name="Consignación")
+        response = self.client.get(
+            reverse("finance:payment_method_list", kwargs={"project_id": project.pk}),
+            {"q": "consig"},
+        )
+        self.assertEqual(list(response.context["methods"]), [mine])

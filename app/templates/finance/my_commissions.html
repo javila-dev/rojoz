@@ -8,7 +8,7 @@
 
     <!-- Header -->
     <div>
-        <h1 class="text-2xl font-bold text-gray-900" style="font-family: 'Playfair Display', serif;">
+        <h1 class="text-2xl font-bold text-gray-900">
             Mis comisiones
         </h1>
         <p class="text-gray-500 mt-1 text-sm">
@@ -32,12 +32,44 @@
         </div>
     </div>
 
+    <!-- Filtros de comisiones -->
+    {% if has_scales %}
+    <form method="get" class="flex flex-col md:flex-row gap-2 md:items-center" role="search">
+        {% if history_filters.desde %}<input type="hidden" name="desde" value="{{ history_filters.desde }}">{% endif %}
+        {% if history_filters.hasta %}<input type="hidden" name="hasta" value="{{ history_filters.hasta }}">{% endif %}
+        <label class="sr-only" for="filter-project">Proyecto</label>
+        <select id="filter-project" name="proyecto" class="select select-bordered select-sm md:w-56" onchange="this.form.submit()">
+            <option value="">Todos los proyectos</option>
+            {% for p in projects %}
+            <option value="{{ p.pk }}"{% if project and p.pk == project.pk %} selected{% endif %}>{{ p.name }}</option>
+            {% endfor %}
+        </select>
+        <label class="sr-only" for="filter-estado">Estado</label>
+        <select id="filter-estado" name="estado" class="select select-bordered select-sm md:w-56" onchange="this.form.submit()">
+            <option value="">Todos los estados</option>
+            {% for key, label in state_options %}
+            <option value="{{ key }}"{% if estado == key %} selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+        <div class="relative flex-1">
+            <label class="sr-only" for="filter-q">Buscar</label>
+            <i class="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true"></i>
+            <input id="filter-q" type="search" name="q" value="{{ query }}" placeholder="Buscar por contrato, cliente o documento"
+                   class="input input-bordered input-sm w-full pl-9">
+        </div>
+        <button type="submit" class="btn btn-sm btn-neutral-elegant">Buscar</button>
+        {% if filters_active %}
+        <a href="{% url 'finance:my_commissions' %}{% if history_filters_active %}?desde={{ history_filters.desde }}&hasta={{ history_filters.hasta }}{% endif %}" class="btn btn-sm btn-ghost text-gray-600">Limpiar</a>
+        {% endif %}
+    </form>
+    {% endif %}
+
     <!-- Tabla de comisiones por venta -->
     <div class="card bg-white rounded-xl overflow-hidden">
         <div class="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
             <i class="ri-money-dollar-circle-line text-rojoz-600"></i>
             <h2 class="font-bold text-gray-800">Comisiones por venta</h2>
-            <span class="text-xs text-gray-400 ml-auto">{{ rows|length }} venta{{ rows|length|pluralize:"s" }}</span>
+            <span class="text-xs text-gray-400 ml-auto">{{ rows_count }} venta{{ rows_count|pluralize:"s" }}</span>
         </div>
 
         {% if rows %}
@@ -91,10 +123,17 @@
                 </tbody>
             </table>
         </div>
+        {% include "partials/pagination.html" with page_obj=page_obj label="ventas" %}
+        {% elif filters_active %}
+        <div class="p-8 text-center">
+            <i class="ri-filter-off-line text-3xl text-gray-300" aria-hidden="true"></i>
+            <p class="text-sm text-gray-700 font-medium mt-2">Ninguna comisión coincide con los filtros.</p>
+            <p class="text-sm text-gray-500 mt-1">Revisa la búsqueda o <a href="{% url 'finance:my_commissions' %}" class="link">limpia los filtros</a>.</p>
+        </div>
         {% else %}
         <div class="p-8 text-center">
             <i class="ri-inbox-line text-3xl text-gray-300"></i>
-            <p class="text-sm text-gray-400 mt-2">Aun no tienes comisiones asignadas.</p>
+            <p class="text-sm text-gray-400 mt-2">Aún no tienes comisiones asignadas.</p>
         </div>
         {% endif %}
     </div>
@@ -106,6 +145,22 @@
             <h2 class="font-bold text-gray-800">Historial de liquidaciones</h2>
             <span class="text-xs text-gray-400 ml-auto">{{ payment_count }} pago{{ payment_count|pluralize:"s" }}</span>
         </div>
+
+        {% if has_payments %}
+        <form method="get" class="px-5 py-3 border-b border-gray-100 flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:items-center" aria-label="Filtrar historial por fecha">
+            {% if project %}<input type="hidden" name="proyecto" value="{{ project.pk }}">{% endif %}
+            {% if estado %}<input type="hidden" name="estado" value="{{ estado }}">{% endif %}
+            {% if query %}<input type="hidden" name="q" value="{{ query }}">{% endif %}
+            <label class="text-sm text-gray-600" for="history-desde">Liquidado desde</label>
+            <input id="history-desde" type="date" name="desde" value="{{ history_filters.desde }}" class="input input-bordered input-sm min-w-0 flex-1 md:flex-none md:w-36">
+            <label class="text-sm text-gray-600" for="history-hasta">hasta</label>
+            <input id="history-hasta" type="date" name="hasta" value="{{ history_filters.hasta }}" class="input input-bordered input-sm min-w-0 flex-1 md:flex-none md:w-36">
+            <button type="submit" class="btn btn-sm btn-neutral-elegant">Filtrar</button>
+            {% if history_filters_active %}
+            <a href="{% querystring desde=None hasta=None pagina_historial=None %}" class="btn btn-sm btn-ghost text-gray-600">Limpiar</a>
+            {% endif %}
+        </form>
+        {% endif %}
 
         {% if payment_dates %}
         <div class="divide-y divide-gray-100">
@@ -153,10 +208,30 @@
             </div>
             {% endfor %}
         </div>
+        {% if history_page.has_other_pages %}
+        <nav class="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-gray-100 text-sm text-gray-600" aria-label="Paginación del historial">
+            <span class="tabular-nums">Días {{ history_page.start_index }}–{{ history_page.end_index }} de {{ history_page.paginator.count }}</span>
+            <div class="flex items-center gap-1">
+                {% if history_page.has_previous %}
+                <a class="btn btn-sm btn-neutral-elegant" href="{% querystring pagina_historial=history_page.previous_page_number %}">Anterior</a>
+                {% endif %}
+                <span class="px-2 tabular-nums">Página {{ history_page.number }} de {{ history_page.paginator.num_pages }}</span>
+                {% if history_page.has_next %}
+                <a class="btn btn-sm btn-neutral-elegant" href="{% querystring pagina_historial=history_page.next_page_number %}">Siguiente</a>
+                {% endif %}
+            </div>
+        </nav>
+        {% endif %}
+        {% elif history_filters_active %}
+        <div class="p-8 text-center">
+            <i class="ri-filter-off-line text-3xl text-gray-300" aria-hidden="true"></i>
+            <p class="text-sm text-gray-700 font-medium mt-2">No hay liquidaciones en ese rango de fechas.</p>
+            <p class="text-sm text-gray-500 mt-1">Amplía el rango o <a href="{% querystring desde=None hasta=None pagina_historial=None %}" class="link">limpia las fechas</a>.</p>
+        </div>
         {% else %}
         <div class="p-8 text-center">
             <i class="ri-time-line text-3xl text-gray-300"></i>
-            <p class="text-sm text-gray-400 mt-2">Aun no se han realizado liquidaciones a tu favor.</p>
+            <p class="text-sm text-gray-400 mt-2">Aún no se han realizado liquidaciones a tu favor.</p>
         </div>
         {% endif %}
     </div>

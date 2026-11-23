@@ -5,42 +5,49 @@
 
 {% block content %}
 <div class="max-w-6xl mx-auto space-y-6">
-    <div class="flex items-start justify-between gap-6">
+    <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
         <div>
-            <h1 class="text-3xl font-bold text-gray-900">Recibos de caja</h1>
-            <p class="text-gray-600 mt-2">Proyecto: <span class="font-semibold">{{ project.name }}</span> · {{ project.city }}</p>
-        </div>
-        <div class="flex items-center gap-2">
-            <a href="{% url 'finance:receipt_project_select' %}" class="btn btn-neutral-elegant">Cambiar proyecto</a>
-            <a href="{% url 'finance:receipt_project_export_excel' project.id %}?{{ request.GET.urlencode }}" class="btn btn-neutral-elegant">Exportar Excel</a>
-            <a href="{% url 'finance:receipt_project_export_pdf' project.id %}?{{ request.GET.urlencode }}" class="btn btn-outline">Exportar PDF</a>
-        </div>
-    </div>
-
-    <form method="get" class="card bg-white border border-gray-200 shadow-sm">
-        <div class="card-body grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-            <div>
-                <label class="label"><span class="label-text">Desde</span></label>
-                <input type="date" name="from" value="{{ filters.from }}" class="input input-bordered w-full">
-            </div>
-            <div>
-                <label class="label"><span class="label-text">Hasta</span></label>
-                <input type="date" name="to" value="{{ filters.to }}" class="input input-bordered w-full">
-            </div>
-            <div>
-                <label class="label"><span class="label-text">Forma de pago</span></label>
-                <select name="method" class="select select-bordered w-full">
-                    <option value="">Todas</option>
-                    {% for method in payment_methods %}
-                    <option value="{{ method.id }}" {% if filters.method == method.id|stringformat:"s" %}selected{% endif %}>{{ method.name }}</option>
+            <h1 class="text-2xl font-semibold tracking-tight text-gray-900">Recibos de caja</h1>
+            <div class="mt-2 flex items-center gap-2">
+                <label for="receipt-project" class="text-sm text-gray-600">Proyecto</label>
+                <select id="receipt-project" class="select select-bordered select-sm"
+                        onchange="if (this.value) window.location = this.value;">
+                    {% for p in projects %}
+                    <option value="{% url 'finance:receipt_project_list' p.id %}"{% if p.id == project.id %} selected{% endif %}>{{ p.name }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <div class="flex items-center gap-2">
-                <button type="submit" class="btn btn-primary">Filtrar</button>
-                <a href="{% url 'finance:receipt_project_list' project.id %}" class="btn btn-neutral-elegant">Limpiar</a>
-            </div>
         </div>
+        <div class="flex flex-wrap items-center gap-2">
+            <a href="{% url 'finance:receipt_project_export_excel' project.id %}{% if export_query %}?{{ export_query }}{% endif %}" class="btn btn-neutral-elegant" data-no-loading>Exportar Excel</a>
+            <a href="{% url 'finance:receipt_project_export_pdf' project.id %}{% if export_query %}?{{ export_query }}{% endif %}" class="btn btn-outline" data-no-loading>Exportar PDF</a>
+        </div>
+    </div>
+
+    <form method="get" class="flex flex-col md:flex-row md:flex-wrap gap-2 md:items-center" role="search">
+        <label class="sr-only" for="filter-method">Forma de pago</label>
+        <select id="filter-method" name="method" class="select select-bordered select-sm md:w-52" onchange="this.form.submit()">
+            <option value="">Todas las formas de pago</option>
+            {% for method in payment_methods %}
+            <option value="{{ method.id }}"{% if filters.method == method.id|stringformat:"s" %} selected{% endif %}>{{ method.name }}</option>
+            {% endfor %}
+        </select>
+        <div class="flex items-center gap-2 w-full md:w-auto">
+            <label class="text-sm text-gray-600" for="filter-from">Pago desde</label>
+            <input id="filter-from" type="date" name="from" value="{{ filters.from }}" class="input input-bordered input-sm min-w-0 flex-1 md:flex-none md:w-36">
+            <label class="text-sm text-gray-600" for="filter-to">hasta</label>
+            <input id="filter-to" type="date" name="to" value="{{ filters.to }}" class="input input-bordered input-sm min-w-0 flex-1 md:flex-none md:w-36">
+        </div>
+        <div class="relative flex-1 md:min-w-[14rem]">
+            <label class="sr-only" for="filter-q">Buscar</label>
+            <i class="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true"></i>
+            <input id="filter-q" type="search" name="q" value="{{ filters.q }}" placeholder="Buscar por recibo, contrato, cliente o documento"
+                   class="input input-bordered input-sm w-full pl-9">
+        </div>
+        <button type="submit" class="btn btn-sm btn-neutral-elegant">Buscar</button>
+        {% if filters_active %}
+        <a href="{% url 'finance:receipt_project_list' project.id %}" class="btn btn-sm btn-ghost text-gray-600">Limpiar</a>
+        {% endif %}
     </form>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -54,9 +61,9 @@
         </div>
     </div>
 
-    <div class="card bg-white border border-gray-200 shadow-sm">
-        <div class="card-body">
-            <h2 class="card-title text-lg mb-4">Recibos registrados</h2>
+    <div class="card bg-white border border-gray-200 shadow-sm overflow-hidden">
+        <div class="card-body p-0">
+            <h2 class="card-title text-lg px-6 pt-5 pb-2">Recibos registrados</h2>
             <div class="overflow-x-auto">
                 <table class="table table-zebra w-full text-sm">
                     <thead>
@@ -89,12 +96,21 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="9" class="text-center text-gray-500 py-8">No hay recibos registrados.</td>
+                            <td colspan="9" class="py-12 text-center">
+                                {% if filters_active %}
+                                <p class="text-gray-700 font-medium">Ningún recibo coincide con los filtros.</p>
+                                <p class="text-sm text-gray-500 mt-1">Revisa la búsqueda o <a href="{% url 'finance:receipt_project_list' project.id %}" class="link">limpia los filtros</a>.</p>
+                                {% else %}
+                                <p class="text-gray-700 font-medium">No hay recibos registrados en este proyecto.</p>
+                                <p class="text-sm text-gray-500 mt-1">Los recibos de caja aparecen aquí al registrarlos desde cada contrato.</p>
+                                {% endif %}
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
+            {% include "partials/pagination.html" with page_obj=page_obj label="recibos" %}
         </div>
     </div>
 </div>

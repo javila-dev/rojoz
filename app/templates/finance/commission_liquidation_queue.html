@@ -18,6 +18,33 @@
         </div>
     </div>
 
+    <form method="get" class="flex flex-col md:flex-row gap-2 md:items-center" role="search">
+        <label class="sr-only" for="filter-project">Proyecto</label>
+        <select id="filter-project" name="proyecto" class="select select-bordered select-sm md:w-56" onchange="this.form.submit()">
+            <option value="">Todos los proyectos</option>
+            {% for p in projects %}
+            <option value="{{ p.pk }}"{% if project and p.pk == project.pk %} selected{% endif %}>{{ p.name }}</option>
+            {% endfor %}
+        </select>
+        <label class="sr-only" for="filter-estado">Estado</label>
+        <select id="filter-estado" name="estado" class="select select-bordered select-sm md:w-60" onchange="this.form.submit()">
+            <option value="">Todos los estados</option>
+            {% for option in state_options %}
+            <option value="{{ option.key }}"{% if estado == option.key %} selected{% endif %}>{{ option.label }} ({{ option.count }})</option>
+            {% endfor %}
+        </select>
+        <div class="relative flex-1">
+            <label class="sr-only" for="filter-q">Buscar</label>
+            <i class="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true"></i>
+            <input id="filter-q" type="search" name="q" value="{{ query }}" placeholder="Buscar por contrato, cliente o asesor"
+                   class="input input-bordered input-sm w-full pl-9">
+        </div>
+        <button type="submit" class="btn btn-sm btn-neutral-elegant">Buscar</button>
+        {% if filters_active %}
+        <a href="{% url 'finance:commission_liquidation_queue' %}" class="btn btn-sm btn-ghost text-gray-600">Limpiar</a>
+        {% endif %}
+    </form>
+
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div class="stat bg-white border border-gray-200 rounded-xl shadow-sm">
             <div class="stat-title text-xs">Ventas aprobadas con escala</div>
@@ -33,8 +60,8 @@
         </div>
     </div>
 
-    <div class="card bg-white border border-gray-200 shadow-sm">
-        <div class="card-body">
+    <div class="card bg-white border border-gray-200 shadow-sm overflow-hidden">
+        <div class="card-body p-0">
             <div class="overflow-x-auto">
                 <table class="table table-zebra w-full text-sm">
                     <thead>
@@ -63,8 +90,10 @@
                             <td class="text-right">$ {{ row.total_liquidated|floatformat:0|intcomma }}</td>
                             <td class="text-right font-semibold">$ {{ row.total_pending_to_liquidate|floatformat:0|intcomma }}</td>
                             <td>
-                                {% if row.is_ready %}
+                                {% if row.state == "lista" %}
                                 <span class="badge badge-success badge-sm">Lista</span>
+                                {% elif row.state == "liquidada" %}
+                                <span class="badge badge-info badge-sm">Liquidada</span>
                                 {% else %}
                                 <span class="badge badge-ghost badge-sm">Sin saldo</span>
                                 {% endif %}
@@ -77,12 +106,21 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="9" class="text-center text-gray-500 py-8">No hay ventas aprobadas con escala de comisión.</td>
+                            <td colspan="9" class="py-12 text-center">
+                                {% if filters_active and has_sales %}
+                                <p class="text-gray-700 font-medium">Ninguna venta coincide con los filtros.</p>
+                                <p class="text-sm text-gray-500 mt-1">Revisa la búsqueda o <a href="{% url 'finance:commission_liquidation_queue' %}" class="link">limpia los filtros</a>.</p>
+                                {% else %}
+                                <p class="text-gray-700 font-medium">No hay ventas aprobadas con escala de comisión.</p>
+                                <p class="text-sm text-gray-500 mt-1">Las ventas aparecen aquí cuando se aprueban y tienen escala asignada.</p>
+                                {% endif %}
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
+            {% include "partials/pagination.html" with page_obj=page_obj label="ventas" %}
         </div>
     </div>
 </div>

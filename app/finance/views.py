@@ -6,6 +6,7 @@ from io import BytesIO
 import csv
 
 from django.conf import settings
+from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Q, Sum
 from django.http import HttpResponse, FileResponse, Http404
@@ -17,6 +18,7 @@ from weasyprint import HTML
 
 from django.contrib.auth.decorators import login_required
 
+from core.listing import paginate, parse_date, search
 from users.models import User, RoleCode
 from sales.models import Sale, SaleLog
 from inventory.models import Project
@@ -85,6 +87,53 @@ def _advisory_service_for_third_party(user):
     return ADVISORY_SERVICES[index]
 
 
+def _project_from_param(value, projects):
+    """Proyecto elegido en ``?proyecto=`` dentro de ``projects`` (o ``None``)."""
+    try:
+        project_id = int(value)
+    except (TypeError, ValueError):
+        return None
+    return next((p for p in projects if p.pk == project_id), None)
+
+
+def _contract_number_from_query(query):
+    """Número entero buscado ("123" o "#123"), acotado al rango de la columna."""
+    value = (query or "").strip().lstrip("#")
+    if value.isdigit() and len(value) <= 9:
+        return int(value)
+    return None
+
+
+def _is_active_filter(value):
+    """Traduce ``?estado=activo|inactivo`` a booleano (``None`` = todos)."""
+    return {"activo": True, "inactivo": False}.get((value or "").strip())
+
+
+def _catalog_listing(request, queryset, search_fields, *, with_estado=False):
+    """Filtro ``q`` (+ ``estado`` activo/inactivo opcional) y paginación para catálogos.
+
+    Devuelve el contexto común: página, búsqueda, estado, si hay filtros activos
+    y el total sin filtrar (para distinguir "sin registros" de "sin coincidencias").
+    """
+    total_count = queryset.count()
+    query = (request.GET.get("q") or "").strip()
+    estado = ""
+    if with_estado:
+        is_active = _is_active_filter(request.GET.get("estado"))
+        if is_active is not None:
+            estado = "activo" if is_active else "inactivo"
+            queryset = queryset.filter(is_active=is_active)
+    queryset = search(queryset, query, search_fields)
+    page_obj = paginate(request, queryset)
+    return {
+        "page_obj": page_obj,
+        "query": query,
+        "estado": estado,
+        "filters_active": bool(query or estado),
+        "total_count": total_count,
+    }
+
+
 def receipt_request_list(request):
     create_form = TreasuryReceiptRequestForm()
     sale_choices = [
@@ -124,20 +173,37 @@ def receipt_request_list(request):
         .order_by("-created_at")
     )
     status = (request.GET.get("status") or "").strip()
+    if status not in TreasuryReceiptRequestState.Status.values:
+        status = ""
     query = (request.GET.get("q") or "").strip()
+    projects = list(Project.objects.order_by("name"))
+    project = _project_from_param(request.GET.get("proyecto"), projects)
+    date_from = parse_date(request.GET.get("desde"))
+    date_to = parse_date(request.GET.get("hasta"))
 
     if status:
         qs = qs.filter(status=status)
+    if project:
+        qs = qs.filter(sale__project=project)
+    if date_from:
+        qs = qs.filter(payment_date__gte=date_from)
+    if date_to:
+        qs = qs.filter(payment_date__lte=date_to)
     if query:
-        filters = (
-            Q(external_request_id__icontains=query)
-            | Q(client_name__icontains=query)
-            | Q(project_name__icontains=query)
+        filters = Q(
+            pk__in=search(
+                TreasuryReceiptRequestState.objects.all(),
+                query,
+                ["external_request_id", "client_name", "advisor_name", "project_name"],
+            ).values("pk")
         )
-        if query.isdigit():
-            filters |= Q(sale__contract_number=int(query))
+        number = _contract_number_from_query(query)
+        if number is not None:
+            filters |= Q(sale__contract_number=number)
         qs = qs.filter(filters)
 
+    page_obj = paginate(request, qs)
+    filters_active = bool(status or project or date_from or date_to or query)
     status_counts = {
         "PENDING": TreasuryReceiptRequestState.objects.filter(status=TreasuryReceiptRequestState.Status.PENDING).count(),
         "VALIDATED": TreasuryReceiptRequestState.objects.filter(status=TreasuryReceiptRequestState.Status.VALIDATED).count(),
@@ -149,8 +215,17 @@ def receipt_request_list(request):
         request,
         "finance/receipt_request_list.html",
         {
-            "requests": qs,
-            "filters": {"status": status, "q": query},
+            "requests": page_obj.object_list,
+            "page_obj": page_obj,
+            "filters": {
+                "status": status,
+                "q": query,
+                "proyecto": project.pk if project else "",
+                "desde": date_from.isoformat() if date_from else "",
+                "hasta": date_to.isoformat() if date_to else "",
+            },
+            "filters_active": filters_active,
+            "projects": projects,
             "status_counts": status_counts,
             "status_choices": TreasuryReceiptRequestState.Status.choices,
             "create_form": create_form,
@@ -355,7 +430,17 @@ def advisor_list(request):
         .distinct()
         .order_by("first_name", "last_name", "username")
     )
-    return render(request, "finance/advisor_list.html", {"advisors": advisors})
+    listing = _catalog_listing(
+        request,
+        advisors,
+        ["first_name", "last_name", "username", "email", "nit"],
+        with_estado=True,
+    )
+    return render(
+        request,
+        "finance/advisor_list.html",
+        {"advisors": listing["page_obj"].object_list, **listing},
+    )
 
 
 def advisor_create(request):
@@ -389,7 +474,12 @@ def advisor_edit(request, pk):
 
 def commission_role_list(request):
     roles = CommissionRole.objects.all().order_by("name")
-    return render(request, "finance/commission_role_list.html", {"roles": roles})
+    listing = _catalog_listing(request, roles, ["name", "description"], with_estado=True)
+    return render(
+        request,
+        "finance/commission_role_list.html",
+        {"roles": listing["page_obj"].object_list, **listing},
+    )
 
 
 def commission_role_create(request):
@@ -564,42 +654,106 @@ def sale_commission_scale_list(request, sale_id):
     )
 
 
+LIQUIDATION_STATES = [
+    ("lista", "Listas para liquidar"),
+    ("sin_saldo", "Sin saldo por ahora"),
+    ("liquidada", "Liquidadas por completo"),
+]
+
+
+def _liquidation_state(liquidation):
+    """Clasifica una venta de la cola: lista, sin saldo (espera recaudo) o liquidada."""
+    if liquidation["total_pending_to_liquidate"] > 0:
+        return "lista"
+    total = liquidation["total_commission_value"]
+    if total > 0 and liquidation["total_liquidated"] >= total:
+        return "liquidada"
+    return "sin_saldo"
+
+
 def commission_liquidation_queue(request):
-    sales = list(
-        Sale.objects.filter(
-            status=Sale.State.APPROVED,
-            commission_scales__isnull=False,
+    projects = list(Project.objects.order_by("name"))
+    project = _project_from_param(request.GET.get("proyecto"), projects)
+    query = (request.GET.get("q") or "").strip()
+    estado = (request.GET.get("estado") or "").strip()
+    if estado not in dict(LIQUIDATION_STATES):
+        estado = ""
+
+    sales_qs = Sale.objects.filter(
+        status=Sale.State.APPROVED,
+        commission_scales__isnull=False,
+    )
+    has_sales = sales_qs.exists()
+    if project:
+        sales_qs = sales_qs.filter(project=project)
+    if query:
+        condition = Q(
+            pk__in=search(
+                Sale.objects.all(),
+                query,
+                [
+                    "parties__full_name",
+                    "parties__document_number",
+                    "commission_scales__user__first_name",
+                    "commission_scales__user__last_name",
+                    "commission_scales__user__username",
+                ],
+            ).values("pk")
         )
-        .distinct()
+        number = _contract_number_from_query(query)
+        if number is not None:
+            condition |= Q(contract_number=number)
+        sales_qs = sales_qs.filter(condition)
+    sales = list(
+        sales_qs.distinct()
         .select_related("project", "payment_plan")
         .order_by("-date_created")
     )
 
+    # El estado depende del cálculo de liquidación, así que se filtra en Python.
+    state_counts = {key: 0 for key, _label in LIQUIDATION_STATES}
     rows = []
-    ready_count = 0
-    total_pending = Decimal("0")
     for sale in sales:
         liquidation = _compute_sale_liquidation_snapshot(sale)
-        is_ready = liquidation["total_pending_to_liquidate"] > 0
-        if is_ready:
-            ready_count += 1
-            total_pending += liquidation["total_pending_to_liquidate"]
+        state = _liquidation_state(liquidation)
+        state_counts[state] += 1
+        if estado and state != estado:
+            continue
         rows.append(
             {
                 "sale": sale,
-                "is_ready": is_ready,
+                "is_ready": state == "lista",
+                "state": state,
                 **liquidation,
             }
         )
+
+    # Resumen sobre todas las filas filtradas (no solo la página visible).
+    ready_rows = [row for row in rows if row["is_ready"]]
+    total_pending = sum(
+        (row["total_pending_to_liquidate"] for row in ready_rows), Decimal("0")
+    )
+    page_obj = paginate(request, rows)
 
     return render(
         request,
         "finance/commission_liquidation_queue.html",
         {
-            "rows": rows,
-            "ready_count": ready_count,
+            "rows": page_obj.object_list,
+            "page_obj": page_obj,
+            "ready_count": len(ready_rows),
             "sales_count": len(rows),
             "total_pending": total_pending.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
+            "projects": projects,
+            "project": project,
+            "query": query,
+            "estado": estado,
+            "state_options": [
+                {"key": key, "label": label, "count": state_counts[key]}
+                for key, label in LIQUIDATION_STATES
+            ],
+            "filters_active": bool(project or query or estado),
+            "has_sales": has_sales,
         },
     )
 
@@ -795,10 +949,15 @@ def project_commission_role_list(request, project_id):
         .select_related("role", "user")
         .order_by("role__name")
     )
+    listing = _catalog_listing(
+        request,
+        roles,
+        ["role__name", "user__first_name", "user__last_name", "user__username"],
+    )
     return render(
         request,
         "finance/project_role_list.html",
-        {"project": project, "roles": roles},
+        {"project": project, "roles": listing["page_obj"].object_list, **listing},
     )
 
 
@@ -863,11 +1022,12 @@ def project_commission_role_delete(request, project_id, pk):
 
 def payment_method_list(request, project_id):
     project = get_object_or_404(Project, pk=project_id)
-    methods = PaymentMethod.objects.filter(project=project)
+    methods = PaymentMethod.objects.filter(project=project).order_by("name")
+    listing = _catalog_listing(request, methods, ["name"], with_estado=True)
     return render(
         request,
         "finance/payment_method_list.html",
-        {"project": project, "methods": methods},
+        {"project": project, "methods": listing["page_obj"].object_list, **listing},
     )
 
 
@@ -1152,77 +1312,103 @@ def commission_report_pdf(request):
     return response
 
 
+CURRENT_PROJECT_SESSION_KEY = "current_project_id"  # compartida con la lista de contratos
+
+
 def receipt_project_select(request):
-    projects = Project.objects.all().order_by("name")
+    projects = list(Project.objects.all().order_by("name"))
+    # Saltar el selector si ya hay un proyecto en uso (o solo existe uno).
+    if not request.GET.get("elegir"):
+        remembered = request.session.get(CURRENT_PROJECT_SESSION_KEY)
+        target = next((p for p in projects if p.pk == remembered), None)
+        if target is None and len(projects) == 1:
+            target = projects[0]
+        if target is not None:
+            return redirect("finance:receipt_project_list", project_id=target.pk)
     return render(request, "finance/receipt_project_select.html", {"projects": projects})
 
 
-def receipt_project_list(request, project_id):
-    project = get_object_or_404(Project, pk=project_id)
+def _filtered_project_receipts(request, project):
+    """Recibos del proyecto con los filtros de la URL (lista y exportaciones).
+
+    Parámetros: ``from``/``to`` (fecha de pago), ``method`` (forma de pago) y
+    ``q`` (número de recibo, contrato, nombre o documento del cliente).
+    """
     receipts = PaymentReceipt.objects.filter(sale__project=project).select_related(
         "sale",
         "payment_method",
         "created_by",
         "sale__project",
     )
-    payment_methods = PaymentMethod.objects.filter(project=project, is_active=True).order_by("name")
-
-    date_from = request.GET.get("from", "")
-    date_to = request.GET.get("to", "")
-    method_id = request.GET.get("method", "")
+    date_from = parse_date(request.GET.get("from"))
+    date_to = parse_date(request.GET.get("to"))
+    method_id = (request.GET.get("method") or "").strip()
+    if not method_id.isdigit():
+        method_id = ""
+    query = (request.GET.get("q") or "").strip()
 
     if date_from:
-        try:
-            receipts = receipts.filter(date_paid__gte=date.fromisoformat(date_from))
-        except ValueError:
-            date_from = ""
+        receipts = receipts.filter(date_paid__gte=date_from)
     if date_to:
-        try:
-            receipts = receipts.filter(date_paid__lte=date.fromisoformat(date_to))
-        except ValueError:
-            date_to = ""
+        receipts = receipts.filter(date_paid__lte=date_to)
     if method_id:
         receipts = receipts.filter(payment_method_id=method_id)
+    if query:
+        condition = Q(
+            pk__in=search(
+                PaymentReceipt.objects.all(),
+                query,
+                ["sale__parties__full_name", "sale__parties__document_number"],
+            ).values("pk")
+        )
+        number = _contract_number_from_query(query)
+        if number is not None:
+            condition |= Q(pk=number) | Q(sale__contract_number=number)
+        receipts = receipts.filter(condition)
 
-    total_paid = receipts.aggregate(t=Sum("amount"))["t"] or Decimal("0")
-    total_surplus = receipts.aggregate(t=Sum("surplus"))["t"] or Decimal("0")
+    filters = {
+        "from": date_from.isoformat() if date_from else "",
+        "to": date_to.isoformat() if date_to else "",
+        "method": method_id,
+        "q": query,
+    }
+    return receipts, filters
+
+
+def receipt_project_list(request, project_id):
+    project = get_object_or_404(Project, pk=project_id)
+    request.session[CURRENT_PROJECT_SESSION_KEY] = project.pk
+    payment_methods = PaymentMethod.objects.filter(project=project, is_active=True).order_by("name")
+    receipts, filters = _filtered_project_receipts(request, project)
+
+    # Totales sobre todo el resultado filtrado, no solo la página visible.
+    totals = receipts.aggregate(paid=Sum("amount"), surplus=Sum("surplus"))
+    total_paid = totals["paid"] or Decimal("0")
+    total_surplus = totals["surplus"] or Decimal("0")
+    page_obj = paginate(request, receipts)
+    export_query = request.GET.copy()
+    export_query.pop("page", None)
     return render(
         request,
         "finance/receipt_project_list.html",
         {
             "project": project,
-            "receipts": receipts,
+            "receipts": page_obj.object_list,
+            "page_obj": page_obj,
             "total_paid": total_paid,
             "total_surplus": total_surplus,
             "payment_methods": payment_methods,
-            "filters": {"from": date_from, "to": date_to, "method": method_id},
+            "filters": filters,
+            "filters_active": any(filters.values()),
+            "export_query": export_query.urlencode(),
+            "projects": Project.objects.order_by("name"),
         },
     )
 
 
 def receipt_project_export_excel(request, project_id):
     project = get_object_or_404(Project, pk=project_id)
-    receipts = PaymentReceipt.objects.filter(sale__project=project).select_related(
-        "sale",
-        "payment_method",
-        "created_by",
-        "sale__project",
-    )
-    date_from = request.GET.get("from", "")
-    date_to = request.GET.get("to", "")
-    method_id = request.GET.get("method", "")
-    if date_from:
-        try:
-            receipts = receipts.filter(date_paid__gte=date.fromisoformat(date_from))
-        except ValueError:
-            date_from = ""
-    if date_to:
-        try:
-            receipts = receipts.filter(date_paid__lte=date.fromisoformat(date_to))
-        except ValueError:
-            date_to = ""
-    if method_id:
-        receipts = receipts.filter(payment_method_id=method_id)
+    receipts, _filters = _filtered_project_receipts(request, project)
 
     filename = f"recibos_{project.name.replace(' ', '_')}.csv"
     response = HttpResponse(content_type="text/csv")
@@ -1258,28 +1444,10 @@ def receipt_project_export_excel(request, project_id):
 
 def receipt_project_export_pdf(request, project_id):
     project = get_object_or_404(Project, pk=project_id)
-    receipts = PaymentReceipt.objects.filter(sale__project=project).select_related(
-        "sale",
-        "payment_method",
-        "created_by",
-        "sale__project",
-    )
-    date_from = request.GET.get("from", "")
-    date_to = request.GET.get("to", "")
-    method_id = request.GET.get("method", "")
-    if date_from:
-        try:
-            receipts = receipts.filter(date_paid__gte=date.fromisoformat(date_from))
-        except ValueError:
-            date_from = ""
-    if date_to:
-        try:
-            receipts = receipts.filter(date_paid__lte=date.fromisoformat(date_to))
-        except ValueError:
-            date_to = ""
+    receipts, filters = _filtered_project_receipts(request, project)
+    method_id = filters["method"]
     method_name = ""
     if method_id:
-        receipts = receipts.filter(payment_method_id=method_id)
         method_name = (
             PaymentMethod.objects.filter(id=method_id)
             .values_list("name", flat=True)
@@ -1295,7 +1463,7 @@ def receipt_project_export_pdf(request, project_id):
         "receipts": receipts,
         "total_paid": total_paid,
         "total_surplus": total_surplus,
-        "filters": {"from": date_from, "to": date_to, "method": method_id, "method_name": method_name},
+        "filters": {**filters, "method_name": method_name},
     }
     html_content = render_to_string(
         "finance/receipt_project_report_pdf.html", context, request=request
@@ -1544,6 +1712,31 @@ def my_commissions(request):
         .select_related("sale__project", "sale__house_type", "sale__payment_plan", "role")
         .order_by("-sale__date_created")
     )
+    has_scales = scales.exists()
+
+    # Filtros de la tabla de comisiones: proyecto, estado y búsqueda (contrato/cliente).
+    projects = list(
+        Project.objects.filter(sales__commission_scales__user=user).distinct().order_by("name")
+    )
+    project = _project_from_param(request.GET.get("proyecto"), projects)
+    estado = (request.GET.get("estado") or "").strip()
+    if estado not in dict(MY_COMMISSION_STATES):
+        estado = ""
+    query = (request.GET.get("q") or "").strip()
+    if project:
+        scales = scales.filter(sale__project=project)
+    if query:
+        condition = Q(
+            sale__in=search(
+                Sale.objects.all(),
+                query,
+                ["parties__full_name", "parties__document_number"],
+            ).values("pk")
+        )
+        number = _contract_number_from_query(query)
+        if number is not None:
+            condition |= Q(sale__contract_number=number)
+        scales = scales.filter(condition)
 
     rows = []
     total_comision = Decimal("0")
@@ -1556,6 +1749,8 @@ def my_commissions(request):
 
         row_data = snapshot["commission_rows"][0] if snapshot["commission_rows"] else None
         if not row_data:
+            continue
+        if estado and _my_commission_state(snapshot, row_data) != estado:
             continue
 
         rows.append({
@@ -1575,27 +1770,76 @@ def my_commissions(request):
         total_liquidado += row_data["advisor_liquidated"]
         total_pendiente += row_data["advisor_pending_to_liquidate"]
 
-    # Historial de pagos agrupado por fecha
+    # Totales sobre todas las filas filtradas; la tabla se pagina después.
+    page_obj = paginate(request, rows)
+
+    # Historial de pagos agrupado por fecha, filtrable por rango de fechas.
     payments_qs = (
         CommissionPayment.objects.filter(participant__user=user)
         .select_related("participant__sale__project", "participant")
         .order_by("-date_paid")
     )
+    has_payments = payments_qs.exists()
+    date_from = parse_date(request.GET.get("desde"))
+    date_to = parse_date(request.GET.get("hasta"))
+    if date_from:
+        payments_qs = payments_qs.filter(date_paid__date__gte=date_from)
+    if date_to:
+        payments_qs = payments_qs.filter(date_paid__date__lte=date_to)
     from collections import OrderedDict
     payment_groups = OrderedDict()
     for p in payments_qs:
-        day = p.date_paid.date()
+        day = timezone.localtime(p.date_paid).date()
         if day not in payment_groups:
             payment_groups[day] = {"date": day, "items": [], "subtotal": Decimal("0")}
         payment_groups[day]["items"].append(p)
         payment_groups[day]["subtotal"] += p.amount_paid
-    payment_dates = list(payment_groups.values())
+    # El historial se pagina por días con su propio parámetro para no chocar con la tabla.
+    history_page = Paginator(list(payment_groups.values()), 10).get_page(
+        request.GET.get("pagina_historial")
+    )
 
     return render(request, "finance/my_commissions.html", {
-        "rows": rows,
-        "payment_dates": payment_dates,
+        "rows": page_obj.object_list,
+        "page_obj": page_obj,
+        "rows_count": len(rows),
+        "payment_dates": history_page.object_list,
+        "history_page": history_page,
         "payment_count": payments_qs.count(),
         "total_comision": total_comision,
         "total_liquidado": total_liquidado,
         "total_pendiente": total_pendiente,
+        "projects": projects,
+        "project": project,
+        "estado": estado,
+        "query": query,
+        "state_options": MY_COMMISSION_STATES,
+        "filters_active": bool(project or estado or query),
+        "has_scales": has_scales,
+        "history_filters": {
+            "desde": date_from.isoformat() if date_from else "",
+            "hasta": date_to.isoformat() if date_to else "",
+        },
+        "history_filters_active": bool(date_from or date_to),
+        "has_payments": has_payments,
     })
+
+
+MY_COMMISSION_STATES = [
+    ("por_liquidar", "Con saldo por liquidar"),
+    ("en_recaudo", "Sin saldo por ahora"),
+    ("liquidada", "Liquidadas por completo"),
+    ("venta_pendiente", "Venta sin aprobar"),
+]
+
+
+def _my_commission_state(snapshot, row_data):
+    """Estado de una comisión propia para el filtro de "Mis comisiones"."""
+    if not snapshot["is_sale_approved"]:
+        return "venta_pendiente"
+    if row_data["advisor_pending_to_liquidate"] > 0:
+        return "por_liquidar"
+    total = row_data["advisor_commission_total"]
+    if total > 0 and row_data["advisor_liquidated"] >= total:
+        return "liquidada"
+    return "en_recaudo"
