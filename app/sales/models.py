@@ -52,6 +52,7 @@ class Sale(models.Model):
         prefixes = {
             "casas de verano": "CV",
             "sandville beach": "SB",
+            "perla del mar": "PM",
         }
         return prefixes.get(project_name, "")
 
