@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Autorización de responsabilidad – {{ worker.document_id }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 16mm 14mm 18mm 14mm;
+        }
+        :root {
+            --accent: #A0372A;
+            --accent-light: #F3E8E6;
+            --dark: #111827;
+            --muted: #6b7280;
+            --border: #e5e7eb;
+            --bg: #f9fafb;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: "Helvetica Neue", Arial, sans-serif;
+            color: var(--dark);
+            font-size: 10.5px;
+            line-height: 1.5;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 2.5px solid var(--accent);
+            padding-bottom: 14px;
+            margin-bottom: 18px;
+        }
+        .brand {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--accent);
+        }
+        .brand-sub { color: var(--muted); font-size: 9px; margin-top: 2px; }
+        .doc-right { text-align: right; }
+        .doc-label {
+            font-size: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1.4px;
+            color: var(--muted);
+            font-weight: 600;
+        }
+        .doc-title {
+            font-size: 15px;
+            font-weight: 800;
+            margin-top: 2px;
+            color: var(--dark);
+        }
+        .doc-meta { color: var(--muted); font-size: 9px; margin-top: 4px; }
+
+        .grid-2 {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        .col { flex: 1; }
+        .col-photo { width: 150px; flex: 0 0 150px; }
+
+        .card {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px 14px;
+            background: #fff;
+        }
+        .card-title {
+            font-size: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: var(--muted);
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .row {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 4px 0;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        .row:last-child { border-bottom: none; }
+        .label { color: var(--muted); width: 38%; }
+        .value { font-weight: 600; text-align: right; width: 62%; }
+
+        .photo-box {
+            width: 150px;
+            height: 190px;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            background: var(--bg);
+        }
+        .photo-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .photo-empty {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--muted);
+            font-size: 9px;
+            text-align: center;
+            padding: 8px;
+        }
+
+        .section { margin-bottom: 14px; }
+        .section-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 8px;
+            padding-bottom: 4px;
+            border-bottom: 1px solid var(--accent-light);
+        }
+        .consent-box {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px 14px;
+            font-size: 10px;
+            white-space: pre-wrap;
+            line-height: 1.55;
+        }
+        .checks {
+            margin-top: 10px;
+        }
+        .check {
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+            margin-bottom: 6px;
+            font-size: 10px;
+        }
+        .check-box {
+            width: 11px;
+            height: 11px;
+            border: 1.5px solid var(--accent);
+            border-radius: 2px;
+            margin-top: 1px;
+            flex-shrink: 0;
+            background: var(--accent-light);
+            text-align: center;
+            line-height: 9px;
+            font-size: 8px;
+            color: var(--accent);
+            font-weight: 700;
+        }
+
+        .sign-grid {
+            display: flex;
+            gap: 16px;
+            margin-top: 8px;
+        }
+        .sign-card {
+            flex: 1;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px;
+            min-height: 140px;
+        }
+        .sign-card img {
+            max-width: 100%;
+            max-height: 90px;
+            object-fit: contain;
+            display: block;
+            margin: 8px auto;
+        }
+        .sign-line {
+            border-top: 1px solid var(--border);
+            margin-top: 10px;
+            padding-top: 6px;
+            text-align: center;
+            color: var(--muted);
+            font-size: 9px;
+        }
+
+        .footer {
+            margin-top: 22px;
+            padding-top: 10px;
+            border-top: 1px solid var(--border);
+            font-size: 8px;
+            color: var(--muted);
+            display: flex;
+            justify-content: space-between;
+        }
+        .badge {
+            display: inline-block;
+            background: var(--accent-light);
+            color: var(--accent);
+            font-size: 8px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 999px;
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <div class="brand">Constructora Rojoz</div>
+            <div class="brand-sub">Control de bodega · responsabilidad de bienes</div>
+        </div>
+        <div class="doc-right">
+            <div class="doc-label">Documento de autorización</div>
+            <div class="doc-title">Responsabilidad y biometría</div>
+            <div class="doc-meta">
+                Folio WH-{{ worker.pk }}-{{ consent.version }}<br>
+                Generado: {{ generated_at|date:"d/m/Y H:i" }}
+            </div>
+        </div>
+    </div>
+
+    <div class="grid-2">
+        <div class="col">
+            <div class="card">
+                <div class="card-title">Datos del trabajador</div>
+                <div class="row"><span class="label">Nombre</span><span class="value">{{ worker.full_name }}</span></div>
+                <div class="row"><span class="label">Cédula</span><span class="value">{{ worker.document_id }}</span></div>
+                {% if worker.birth_date %}
+                <div class="row"><span class="label">Nacimiento</span><span class="value">{{ worker.birth_date|date:"d/m/Y" }}</span></div>
+                {% endif %}
+                {% if worker.gender %}
+                <div class="row"><span class="label">Sexo</span><span class="value">{{ worker.get_gender_display }}</span></div>
+                {% endif %}
+                {% if worker.blood_type %}
+                <div class="row"><span class="label">Tipo de sangre</span><span class="value">{{ worker.blood_type }}</span></div>
+                {% endif %}
+                <div class="row"><span class="label">Teléfono</span><span class="value">{{ worker.phone|default:"—" }}</span></div>
+                <div class="row"><span class="label">Estado</span><span class="value">{% if worker.is_enrolled %}Enrolado{% else %}Pendiente{% endif %}</span></div>
+                <div class="row"><span class="label">Alta en sistema</span><span class="value">{{ worker.created_at|date:"d/m/Y H:i" }}</span></div>
+            </div>
+        </div>
+        <div class="col-photo">
+            <div class="photo-box">
+                {% if photo_data_uri %}
+                <img src="{{ photo_data_uri }}" alt="Foto de control">
+                {% else %}
+                <div class="photo-empty">Sin foto de control</div>
+                {% endif %}
+            </div>
+            <div style="text-align:center;margin-top:6px;font-size:8px;color:var(--muted);">Foto de enrolamiento</div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Registro de firma y consentimiento</div>
+        <div class="card" style="margin-bottom:10px;">
+            <div class="row"><span class="label">Fecha / hora de firma</span><span class="value">{{ consent.signed_at|date:"d/m/Y H:i:s" }}</span></div>
+            <div class="row"><span class="label">Versión del texto</span><span class="value">{{ consent.version }}</span></div>
+            <div class="row"><span class="label">Capturado por</span><span class="value">{% if consent.captured_by %}{{ consent.captured_by.get_full_name|default:consent.captured_by.username }}{% else %}—{% endif %}</span></div>
+            <div class="row"><span class="label">Enrolado por</span><span class="value">{% if worker.enrolled_by %}{{ worker.enrolled_by.get_full_name|default:worker.enrolled_by.username }}{% else %}—{% endif %}</span></div>
+            <div class="row"><span class="label">Fecha enrolamiento</span><span class="value">{% if worker.enrolled_at %}{{ worker.enrolled_at|date:"d/m/Y H:i" }}{% else %}—{% endif %}</span></div>
+            <div class="row"><span class="label">IP de firma</span><span class="value">{{ consent.ip_address|default:"—" }}</span></div>
+            <div class="row"><span class="label">Dispositivo / navegador</span><span class="value" style="font-size:8px;font-weight:500;">{{ consent.user_agent|default:"—"|truncatechars:90 }}</span></div>
+            <div class="row"><span class="label">Medio de firma</span><span class="value">Firma manuscrita digital en pantalla (canvas)</span></div>
+        </div>
+        <span class="badge">Soporte de autorización de descuento</span>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Texto autorizado por el trabajador</div>
+        <div class="consent-box">{{ consent.text }}</div>
+        <div class="checks">
+            <div class="check"><div class="check-box">✓</div><div>Acepta inducción y cuidado de herramientas, equipos, materiales y EPP.</div></div>
+            <div class="check"><div class="check-box">✓</div><div>Acepta responsabilidad por extravío, pérdida o daño imputable.</div></div>
+            <div class="check"><div class="check-box">✓</div><div>Autoriza descuentos / deducciones del valor correspondiente conforme a política interna.</div></div>
+            <div class="check"><div class="check-box">✓</div><div>Autoriza el tratamiento de fotografía e identidad biométrica solo para control de entregas en bodega.</div></div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Evidencia de firma</div>
+        <div class="sign-grid">
+            <div class="sign-card">
+                {% if signature_data_uri %}
+                <img src="{{ signature_data_uri }}" alt="Firma">
+                {% else %}
+                <div style="height:90px;display:flex;align-items:center;justify-content:center;color:var(--muted);">Sin firma</div>
+                {% endif %}
+                <div class="sign-line">Firma del trabajador<br>{{ worker.full_name }} · C.C. {{ worker.document_id }}</div>
+            </div>
+            <div class="sign-card">
+                <div style="min-height:90px;font-size:9px;color:var(--muted);line-height:1.6;">
+                    Este documento certifica que el trabajador aceptó las condiciones de responsabilidad
+                    y el uso biométrico descritos, en la fecha y con los metadatos registrados arriba.
+                    Puede usarse como soporte ante solicitudes de descuento por pérdida o daño.
+                </div>
+                <div class="sign-line">Constructora Rojoz · Bodega</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <div>Documento generado automáticamente desde el módulo de Bodega.</div>
+        <div>WH-AUTH-{{ worker.pk }} · {{ consent.version }}</div>
+    </div>
+</body>
+</html>

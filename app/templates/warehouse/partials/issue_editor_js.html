@@ -1,0 +1,734 @@
+{# Editor de líneas + Tom Select para nueva entrega (ítems por tipo, cacheados) #}
+<script>
+(function () {
+  const panel = document.getElementById('issue-lines-panel');
+  const formEl = document.getElementById('issue-create-form');
+  const itemsByKindUrl = panel?.dataset.itemsByKindUrl || '';
+  const custodyCheckUrl = panel?.dataset.custodyCheckUrl || '';
+  const stockLookupUrl = '{% url "warehouse:item_stock_lookup" %}';
+  const itemsByKindCache = {};
+  const itemsByKindInflight = {};
+  let lineCustodyCache = {};
+  let lineCustodyTimer = null;
+
+  function selectedWarehouseId() {
+    return (document.getElementById('id_warehouse')?.value || '').trim();
+  }
+
+  const DECIMAL_UNITS = new Set(['KG', 'M', 'M2', 'L']);
+
+  function unitAllowsDecimals(unit) {
+    return DECIMAL_UNITS.has(String(unit || '').toUpperCase());
+  }
+
+  function syncQtyInputForRow(row) {
+    const qty = row?.querySelector('.line-qty');
+    const sel = row?.querySelector('select.line-item');
+    if (!qty) return;
+    const opt = sel?.options?.[sel.selectedIndex];
+    const unit = opt?.dataset?.unit || 'UND';
+    const dec = unitAllowsDecimals(unit);
+    qty.step = dec ? '0.01' : '1';
+    qty.min = dec ? '0.01' : '1';
+    if (!dec && qty.value) {
+      const n = Number(qty.value);
+      if (isFinite(n) && Math.abs(n - Math.round(n)) > 1e-9) {
+        qty.value = String(Math.round(n));
+      }
+    }
+  }
+
+  function formatStock(raw) {
+    const n = Number(raw);
+    if (!isFinite(n)) return '—';
+    if (Math.abs(n - Math.round(n)) < 1e-9) return String(Math.round(n));
+    return n.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  }
+
+  function syncUnitLabel(row) {
+    const label = row?.querySelector('.line-unit-label');
+    const sel = row?.querySelector('select.line-item');
+    if (!label || !sel) return;
+    if (!sel.value) {
+      label.textContent = '—';
+      return;
+    }
+    const opt = sel.options[sel.selectedIndex];
+    label.textContent = (opt && opt.dataset.unit) ? String(opt.dataset.unit) : '—';
+  }
+
+  function syncStockLabel(row) {
+    const label = row?.querySelector('.line-stock-label');
+    const sel = row?.querySelector('select.line-item');
+    if (!label || !sel) return;
+    syncUnitLabel(row);
+    if (!sel.value) {
+      label.textContent = '—';
+      return;
+    }
+    const opt = sel.options[sel.selectedIndex];
+    if (opt && opt.dataset.stock != null && opt.dataset.stock !== '') {
+      label.textContent = formatStock(opt.dataset.stock);
+      return;
+    }
+    label.textContent = '…';
+    const wh = selectedWarehouseId();
+    if (!wh) {
+      label.textContent = '—';
+      return;
+    }
+    fetch(stockLookupUrl + '?warehouse=' + encodeURIComponent(wh) + '&item=' + encodeURIComponent(sel.value))
+      .then((r) => r.json())
+      .then((data) => {
+        const qty = (data.stocks || {})[String(sel.value)];
+        label.textContent = qty != null ? formatStock(qty) : '0';
+        if (opt && qty != null) opt.dataset.stock = String(qty);
+      })
+      .catch(() => { label.textContent = '—'; });
+  }
+
+  function syncAllStockLabels() {
+    document.querySelectorAll('.issue-line-row').forEach(syncStockLabel);
+  }
+
+  /**
+   * Tom Select con dropdownParent=body usa position:absolute + window.scrollY.
+   * El layout scrollea dentro de <main>, no la ventana: el menú queda mal ubicado.
+   * Reposicionamos con position:fixed anclado al control.
+   */
+  function bindFixedBodyDropdown(ts) {
+    if (!ts || ts.settings.dropdownParent !== 'body') return;
+    ts.positionDropdown = function () {
+      const rect = this.control.getBoundingClientRect();
+      const gap = 4;
+      const dropH = this.dropdown.offsetHeight || 240;
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const flip = spaceBelow < Math.min(dropH, 180) && rect.top > spaceBelow;
+      const top = flip
+        ? Math.max(8, rect.top - dropH - gap)
+        : rect.bottom + gap;
+      Object.assign(this.dropdown.style, {
+        position: 'fixed',
+        top: top + 'px',
+        left: Math.max(8, rect.left) + 'px',
+        width: rect.width + 'px',
+        zIndex: '9999',
+      });
+    };
+    const reposition = () => {
+      if (ts.isOpen) ts.positionDropdown();
+    };
+    ts.on('dropdown_open', reposition);
+    ts.on('load', () => requestAnimationFrame(reposition));
+    // El scroll real está en <main>, no en window.
+    document.querySelector('main')?.addEventListener('scroll', reposition, { passive: true });
+  }
+
+  function enhanceSearchSelect(sel, placeholder) {
+    if (!sel || typeof TomSelect === 'undefined' || sel.tomselect) return;
+    const locked = !!sel.disabled;
+    sel.classList.remove('select', 'select-bordered');
+    if (!sel.classList.contains('search-select')) sel.classList.add('search-select');
+    const opts = {
+      allowEmptyOption: true,
+      create: false,
+      maxOptions: null,
+      placeholder: placeholder || 'Buscar…',
+      sortField: { field: 'text', direction: 'asc' },
+      dropdownParent: 'body',
+      wrapperClass: 'ts-wrapper search-select-ts',
+      copyClassesToDropdown: false,
+      readOnly: locked,
+      render: {
+        option: function (data, escape) {
+          if (!data.value) {
+            return '<div class="option ts-empty-opt" style="display:none"></div>';
+          }
+          return '<div class="option">' + escape(data.text) + '</div>';
+        },
+        item: function (data, escape) {
+          if (!data.value) return '<div class="item"></div>';
+          return '<div class="item">' + escape(data.text) + '</div>';
+        },
+      },
+    };
+    if (!locked) opts.plugins = ['clear_button'];
+    const ts = new TomSelect(sel, opts);
+    bindFixedBodyDropdown(ts);
+    if (locked) sel.disabled = true;
+  }
+
+  function enhanceLineItemSelect(sel) {
+    if (!sel || typeof TomSelect === 'undefined' || sel.tomselect) return;
+    const locked = !!sel.disabled;
+    sel.className = 'line-item';
+    const opts = {
+      allowEmptyOption: true,
+      create: false,
+      maxOptions: null,
+      placeholder: 'Buscar ítem…',
+      sortField: { field: 'text', direction: 'asc' },
+      dropdownParent: 'body',
+      wrapperClass: 'ts-wrapper line-item-ts',
+      copyClassesToDropdown: false,
+      readOnly: locked,
+      render: {
+        option: function (data, escape) {
+          if (!data.value) {
+            return '<div class="option ts-empty-opt" style="display:none"></div>';
+          }
+          return '<div class="option">' + escape(data.text) + '</div>';
+        },
+        item: function (data, escape) {
+          if (!data.value) return '<div class="item"></div>';
+          return '<div class="item">' + escape(data.text) + '</div>';
+        },
+      },
+    };
+    if (!locked) opts.plugins = ['clear_button'];
+    const ts = new TomSelect(sel, opts);
+    bindFixedBodyDropdown(ts);
+    if (locked) sel.disabled = true;
+    ts.on('change', () => {
+      const row = sel.closest('.issue-line-row');
+      syncReturnLabel(row);
+      syncStockLabel(row);
+      syncQtyInputForRow(row);
+      scheduleLineCustodyHints();
+    });
+  }
+
+  function syncReplacementHidden(itemId, checked) {
+    if (!formEl || !itemId) return;
+    const name = 'custody_replacement_' + itemId;
+    let hidden = formEl.querySelector('input[type="hidden"][name="' + name + '"]');
+    if (!hidden) {
+      hidden = document.createElement('input');
+      hidden.type = 'hidden';
+      hidden.name = name;
+      formEl.appendChild(hidden);
+    }
+    hidden.value = checked ? '1' : '0';
+  }
+
+  function syncReturnQtyHidden(itemId, qty) {
+    if (!formEl || !itemId) return;
+    const name = 'custody_return_qty_' + itemId;
+    let hidden = formEl.querySelector('input[type="hidden"][name="' + name + '"]');
+    if (!hidden) {
+      hidden = document.createElement('input');
+      hidden.type = 'hidden';
+      hidden.name = name;
+      formEl.appendChild(hidden);
+    }
+    hidden.value = qty != null && qty !== '' ? String(qty) : '';
+  }
+
+  function clearReplacementHidden(itemId) {
+    if (!formEl || !itemId) return;
+    formEl.querySelectorAll(
+      'input[type="hidden"][name="custody_replacement_' + itemId + '"]'
+    ).forEach((el) => el.remove());
+    formEl.querySelectorAll(
+      'input[type="hidden"][name="custody_return_qty_' + itemId + '"]'
+    ).forEach((el) => el.remove());
+  }
+
+  function deliveryQtyForItem(itemId) {
+    let total = 0;
+    document.querySelectorAll('#issue-lines-body .issue-line-row').forEach((row) => {
+      const sel = row.querySelector('select.line-item');
+      if (!sel || String(sel.value) !== String(itemId)) return;
+      const q = parseFloat(row.querySelector('.line-qty')?.value || '0');
+      if (q > 0) total += q;
+    });
+    return total;
+  }
+
+  function defaultReturnQty(pending, itemId) {
+    const p = Number(pending);
+    const d = deliveryQtyForItem(itemId);
+    if (!isFinite(p) || p <= 0) return 1;
+    if (isFinite(d) && d > 0) return Math.min(d, p);
+    return Math.min(1, p);
+  }
+
+  function formatPendingQty(raw) {
+    const n = Number(raw);
+    if (!isFinite(n)) return String(raw || '1');
+    if (Math.abs(n - Math.round(n)) < 1e-9) return String(Math.round(n));
+    return n.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  }
+
+  function syncReturnLabel(row) {
+    if (!row) return;
+    const label = row.querySelector('.line-return-label');
+    const wrap = row.querySelector('.line-replacement-wrap');
+    const check = row.querySelector('.line-replacement-check');
+    const pendingEl = row.querySelector('.line-replacement-pending');
+    const sel = row.querySelector('select.line-item');
+    if (!label || !sel) return;
+    const opt = sel.options[sel.selectedIndex];
+    const itemReq = opt && opt.dataset.requiresReturn === '1';
+    const itemId = sel.value ? String(sel.value) : '';
+    const info = itemId ? lineCustodyCache[itemId] : null;
+    const prevItemId = row.dataset.custodyItemId || '';
+
+    if (prevItemId && prevItemId !== itemId) {
+      clearReplacementHidden(prevItemId);
+      if (check) check.checked = false;
+    }
+    row.dataset.custodyItemId = itemId;
+
+    if (!sel.value) {
+      label.textContent = '—';
+      label.classList.remove('hidden');
+      label.title = '';
+      wrap?.classList.add('hidden');
+      if (pendingEl) pendingEl.textContent = '';
+      return;
+    }
+    if (!itemReq) {
+      label.textContent = '—';
+      label.classList.remove('hidden');
+      label.title = 'Consumo: no exige devolución.';
+      wrap?.classList.add('hidden');
+      if (pendingEl) pendingEl.textContent = '';
+      if (itemId) clearReplacementHidden(itemId);
+      if (check) check.checked = false;
+      return;
+    }
+
+    const qtyWrap = row.querySelector('.line-return-qty-wrap');
+    const qtyInput = row.querySelector('.line-return-qty');
+    const pendingNum = Number(info?.pending || 0);
+
+    if (info && info.has_pending) {
+      // Chip + cantidad a devolver (si tiene más de 1 en custodia).
+      label.textContent = '';
+      label.classList.add('hidden');
+      if (pendingEl) pendingEl.textContent = 'Tiene ' + formatPendingQty(info.pending || '1');
+      wrap?.classList.remove('hidden');
+      wrap.title = 'Marca Reemplazo y, si tiene varios, indica cuántos reintegra.';
+      if (check) {
+        if (info.requires_replacement && !check.dataset.userTouched) {
+          check.checked = true;
+        }
+        syncReplacementHidden(itemId, check.checked);
+        const showQty = check.checked && isFinite(pendingNum) && pendingNum > 1;
+        qtyWrap?.classList.toggle('hidden', !showQty);
+        if (qtyInput) {
+          qtyInput.max = String(pendingNum);
+          qtyInput.min = '0.01';
+          if (showQty) {
+            if (!qtyInput.value || Number(qtyInput.value) > pendingNum) {
+              qtyInput.value = String(defaultReturnQty(pendingNum, itemId));
+            }
+            syncReturnQtyHidden(itemId, qtyInput.value);
+          } else if (check.checked) {
+            syncReturnQtyHidden(itemId, defaultReturnQty(pendingNum, itemId));
+          } else {
+            syncReturnQtyHidden(itemId, '');
+          }
+        }
+      }
+    } else {
+      label.textContent = '—';
+      label.classList.remove('hidden');
+      label.title = 'Exige reintegro; aún no tiene pendiente en custodia.';
+      wrap?.classList.add('hidden');
+      qtyWrap?.classList.add('hidden');
+      if (pendingEl) pendingEl.textContent = '';
+      if (itemId) clearReplacementHidden(itemId);
+      if (check) {
+        check.checked = false;
+        delete check.dataset.userTouched;
+      }
+      if (qtyInput) qtyInput.value = '';
+    }
+  }
+
+  function syncAllReturnLabels() {
+    document.querySelectorAll('.issue-line-row').forEach(syncReturnLabel);
+  }
+
+  async function refreshLineCustodyHints() {
+    const workerId = (document.getElementById('id_worker')?.value || '').trim();
+    const ids = [];
+    document.querySelectorAll('#issue-lines-body .issue-line-row').forEach((row) => {
+      const sel = row.querySelector('select.line-item');
+      const opt = sel?.options?.[sel.selectedIndex];
+      if (sel?.value && opt?.dataset?.requiresReturn === '1') {
+        ids.push(String(sel.value));
+      }
+    });
+    const uniq = [...new Set(ids)];
+    if (!workerId || !uniq.length || !custodyCheckUrl) {
+      lineCustodyCache = {};
+      syncAllReturnLabels();
+      return;
+    }
+    try {
+      const resp = await fetch(
+        custodyCheckUrl +
+          '?worker=' + encodeURIComponent(workerId) +
+          '&items=' + encodeURIComponent(uniq.join(','))
+      );
+      if (!resp.ok) {
+        lineCustodyCache = {};
+      } else {
+        const data = await resp.json();
+        lineCustodyCache = data.items || {};
+      }
+    } catch (_) {
+      lineCustodyCache = {};
+    }
+    syncAllReturnLabels();
+  }
+
+  function scheduleLineCustodyHints() {
+    clearTimeout(lineCustodyTimer);
+    lineCustodyTimer = setTimeout(() => {
+      refreshLineCustodyHints();
+    }, 200);
+  }
+
+  async function loadItemsForKind(kind) {
+    if (!kind) return [];
+    const wh = selectedWarehouseId();
+    const cacheKey = kind + '|' + wh;
+    if (itemsByKindCache[cacheKey]) return itemsByKindCache[cacheKey];
+    if (itemsByKindInflight[cacheKey]) return itemsByKindInflight[cacheKey];
+    let url = itemsByKindUrl + '?kind=' + encodeURIComponent(kind);
+    if (wh) url += '&warehouse=' + encodeURIComponent(wh);
+    itemsByKindInflight[cacheKey] = fetch(url)
+      .then((r) => r.json())
+      .then((data) => {
+        const items = data.items || [];
+        itemsByKindCache[cacheKey] = items;
+        delete itemsByKindInflight[cacheKey];
+        return items;
+      })
+      .catch(() => {
+        delete itemsByKindInflight[cacheKey];
+        return [];
+      });
+    return itemsByKindInflight[cacheKey];
+  }
+
+  async function fillItemSelectForRow(row, { keepSelected } = {}) {
+    const kindSel = row.querySelector('select.line-kind');
+    const itemSel = row.querySelector('select.line-item');
+    if (!kindSel || !itemSel) return;
+    const kind = kindSel.value || '';
+    const prevSelected = keepSelected
+      ? (itemSel.dataset.selected || itemSel.value || '')
+      : '';
+
+    if (itemSel.tomselect) {
+      itemSel.tomselect.destroy();
+    }
+    itemSel.innerHTML = '<option value=""></option>';
+    itemSel.dataset.selected = '';
+
+    if (!kind) {
+      enhanceLineItemSelect(itemSel);
+      syncReturnLabel(row);
+      syncStockLabel(row);
+      syncQtyInputForRow(row);
+      return;
+    }
+
+    const keepDisabled = itemSel.hasAttribute('disabled');
+    itemSel.disabled = true;
+    const items = await loadItemsForKind(kind);
+    items.forEach((it) => {
+      const opt = new Option(it.name, String(it.id));
+      opt.dataset.requiresReturn = it.requires_return ? '1' : '0';
+      opt.dataset.allowsMultiple = it.allows_multiple_custody ? '1' : '0';
+      if (it.unit) opt.dataset.unit = String(it.unit);
+      if (it.stock != null) opt.dataset.stock = String(it.stock);
+      itemSel.add(opt);
+    });
+    itemSel.disabled = keepDisabled;
+
+    enhanceLineItemSelect(itemSel);
+    if (prevSelected && itemSel.tomselect) {
+      itemSel.tomselect.setValue(String(prevSelected), true);
+      itemSel.dataset.selected = String(prevSelected);
+    }
+    syncReturnLabel(row);
+    syncStockLabel(row);
+    syncQtyInputForRow(row);
+    scheduleLineCustodyHints();
+  }
+
+  function reindexLines() {
+    const body = document.getElementById('issue-lines-body');
+    const total = document.getElementById('i_TOTAL');
+    if (!body || !total) return;
+    const rows = [...body.querySelectorAll('.issue-line-row')];
+    rows.forEach((row, idx) => {
+      const num = row.querySelector('.line-num');
+      if (num) num.textContent = String(idx + 1);
+      row.querySelectorAll('[name^="i_"]').forEach((el) => {
+        el.name = el.name.replace(/i_\d+_/, 'i_' + idx + '_');
+      });
+    });
+    total.value = String(rows.length);
+  }
+
+  function wireRow(row) {
+    const kindSel = row.querySelector('select.line-kind');
+    kindSel?.addEventListener('change', () => {
+      fillItemSelectForRow(row, { keepSelected: false });
+    });
+    const check = row.querySelector('.line-replacement-check');
+    check?.addEventListener('change', () => {
+      check.dataset.userTouched = '1';
+      const sel = row.querySelector('select.line-item');
+      const itemId = sel?.value ? String(sel.value) : '';
+      if (itemId) syncReplacementHidden(itemId, check.checked);
+      syncReturnLabel(row);
+    });
+    const qtyInput = row.querySelector('.line-return-qty');
+    qtyInput?.addEventListener('input', () => {
+      const sel = row.querySelector('select.line-item');
+      const itemId = sel?.value ? String(sel.value) : '';
+      if (itemId) syncReturnQtyHidden(itemId, qtyInput.value);
+    });
+    row.querySelector('.line-qty')?.addEventListener('change', () => {
+      if (check?.checked) syncReturnLabel(row);
+    });
+  }
+
+  async function addLine() {
+    const tpl = document.getElementById('issue-line-template');
+    const body = document.getElementById('issue-lines-body');
+    if (!tpl || !body) return;
+    const html = tpl.innerHTML.replace(/___IDX___/g, '0');
+    const wrap = document.createElement('tbody');
+    wrap.innerHTML = html.trim();
+    const row = wrap.firstElementChild;
+    body.appendChild(row);
+    wireRow(row);
+    enhanceLineItemSelect(row.querySelector('select.line-item'));
+    reindexLines();
+    syncReturnLabel(row);
+    syncStockLabel(row);
+    row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function removeLine(btn) {
+    const body = document.getElementById('issue-lines-body');
+    if (!body) return;
+    const rows = body.querySelectorAll('.issue-line-row');
+    if (rows.length <= 1) {
+      const row = rows[0];
+      const kindSel = row.querySelector('select.line-kind');
+      if (kindSel) kindSel.value = '';
+      fillItemSelectForRow(row, { keepSelected: false });
+      const qty = row.querySelector('.line-qty');
+      if (qty) qty.value = '1';
+      return;
+    }
+    const row = btn.closest('.issue-line-row');
+    const itemSel = row?.querySelector('select.line-item');
+    if (itemSel?.tomselect) itemSel.tomselect.destroy();
+    row?.remove();
+    reindexLines();
+  }
+
+  document.getElementById('btn-add-issue-line')?.addEventListener('click', addLine);
+  document.body.addEventListener('click', function (e) {
+    const btn = e.target.closest('.btn-remove-issue-line');
+    if (btn) {
+      e.preventDefault();
+      removeLine(btn);
+    }
+  });
+  // Casa (contratos) según tipo de centro de costo
+  const ccMeta = {
+    {% for cc in form.fields.cost_center.queryset %}
+    "{{ cc.pk }}": {"kind": "{{ cc.kind }}", "project": "{{ cc.project_id|default_if_none:'' }}"},
+    {% endfor %}
+  };
+  const ccSel = document.getElementById('id_cost_center');
+  const houseWrap = document.getElementById('issue-house-wrap');
+  const houseSel = document.getElementById('id_house');
+
+  function selectedCcMeta() {
+    return ccMeta[ccSel?.value] || { kind: '', project: '' };
+  }
+
+  function syncHouseField() {
+    if (!ccSel || !houseWrap) return;
+    const meta = selectedCcMeta();
+    const needHouse = meta.kind === 'HOUSE';
+    houseWrap.classList.toggle('hidden', !needHouse);
+    if (houseSel) {
+      if (houseSel.tomselect) {
+        if (!needHouse) houseSel.tomselect.clear();
+        else houseSel.tomselect.clearOptions();
+      } else {
+        houseSel.required = needHouse;
+        if (!needHouse) houseSel.value = '';
+      }
+    }
+  }
+  ccSel?.addEventListener('change', syncHouseField);
+
+  function enhanceHouseSearch(sel) {
+    if (!sel || typeof TomSelect === 'undefined' || sel.tomselect) return;
+    sel.classList.remove('select', 'select-bordered');
+    const searchUrl = '{% url "warehouse:issue_house_search" %}';
+    const ts = new TomSelect(sel, {
+      valueField: 'id',
+      labelField: 'text',
+      searchField: ['text'],
+      create: false,
+      maxOptions: 30,
+      maxItems: 1,
+      preload: 'focus',
+      loadThrottle: 200,
+      placeholder: 'Buscar contrato / inmueble…',
+      dropdownParent: 'body',
+      wrapperClass: 'ts-wrapper search-select-ts',
+      copyClassesToDropdown: false,
+      plugins: ['clear_button'],
+      load: function (query, callback) {
+        const meta = selectedCcMeta();
+        if (meta.kind !== 'HOUSE') {
+          callback();
+          return;
+        }
+        const params = new URLSearchParams();
+        const q = (query || '').trim();
+        if (q) params.set('q', q);
+        if (meta.project) params.set('project', meta.project);
+        if (ccSel?.value) params.set('cost_center', ccSel.value);
+        fetch(searchUrl + '?' + params.toString())
+          .then((r) => r.json())
+          .then((data) => callback(data.results || []))
+          .catch(() => callback());
+      },
+      render: {
+        option: function (data, escape) {
+          if (!data.id && !data.value) {
+            return '<div class="option ts-empty-opt" style="display:none"></div>';
+          }
+          return '<div class="option">' + escape(data.text) + '</div>';
+        },
+        item: function (data, escape) {
+          return '<div class="item">' + escape(data.text) + '</div>';
+        },
+        no_results: function () {
+          return '<div class="no-results px-3 py-2 text-sm text-gray-500">Sin contratos aprobados</div>';
+        },
+      },
+    });
+    bindFixedBodyDropdown(ts);
+  }
+
+  function enhanceWorkerSearch(sel) {
+    if (!sel || typeof TomSelect === 'undefined' || sel.tomselect) return;
+    sel.classList.remove('select', 'select-bordered');
+    const searchUrl = '{% url "warehouse:worker_search" %}';
+    const ts = new TomSelect(sel, {
+      valueField: 'id',
+      labelField: 'text',
+      searchField: ['text'],
+      create: false,
+      maxOptions: 10,
+      maxItems: 1,
+      preload: false,
+      loadThrottle: 250,
+      placeholder: 'Buscar por nombre o cédula…',
+      dropdownParent: 'body',
+      wrapperClass: 'ts-wrapper search-select-ts',
+      copyClassesToDropdown: false,
+      plugins: ['clear_button'],
+      load: function (query, callback) {
+        const q = (query || '').trim();
+        if (q.length < 2) {
+          callback();
+          return;
+        }
+        fetch(searchUrl + '?q=' + encodeURIComponent(q))
+          .then((r) => r.json())
+          .then((data) => callback(data.results || []))
+          .catch(() => callback());
+      },
+      render: {
+        option: function (data, escape) {
+          if (!data.id && !data.value) {
+            return '<div class="option ts-empty-opt" style="display:none"></div>';
+          }
+          const ready = data.ready !== false;
+          return (
+            '<div class="option">' +
+              escape(data.text) +
+              (ready ? '' : ' <span class="text-xs text-amber-700">(incompleto)</span>') +
+            '</div>'
+          );
+        },
+        item: function (data, escape) {
+          return '<div class="item">' + escape(data.text) + '</div>';
+        },
+        no_results: function () {
+          return '<div class="no-results px-3 py-2 text-sm text-gray-500">Escribe al menos 2 caracteres…</div>';
+        },
+      },
+      onChange: function () {
+        // reset face if worker changes while modal open
+        const photo = document.getElementById('id_photo_data');
+        if (photo) photo.value = '';
+        scheduleLineCustodyHints();
+      },
+    });
+    bindFixedBodyDropdown(ts);
+  }
+
+  document.querySelectorAll('select.search-select').forEach((sel) => {
+    const ph = sel.id === 'id_cost_center' ? 'Buscar centro de costo…' : 'Buscar…';
+    enhanceSearchSelect(sel, ph);
+  });
+  enhanceWorkerSearch(document.getElementById('id_worker'));
+  enhanceHouseSearch(document.getElementById('id_house'));
+
+  document.getElementById('id_warehouse')?.addEventListener('change', async () => {
+    // Invalidar cache: el stock depende de la bodega.
+    Object.keys(itemsByKindCache).forEach((k) => delete itemsByKindCache[k]);
+    const rows = [...document.querySelectorAll('#issue-lines-body .issue-line-row')];
+    for (const row of rows) {
+      const kindSel = row.querySelector('select.line-kind');
+      if (kindSel?.value) {
+        await fillItemSelectForRow(row, { keepSelected: true });
+      } else {
+        syncStockLabel(row);
+      }
+    }
+  });
+
+  // Init filas: cargar ítems del tipo si ya hay selección (reintento tras error)
+  (async function initRows() {
+    const rows = [...document.querySelectorAll('#issue-lines-body .issue-line-row')];
+    for (const row of rows) {
+      wireRow(row);
+      const kindSel = row.querySelector('select.line-kind');
+      if (kindSel?.value) {
+        await fillItemSelectForRow(row, { keepSelected: true });
+      } else {
+        enhanceLineItemSelect(row.querySelector('select.line-item'));
+        syncReturnLabel(row);
+        syncStockLabel(row);
+      }
+    }
+    syncHouseField();
+    syncAllReturnLabels();
+    syncAllStockLabels();
+    reindexLines();
+    scheduleLineCustodyHints();
+  })();
+})();
+</script>

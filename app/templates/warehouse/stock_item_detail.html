@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% block title %}Stock · {{ item.sku }}{% endblock %}
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6">
+{% include "warehouse/_nav.html" %}
+
+<div class="flex flex-wrap items-start justify-between gap-3">
+    <div class="min-w-0">
+        <p class="text-xs text-gray-500 mb-1">
+            <a href="{% url 'warehouse:stock_list' %}" class="link link-hover">Stock</a>
+            <span class="mx-1">/</span>
+            {{ item.sku }}
+        </p>
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight">
+            {{ item.name }}
+        </h1>
+        <p class="text-sm text-gray-500 mt-0.5">{{ item.sku }} · {{ item.get_kind_display }} · {{ item.get_unit_display }}</p>
+    </div>
+    <a href="{% url 'warehouse:stock_list' %}" class="btn btn-ghost btn-sm shrink-0">Volver</a>
+</div>
+
+{# Ítem global: datos del catálogo (no pertenece a una bodega) #}
+<div class="card bg-white border border-gray-200 shadow-sm">
+    <div class="card-body gap-4 pt-5">
+        <div class="flex flex-col sm:flex-row gap-4">
+            {% if item.photo %}
+            <div class="shrink-0 w-24 h-24 rounded-lg border border-gray-200 overflow-hidden bg-gray-50">
+                <img src="{{ item.photo.url }}" alt="{{ item.name }}" class="w-full h-full object-cover">
+            </div>
+            {% endif %}
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 flex-1 min-w-0 text-sm">
+                <div class="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
+                    <div class="text-[10px] uppercase tracking-wide text-gray-400 font-semibold">Total</div>
+                    <div class="text-lg font-semibold tabular-nums {% if total_qty <= item.min_stock %}text-red-700{% else %}text-gray-900{% endif %}">
+                        {{ total_qty }}
+                        <span class="text-xs font-normal text-gray-500">{{ item.unit }}</span>
+                    </div>
+                    <div class="text-[11px] text-gray-400">Todas las bodegas</div>
+                </div>
+                <div class="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
+                    <div class="text-[10px] uppercase tracking-wide text-gray-400 font-semibold">Mínimo</div>
+                    <div class="text-lg font-semibold tabular-nums text-gray-900">{{ item.min_stock }}</div>
+                </div>
+                <div class="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
+                    <div class="text-[10px] uppercase tracking-wide text-gray-400 font-semibold">Tipo</div>
+                    <div class="font-medium text-gray-900 leading-tight">{{ item.get_kind_display }}</div>
+                    <div class="text-xs text-gray-500">{{ item.get_unit_display }}</div>
+                </div>
+                <div class="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
+                    <div class="text-[10px] uppercase tracking-wide text-gray-400 font-semibold">Custodia</div>
+                    <div class="font-medium text-gray-900">
+                        {% if item.requires_return %}Reintegro{% else %}Consumo{% endif %}
+                    </div>
+                    <div class="text-xs text-gray-500">
+                        {% if item.requires_return %}
+                            {% if item.allows_multiple_custody %}Múltiple sí{% else %}Múltiple no{% endif %}
+                        {% else %}—{% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="border-t border-gray-100 pt-3">
+            <div class="text-[10px] uppercase tracking-wide text-gray-400 font-semibold mb-2">Stock por bodega</div>
+            {% if balances %}
+            <div class="flex flex-wrap gap-2">
+                {% for b in balances %}
+                <a href="{% url 'warehouse:stock_item_detail' item.pk %}?warehouse={{ b.warehouse_id }}"
+                   class="inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition
+                          {% if warehouse and warehouse.pk == b.warehouse_id %}
+                          border-rojoz-300 bg-rojoz-50 text-rojoz-800
+                          {% else %}
+                          border-gray-200 bg-white text-gray-700 hover:border-gray-300
+                          {% endif %}">
+                    <span class="font-medium">{{ b.warehouse.code }}</span>
+                    <span class="tabular-nums {% if b.quantity <= item.min_stock %}text-red-700{% endif %}">{{ b.quantity }}</span>
+                </a>
+                {% endfor %}
+            </div>
+            <p class="text-[11px] text-gray-400 mt-2">Elige una bodega para ver su ledger. El ítem es el mismo en todas.</p>
+            {% else %}
+            <p class="text-sm text-gray-500">Sin saldos registrados aún.</p>
+            {% endif %}
+        </div>
+
+        {% if specs %}
+        <div class="text-xs text-gray-500 border-t border-gray-100 pt-3">
+            <span class="font-medium text-gray-600">Especs:</span>
+            {% for k, v in specs.items %}
+                <span class="ml-1">{{ k }}: {{ v }}{% if not forloop.last %};{% endif %}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card bg-white border border-gray-200 shadow-sm">
+    <div class="card-body pt-4 pb-3 gap-2">
+        <div class="flex flex-wrap items-end justify-between gap-2">
+            <div>
+                <h2 class="text-sm font-semibold text-gray-700">Ledger</h2>
+                {% if warehouse %}
+                <p class="text-xs text-gray-500">Movimientos en {{ warehouse.code }} · {{ warehouse.name }}</p>
+                {% endif %}
+            </div>
+            <p class="text-xs text-gray-400">{{ movements_total }} movimiento{{ movements_total|pluralize:"s" }} · lotes de {{ page_size }}</p>
+        </div>
+        {% if warehouse %}
+        <div id="stock-ledger-scroll"
+             class="overflow-auto rounded-lg border border-gray-200"
+             style="height: calc(2.75rem + 30 * 2.15rem);">
+            <table class="table table-sm table-pin-rows w-full">
+                <thead>
+                    <tr class="bg-gray-50 text-[10px] uppercase tracking-wide text-gray-400">
+                        <th>Fecha</th>
+                        <th>Tipo</th>
+                        <th class="text-right">Cant.</th>
+                        <th class="text-right">Saldo</th>
+                        <th>Referencia</th>
+                        <th>Usuario</th>
+                    </tr>
+                </thead>
+                <tbody id="stock-ledger-body">
+                    {% include "warehouse/partials/stock_ledger_rows.html" %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-sm text-gray-500 py-6 text-center">Selecciona una bodega para ver movimientos.</p>
+        {% endif %}
+    </div>
+</div>
+</div>
+
+{% if warehouse %}
+<script>
+(function () {
+  async function loadMore(btn) {
+    const url = btn.dataset.url;
+    const offset = btn.dataset.offset || '0';
+    btn.disabled = true;
+    btn.textContent = 'Cargando…';
+    try {
+      const resp = await fetch(url + (url.includes('?') ? '&' : '?') + 'offset=' + encodeURIComponent(offset), {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      });
+      if (!resp.ok) throw new Error('fail');
+      const html = await resp.text();
+      const body = document.getElementById('stock-ledger-body');
+      const moreRow = document.getElementById('ledger-more-row');
+      if (moreRow) moreRow.remove();
+      if (body) {
+        const tmp = document.createElement('tbody');
+        tmp.innerHTML = html.trim();
+        while (tmp.firstChild) body.appendChild(tmp.firstChild);
+        const next = document.getElementById('btn-ledger-more');
+        if (next) next.addEventListener('click', () => loadMore(next));
+      }
+    } catch (_) {
+      btn.disabled = false;
+      btn.textContent = 'Ver más';
+      alert('No se pudieron cargar más movimientos.');
+    }
+  }
+
+  document.getElementById('btn-ledger-more')?.addEventListener('click', function () {
+    loadMore(this);
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

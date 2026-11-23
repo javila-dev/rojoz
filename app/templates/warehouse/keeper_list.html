@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Responsables{% endblock %}
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6">
+{% include "warehouse/_nav.html" %}
+<div class="flex justify-between items-center">
+    <h1 class="text-3xl font-bold">Responsables de bodega</h1>
+    <a href="{% url 'warehouse:keeper_create' %}" class="btn btn-primary">Asignar</a>
+</div>
+
+<form method="get" role="search" class="flex flex-col md:flex-row gap-2 md:items-center">
+    {% if warehouses|length > 1 or bodega %}
+    <label class="sr-only" for="filter-bodega">Bodega</label>
+    <select id="filter-bodega" name="bodega" class="select select-bordered select-sm md:w-56" onchange="this.form.submit()">
+        <option value="">Todas las bodegas</option>
+        {% for w in warehouses %}
+        <option value="{{ w.pk }}"{% if bodega == w.pk %} selected{% endif %}>{{ w.code }} · {{ w.name }}</option>
+        {% endfor %}
+    </select>
+    {% endif %}
+    <div class="relative flex-1">
+        <label class="sr-only" for="filter-q">Buscar</label>
+        <i class="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true"></i>
+        <input id="filter-q" type="search" name="q" value="{{ q }}" placeholder="Bodega o usuario"
+               class="input input-bordered input-sm w-full pl-9">
+    </div>
+    <button type="submit" class="btn btn-sm btn-neutral-elegant">Buscar</button>
+    {% if filters_active %}
+    <a href="{{ request.path }}" class="btn btn-sm btn-ghost text-gray-600">Limpiar</a>
+    {% endif %}
+</form>
+
+<div class="card bg-white border shadow-sm overflow-hidden"><div class="card-body overflow-x-auto">
+<table class="table w-full text-sm">
+<thead><tr><th>Bodega</th><th>Usuario</th><th>Principal</th></tr></thead>
+<tbody>
+{% for o in items %}
+<tr><td>{{ o.warehouse }}</td><td>{{ o.user }}</td><td>{% if o.is_primary %}Sí{% else %}No{% endif %}</td></tr>
+{% empty %}
+<tr><td colspan="3" class="py-10 text-center">
+    {% if filters_active %}
+    <p class="text-gray-700 font-medium">Ninguna asignación coincide con los filtros.</p>
+    <p class="text-sm text-gray-500 mt-1">Ajusta la búsqueda o <a href="{{ request.path }}" class="link">limpia los filtros</a>.</p>
+    {% else %}
+    <p class="text-gray-700 font-medium">Aún no hay responsables asignados.</p>
+    <p class="text-sm text-gray-500 mt-1">Asigna el primero con «Asignar».</p>
+    {% endif %}
+</td></tr>
+{% endfor %}
+</tbody></table>
+</div>
+{% include "partials/pagination.html" with page_obj=page_obj label="asignaciones" %}
+</div>
+</div>
+{% endblock %}

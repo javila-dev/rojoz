@@ -1,0 +1,11 @@
+{# Expects: field #}
+<div class="{% if full %}md:col-span-2{% endif %}">
+    <label class="label py-1">
+        <span class="label-text text-sm font-medium text-gray-700">{{ field.label }}{% if field.field.required %}<span class="text-rojoz-500"> *</span>{% endif %}</span>
+    </label>
+    {{ field }}
+    {% if field.help_text %}<p class="mt-1 text-xs text-gray-500">{{ field.help_text }}</p>{% endif %}
+    {% if field.errors %}
+    <p class="mt-1 text-sm text-red-600 flex items-center gap-1"><i class="ri-alert-line"></i> {{ field.errors.0 }}</p>
+    {% endif %}
+</div>

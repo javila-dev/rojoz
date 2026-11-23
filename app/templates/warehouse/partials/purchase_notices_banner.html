@@ -1,0 +1,28 @@
+{# Avisos unificados (banner ámbar). oob=True para hx-swap-oob tras extracción. #}
+{% if has_purchase_draft or ai_error or ai_status or ai_tax_note %}
+<div
+    id="purchase-notices-banner"
+    class="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 w-full"
+    {% if oob %}hx-swap-oob="true"{% endif %}
+>
+    <ul class="list-disc pl-4 space-y-0.5">
+        {% if has_purchase_draft %}
+        <li>
+            Hay un borrador guardado de una extracción anterior. Puedes continuar editándolo o
+            <a href="?reset=1" class="underline font-medium" onclick="return confirm('¿Descartar el borrador y empezar de cero?');">descartarlo</a>
+            para ingresar una factura nueva.
+        </li>
+        {% endif %}
+        {% if ai_error %}
+        <li class="text-red-700">{{ ai_error }}</li>
+        {% elif ai_status %}
+        <li>{{ ai_status }}</li>
+        {% endif %}
+        {% if ai_tax_note %}
+        <li>{{ ai_tax_note }}</li>
+        {% endif %}
+    </ul>
+</div>
+{% else %}
+<div id="purchase-notices-banner" class="hidden w-full"{% if oob %} hx-swap-oob="true"{% endif %}></div>
+{% endif %}

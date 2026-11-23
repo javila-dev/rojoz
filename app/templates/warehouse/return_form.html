@@ -1,0 +1,473 @@
+{% extends "base.html" %}
+{% block title %}{% if voucher %}Reintegro #{{ voucher.pk }}{% else %}Nuevo reintegro{% endif %}{% endblock %}
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6">
+{% include "warehouse/_nav.html" %}
+
+{% if voucher and voucher.status != 'DRAFT' %}
+<div class="flex flex-wrap items-center justify-between gap-3">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900">Reintegro #{{ voucher.pk }}</h1>
+        <p class="text-sm text-gray-500 mt-0.5">{{ voucher.worker }} · {{ voucher.warehouse }} · {{ voucher.get_status_display }}</p>
+    </div>
+    <a href="{% url 'warehouse:return_list' %}" class="btn btn-ghost btn-sm">Volver al listado</a>
+</div>
+<div class="card bg-white border border-gray-200 shadow-sm">
+    <div class="card-body overflow-x-auto">
+        <table class="table table-sm w-full">
+            <thead><tr><th>Ítem</th><th>Cant.</th><th>Condición</th><th>Visión</th></tr></thead>
+            <tbody>
+            {% for line in lines %}
+            <tr>
+                <td>{{ line.issue_line.item.name }}</td>
+                <td>{{ line.quantity }}</td>
+                <td>{{ line.get_condition_display }}</td>
+                <td class="text-xs">
+                    {% if line.vision_verdict %}
+                        {% if line.vision_verdict == 'yes' %}<span class="text-green-700">Coincide</span>
+                        {% elif line.vision_verdict == 'no' %}<span class="text-red-700">No coincide</span>
+                        {% else %}{{ line.vision_verdict }}{% endif %}
+                        {% if line.vision_confidence != None %} ({{ line.vision_confidence|floatformat:0 }}%){% endif %}
+                        {% if line.vision_override %}<span class="text-amber-700"> · responsabilidad</span>{% endif %}
+                        {% if line.vision_reason %}<div class="text-gray-500">{{ line.vision_reason }}</div>{% endif %}
+                    {% else %}—{% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="text-gray-500">Sin líneas</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% else %}
+<div class="card bg-white border border-gray-200 shadow-sm">
+    <div class="card-body space-y-4 pt-5">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="min-w-0 flex-1">
+                <h1 class="text-2xl font-bold text-gray-900 leading-tight">
+                    {% if voucher %}Reintegro #{{ voucher.pk }}{% else %}Nuevo reintegro{% endif %}
+                </h1>
+                <p class="text-sm text-gray-500 mt-0.5">Selecciona bodega y trabajador; registra lo que devuelve con foto.</p>
+            </div>
+            {% if voucher %}
+            <form method="post" action="{% url 'warehouse:return_post' voucher.pk %}" class="shrink-0">
+                {% csrf_token %}
+                <button class="btn btn-primary btn-sm" {% if not lines %}disabled{% endif %}>Confirmar reintegro</button>
+            </form>
+            {% endif %}
+        </div>
+
+        {% if not voucher %}
+        <form method="post" class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+            {% csrf_token %}
+            <div class="md:col-span-4">
+                <label class="label py-0"><span class="label-text text-sm font-medium">Bodega</span></label>
+                <select name="warehouse" class="select select-bordered w-full" required>
+                    {% for w in warehouses %}<option value="{{ w.pk }}">{{ w }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="md:col-span-5">
+                <label class="label py-0"><span class="label-text text-sm font-medium">Cédula</span></label>
+                <input name="document_id" class="input input-bordered w-full" required placeholder="Documento del trabajador" autocomplete="off">
+            </div>
+            <div class="md:col-span-3">
+                <button type="submit" class="btn btn-primary w-full">Continuar</button>
+            </div>
+        </form>
+        {% else %}
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm rounded-lg border border-gray-100 bg-gray-50 px-3 py-2.5">
+            <div><span class="text-gray-500">Bodega</span><div class="font-medium text-gray-900">{{ voucher.warehouse }}</div></div>
+            <div><span class="text-gray-500">Trabajador</span><div class="font-medium text-gray-900">{{ voucher.worker.full_name }} <span class="text-gray-500 font-normal">· {{ voucher.worker.document_id }}</span></div></div>
+        </div>
+
+        {% if lines %}
+        <div>
+            <h2 class="text-sm font-semibold text-gray-700 mb-1.5">Ya agregados</h2>
+            <div class="overflow-x-auto rounded-lg border border-gray-200">
+                <table class="table table-sm w-full">
+                    <thead><tr><th>Ítem</th><th>Cant.</th><th>Condición</th><th>IA</th></tr></thead>
+                    <tbody>
+                    {% for line in lines %}
+                    <tr>
+                        <td class="text-sm">{{ line.issue_line.item.name }}</td>
+                        <td class="tabular-nums">{{ line.quantity }}</td>
+                        <td class="text-sm">{{ line.get_condition_display }}</td>
+                        <td class="text-xs">
+                            {% if line.vision_verdict == 'yes' %}<span class="text-green-700">OK</span>
+                            {% elif line.vision_override %}<span class="text-amber-700">Override</span>
+                            {% elif line.vision_verdict %}<span class="text-gray-600">{{ line.vision_verdict }}</span>
+                            {% else %}—{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        <div>
+            <div class="flex flex-wrap items-end gap-2 mb-1.5">
+                <h2 class="text-sm font-semibold text-gray-700 flex-1 min-w-[8rem]">Custodia pendiente</h2>
+                {% if pending %}
+                <div class="hidden sm:flex items-center gap-2 text-[10px] uppercase tracking-wide text-gray-400 font-semibold pr-1">
+                    <span class="w-14 text-center">Cant.</span>
+                    <span class="w-[6.75rem] text-center">Condición</span>
+                    <span class="w-9 text-center">Foto</span>
+                    <span class="w-[4.25rem]"></span>
+                </div>
+                {% endif %}
+            </div>
+            {% if pending %}
+            <div class="rounded-lg border border-gray-200 divide-y divide-gray-100">
+                {% for p in pending %}
+                <form method="post" action="{% url 'warehouse:return_add_line' voucher.pk %}"
+                      class="return-evidence-form px-3 py-2"
+                      data-item-id="{{ p.item.pk }}">
+                    {% csrf_token %}
+                    <input type="hidden" name="issue_line_id" value="{{ p.pk }}">
+                    <input type="hidden" name="photo_data" class="photo-data" value="">
+                    <input type="hidden" name="vision_verdict" class="vision-verdict" value="">
+                    <input type="hidden" name="vision_label" class="vision-label" value="">
+                    <input type="hidden" name="vision_confidence" class="vision-confidence" value="">
+                    <input type="hidden" name="vision_reason" class="vision-reason" value="">
+                    <input type="hidden" name="vision_override" class="vision-override-hidden" value="">
+
+                    <div class="flex flex-wrap items-center gap-2">
+                        <div class="min-w-[9rem] flex-1">
+                            <div class="text-sm font-medium text-gray-900 leading-tight">{{ p.item.name }}</div>
+                            <div class="text-[11px] text-gray-400 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                                <span>{{ p.item.sku }}</span>
+                                <span>·</span>
+                                <span>pend. {{ p.pending }}</span>
+                                <span>·</span>
+                                <a class="link link-hover text-rojoz-600" href="{% url 'warehouse:issue_detail' p.voucher_id %}" target="_blank" rel="noopener">
+                                    Entrega #{{ p.voucher_id }}
+                                </a>
+                                {% if p.related_issues|length > 1 %}
+                                <span>·</span>
+                                <button type="button"
+                                        class="link link-hover text-rojoz-600 btn-related-issues"
+                                        data-item-name="{{ p.item.name }}"
+                                        data-issues="{{ p.related_issues_json }}">
+                                    ver todas ({{ p.related_issues|length }})
+                                </button>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <input name="quantity" type="number" aria-label="Cantidad"
+                               class="input input-bordered input-xs w-14 h-8"
+                               step="{% if p.item.unit == 'KG' or p.item.unit == 'M' or p.item.unit == 'M2' or p.item.unit == 'L' %}0.01{% else %}1{% endif %}"
+                               min="{% if p.item.unit == 'KG' or p.item.unit == 'M' or p.item.unit == 'M2' or p.item.unit == 'L' %}0.01{% else %}1{% endif %}"
+                               max="{{ p.pending }}" value="{{ p.pending }}">
+                        <select name="condition" class="select select-bordered select-xs h-8 min-h-8 w-[6.75rem]" aria-label="Condición">
+                            <option value="GOOD">Bueno</option>
+                            <option value="DAMAGED">Dañado</option>
+                            <option value="LOST">Perdido</option>
+                        </select>
+                        <button type="button" class="btn-take-photo relative w-9 h-9 rounded border border-dashed border-gray-300 bg-gray-50 overflow-hidden shrink-0" title="Tomar foto" aria-label="Tomar foto">
+                            <span class="thumb-empty absolute inset-0 flex items-center justify-center text-gray-400"><i class="ri-camera-line"></i></span>
+                            <img class="thumb-preview hidden w-full h-full object-cover" alt="">
+                            <div class="thumb-loading absolute inset-0 hidden items-center justify-center bg-black/60">
+                                <span class="loading loading-spinner loading-xs text-white"></span>
+                            </div>
+                        </button>
+                        <button type="submit" class="btn btn-primary btn-xs btn-add-line w-[4.25rem]" disabled>Agregar</button>
+                    </div>
+                    <label class="override-wrap hidden mt-1.5 flex items-start gap-2 text-[11px] text-amber-900 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5">
+                        <input type="checkbox" class="checkbox checkbox-xs mt-0.5 vision-override-cb">
+                        <span class="vision-feedback leading-snug">Confirmo que en la foto está el ítem (responsabilidad en auditoría).</span>
+                    </label>
+                </form>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-sm text-gray-500">No hay ítems en custodia pendientes.</p>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="flex justify-end gap-2">
+    <a href="{% url 'warehouse:return_list' %}" class="btn btn-ghost">Cancelar</a>
+</div>
+{% endif %}
+</div>
+
+<dialog id="return-camera-modal" class="modal">
+    <div class="modal-box max-w-sm p-0 overflow-hidden">
+        <div class="px-4 pt-3 pb-2 border-b border-gray-100 flex items-center justify-between">
+            <h3 class="font-semibold text-sm">Tomar foto</h3>
+            <form method="dialog"><button class="btn btn-ghost btn-xs btn-circle">✕</button></form>
+        </div>
+        <div class="p-4 space-y-3">
+            <div class="relative mx-auto w-full aspect-[4/3] overflow-hidden rounded-lg border border-gray-200 bg-black">
+                <video id="return-cam-video" class="absolute inset-0 h-full w-full object-cover" autoplay playsinline muted></video>
+                <canvas id="return-cam-canvas" class="hidden"></canvas>
+            </div>
+            <button type="button" id="return-cam-shot" class="btn btn-primary btn-sm w-full">Capturar</button>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+<dialog id="return-issues-modal" class="modal">
+    <div class="modal-box max-w-md p-0 overflow-hidden">
+        <div class="px-4 pt-3 pb-2 border-b border-gray-100 flex items-center justify-between gap-2">
+            <h3 class="font-semibold text-sm" id="return-issues-title">Entregas relacionadas</h3>
+            <form method="dialog"><button class="btn btn-ghost btn-xs btn-circle">✕</button></form>
+        </div>
+        <div class="p-4">
+            <p class="text-xs text-gray-500 mb-2">Si el trabajador dice que no recibió el ítem, revisa estas entregas.</p>
+            <ul id="return-issues-list" class="space-y-1.5 text-sm"></ul>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+{% if voucher and voucher.status == 'DRAFT' %}
+<script>
+(function () {
+  const geminiReady = {{ gemini_ready|default:False|yesno:"true,false" }};
+  const visionUrl = '{% url "warehouse:item_vision_check" %}';
+  const csrf = '{{ csrf_token }}';
+  const camModal = document.getElementById('return-camera-modal');
+  const video = document.getElementById('return-cam-video');
+  const canvas = document.getElementById('return-cam-canvas');
+  let camStream = null;
+  let activeForm = null;
+
+  function escapeHtml(s) {
+    return String(s || '')
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  async function startCam() {
+    stopCam();
+    camStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' } },
+      audio: false,
+    });
+    video.srcObject = camStream;
+    await video.play();
+  }
+
+  function stopCam() {
+    if (camStream) {
+      camStream.getTracks().forEach((t) => t.stop());
+      camStream = null;
+    }
+    if (video) video.srcObject = null;
+  }
+
+  function setLoading(form, on) {
+    const el = form.querySelector('.thumb-loading');
+    if (!el) return;
+    el.classList.toggle('hidden', !on);
+    el.classList.toggle('flex', on);
+  }
+
+  function showThumb(form, dataUrl) {
+    const img = form.querySelector('.thumb-preview');
+    const empty = form.querySelector('.thumb-empty');
+    if (img && dataUrl) {
+      img.src = dataUrl;
+      img.classList.remove('hidden');
+    }
+    if (empty) empty.classList.add('hidden');
+  }
+
+  function hideThumb(form) {
+    const img = form.querySelector('.thumb-preview');
+    const empty = form.querySelector('.thumb-empty');
+    if (img) {
+      img.removeAttribute('src');
+      img.classList.add('hidden');
+    }
+    if (empty) empty.classList.remove('hidden');
+  }
+
+  function applyVisionResult(form, result, dataUrl) {
+    form.querySelector('.vision-verdict').value = result.verdict || '';
+    form.querySelector('.vision-label').value = result.label || '';
+    form.querySelector('.vision-confidence').value =
+      result.confidence != null ? String(result.confidence) : '';
+    form.querySelector('.vision-reason').value = result.reason || '';
+
+    form._visionAccepted = !!result.accepted;
+    form._visionNeedsOverride = !!result.needs_override && !result.accepted;
+    if (dataUrl) showThumb(form, dataUrl);
+
+    const btn = form.querySelector('.btn-add-line');
+    const oWrap = form.querySelector('.override-wrap');
+    if (result.accepted) {
+      oWrap?.classList.add('hidden');
+      form.querySelector('.vision-override-hidden').value = '';
+      btn.disabled = false;
+      return;
+    }
+    if (geminiReady && oWrap) {
+      oWrap.classList.remove('hidden');
+      const fb = oWrap.querySelector('.vision-feedback');
+      const conf = result.confidence != null
+        ? ' · ' + Math.round(Number(result.confidence)) + '%'
+        : '';
+      let title = 'Requiere confirmación';
+      if (result.verdict === 'no') title = 'No coincide';
+      if (fb) {
+        fb.innerHTML =
+          '<span class="font-medium">' + escapeHtml(title) + conf + '</span>' +
+          (result.reason ? ' — ' + escapeHtml(result.reason) : '') +
+          '. Confirmo bajo mi responsabilidad.';
+      }
+      const cb = oWrap.querySelector('.vision-override-cb');
+      if (cb) cb.checked = false;
+      form.querySelector('.vision-override-hidden').value = '';
+      btn.disabled = true;
+    } else {
+      btn.disabled = false;
+    }
+  }
+
+  async function analyzePhoto(form, dataUrl) {
+    form.querySelector('.photo-data').value = dataUrl;
+    hideThumb(form);
+    form.querySelector('.override-wrap')?.classList.add('hidden');
+    form.querySelector('.btn-add-line').disabled = true;
+    setLoading(form, true);
+    try {
+      const body = new FormData();
+      body.append('item_id', form.dataset.itemId);
+      body.append('photo_data', dataUrl);
+      body.append('csrfmiddlewaretoken', csrf);
+      const res = await fetch(visionUrl, { method: 'POST', body });
+      const data = await res.json();
+      const result = data.result || {
+        accepted: false,
+        needs_override: true,
+        verdict: 'error',
+        reason: 'Respuesta inválida.',
+      };
+      if (result.verdict === 'skipped') {
+        result.accepted = true;
+        result.needs_override = false;
+      }
+      applyVisionResult(form, result, dataUrl);
+    } catch (_) {
+      applyVisionResult(form, {
+        accepted: false,
+        needs_override: true,
+        verdict: 'error',
+        reason: 'No se pudo verificar. Confirma bajo tu responsabilidad.',
+        confidence: null,
+      }, dataUrl);
+    } finally {
+      setLoading(form, false);
+    }
+  }
+
+  document.querySelectorAll('.btn-take-photo').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      activeForm = btn.closest('.return-evidence-form');
+      if (!activeForm || !camModal) return;
+      try {
+        await startCam();
+        camModal.showModal();
+      } catch (_) {
+        alert('No se pudo abrir la cámara.');
+      }
+    });
+  });
+
+  camModal?.addEventListener('close', stopCam);
+
+  document.getElementById('return-cam-shot')?.addEventListener('click', async () => {
+    if (!activeForm || !video || !canvas) return;
+    const w = video.videoWidth || 640;
+    const h = video.videoHeight || 480;
+    canvas.width = w;
+    canvas.height = h;
+    canvas.getContext('2d').drawImage(video, 0, 0, w, h);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+    camModal.close();
+    stopCam();
+    await analyzePhoto(activeForm, dataUrl);
+  });
+
+  document.querySelectorAll('.return-evidence-form').forEach((form) => {
+    form._visionAccepted = false;
+    form._visionNeedsOverride = false;
+    form.querySelector('.vision-override-cb')?.addEventListener('change', (e) => {
+      const on = !!e.target.checked;
+      form.querySelector('.vision-override-hidden').value = on ? '1' : '';
+      form.querySelector('.btn-add-line').disabled = !(
+        form._visionAccepted || (form._visionNeedsOverride && on)
+      );
+    });
+    form.addEventListener('submit', (e) => {
+      if (!form.querySelector('.photo-data').value) {
+        e.preventDefault();
+        alert('Toma la foto de evidencia.');
+        return;
+      }
+      if (geminiReady && !form._visionAccepted) {
+        if (form.querySelector('.vision-override-hidden').value !== '1') {
+          e.preventDefault();
+          alert('La foto no fue validada. Confirma bajo tu responsabilidad o toma otra.');
+        }
+      }
+    });
+  });
+
+  const issuesModal = document.getElementById('return-issues-modal');
+  const issuesTitle = document.getElementById('return-issues-title');
+  const issuesList = document.getElementById('return-issues-list');
+  const issueBase = '{% url "warehouse:issue_detail" 0 %}'.replace(/0\/?$/, '');
+
+  document.querySelectorAll('.btn-related-issues').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      let issues = [];
+      try {
+        issues = JSON.parse(btn.getAttribute('data-issues') || '[]');
+      } catch (_) {
+        issues = [];
+      }
+      const name = btn.getAttribute('data-item-name') || '';
+      if (issuesTitle) {
+        issuesTitle.textContent = name
+          ? 'Entregas · ' + name
+          : 'Entregas relacionadas';
+      }
+      if (issuesList) {
+        issuesList.innerHTML = issues.length
+          ? issues.map((r) => {
+              const id = r.id;
+              const when = r.when ? escapeHtml(r.when) : '';
+              const qty = r.qty != null ? escapeHtml(String(r.qty)) : '';
+              return (
+                '<li class="flex flex-wrap items-center justify-between gap-2 rounded-md border border-gray-100 bg-gray-50 px-2.5 py-1.5">' +
+                  '<a class="link link-hover text-rojoz-600 font-medium" href="' +
+                  escapeHtml(issueBase + id + '/') +
+                  '" target="_blank" rel="noopener">Entrega #' + id + '</a>' +
+                  '<span class="text-[11px] text-gray-500">' +
+                  (when ? when : '') +
+                  (when && qty ? ' · ' : '') +
+                  (qty ? 'pend. ' + qty : '') +
+                  '</span>' +
+                '</li>'
+              );
+            }).join('')
+          : '<li class="text-gray-500 text-xs">Sin entregas.</li>';
+      }
+      issuesModal?.showModal();
+    });
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

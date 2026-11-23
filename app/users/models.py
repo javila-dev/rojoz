@@ -10,6 +10,7 @@ class RoleCode(models.TextChoices):
     TESORERIA = 'TESORERIA', 'Tesoreria'
     DIRECTOR = 'DIRECTOR', 'Director Comercial'
     ASESOR = 'ASESOR', 'Asesor Comercial'
+    ALMACENISTA = 'ALMACENISTA', 'Almacenista'
     CLIENTE = 'CLIENTE', 'Cliente Comprador'
 
 class User(AbstractUser):
@@ -195,7 +196,7 @@ class ClientProfile(models.Model):
 
 class IntegrationSettings(models.Model):
     """
-    Configuración de integraciones externas (API de proyectos/ventas).
+    Configuración de integraciones externas (API de proyectos/ventas + OpenAI).
     """
     projects_api_url = models.URLField(
         "URL API Proyectos",
@@ -209,6 +210,102 @@ class IntegrationSettings(models.Model):
         blank=True,
         help_text="Token/API Key para autenticar el consumo.",
     )
+    openai_enabled = models.BooleanField(
+        "OpenAI activo (facturas bodega)",
+        default=False,
+    )
+    openai_api_key = models.CharField(
+        "OpenAI API Key",
+        max_length=255,
+        blank=True,
+        help_text="Clave secreta de OpenAI para leer facturas.",
+    )
+    class OpenAIModel(models.TextChoices):
+        # IDs oficiales API (GPT-4 en adelante):
+        # https://developers.openai.com/api/docs/models/all
+        # —— GPT-5.6 ——
+        GPT_56_LUNA = "gpt-5.6-luna", "gpt-5.6-luna — GPT-5.6 Luna"
+        GPT_56_TERRA = "gpt-5.6-terra", "gpt-5.6-terra — GPT-5.6 Terra"
+        GPT_56_SOL = "gpt-5.6-sol", "gpt-5.6-sol — GPT-5.6 Sol"
+        GPT_56 = "gpt-5.6", "gpt-5.6 — alias → Sol"
+        # —— GPT-5.5 ——
+        GPT_55 = "gpt-5.5", "gpt-5.5 — GPT-5.5"
+        GPT_55_PRO = "gpt-5.5-pro", "gpt-5.5-pro — GPT-5.5 Pro"
+        # —— GPT-5.4 ——
+        GPT_54 = "gpt-5.4", "gpt-5.4 — GPT-5.4"
+        GPT_54_PRO = "gpt-5.4-pro", "gpt-5.4-pro — GPT-5.4 Pro"
+        GPT_54_MINI = "gpt-5.4-mini", "gpt-5.4-mini — GPT-5.4 mini"
+        GPT_54_NANO = "gpt-5.4-nano", "gpt-5.4-nano — GPT-5.4 nano"
+        # —— GPT-5.2 ——
+        GPT_52 = "gpt-5.2", "gpt-5.2 — GPT-5.2"
+        GPT_52_PRO = "gpt-5.2-pro", "gpt-5.2-pro — GPT-5.2 Pro"
+        # —— GPT-5.1 ——
+        GPT_51 = "gpt-5.1", "gpt-5.1 — GPT-5.1"
+        GPT_51_MINI = "gpt-5.1-mini", "gpt-5.1-mini — GPT-5.1 mini"
+        # —— GPT-5 ——
+        GPT_5 = "gpt-5", "gpt-5 — GPT-5"
+        GPT_5_MINI = "gpt-5-mini", "gpt-5-mini — GPT-5 mini"
+        GPT_5_NANO = "gpt-5-nano", "gpt-5-nano — GPT-5 nano"
+        GPT_5_PRO = "gpt-5-pro", "gpt-5-pro — GPT-5 Pro"
+        # —— GPT-4.1 ——
+        GPT_41 = "gpt-4.1", "gpt-4.1 — GPT-4.1"
+        GPT_41_MINI = "gpt-4.1-mini", "gpt-4.1-mini — GPT-4.1 mini"
+        GPT_41_NANO = "gpt-4.1-nano", "gpt-4.1-nano — GPT-4.1 nano"
+        # —— GPT-4o ——
+        GPT_4O = "gpt-4o", "gpt-4o — GPT-4o"
+        GPT_4O_MINI = "gpt-4o-mini", "gpt-4o-mini — GPT-4o mini"
+        # —— GPT-4 ——
+        GPT_4_TURBO = "gpt-4-turbo", "gpt-4-turbo — GPT-4 Turbo"
+        GPT_4_TURBO_PREVIEW = "gpt-4-turbo-preview", "gpt-4-turbo-preview — GPT-4 Turbo Preview"
+        GPT_4_VISION = "gpt-4-vision-preview", "gpt-4-vision-preview — GPT-4 Vision Preview"
+        GPT_4 = "gpt-4", "gpt-4 — GPT-4"
+
+    openai_model = models.CharField(
+        "Modelo OpenAI",
+        max_length=80,
+        choices=OpenAIModel.choices,
+        default=OpenAIModel.GPT_56_TERRA,
+        blank=True,
+        help_text="Catálogo GPT-4 en adelante (IDs oficiales OpenAI). Recomendado: gpt-5.6-terra.",
+    )
+
+    # --- Gemini (verificación visual de evidencia en custodia/reintegro) ---
+    class GeminiModel(models.TextChoices):
+        GEMINI_25_FLASH = "gemini-2.5-flash", "gemini-2.5-flash — rápido, buen visión"
+        GEMINI_25_PRO = "gemini-2.5-pro", "gemini-2.5-pro — más preciso"
+        GEMINI_20_FLASH = "gemini-2.0-flash", "gemini-2.0-flash"
+        GEMINI_20_FLASH_LITE = "gemini-2.0-flash-lite", "gemini-2.0-flash-lite — más barato"
+        GEMINI_15_FLASH = "gemini-1.5-flash", "gemini-1.5-flash"
+        GEMINI_15_PRO = "gemini-1.5-pro", "gemini-1.5-pro"
+
+    gemini_enabled = models.BooleanField(
+        "Gemini activo (evidencia custodia)",
+        default=False,
+        help_text="Verifica con visión si la foto del reintegro parece el ítem genérico.",
+    )
+    gemini_api_key = models.CharField(
+        "Gemini API Key",
+        max_length=255,
+        blank=True,
+        help_text="Clave de Google AI Studio / Gemini API.",
+    )
+    gemini_model = models.CharField(
+        "Modelo Gemini",
+        max_length=80,
+        choices=GeminiModel.choices,
+        default=GeminiModel.GEMINI_25_FLASH,
+        blank=True,
+        help_text="Recomendado: gemini-2.5-flash para visión de objetos.",
+    )
+    gemini_min_confidence = models.PositiveSmallIntegerField(
+        "Certeza mínima (%)",
+        default=65,
+        help_text=(
+            "Si Gemini dice que sí pero con menos % que esto, se trata como dudoso "
+            "y el almacenista debe confirmar bajo su responsabilidad."
+        ),
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -225,3 +322,15 @@ class IntegrationSettings(models.Model):
         if instance:
             return instance
         return cls.objects.create()
+
+    @property
+    def openai_ready(self) -> bool:
+        return bool(self.openai_enabled and (self.openai_api_key or "").strip())
+
+    @property
+    def gemini_ready(self) -> bool:
+        return bool(self.gemini_enabled and (self.gemini_api_key or "").strip())
+
+    @property
+    def gemini_key_present(self) -> bool:
+        return bool((self.gemini_api_key or "").strip())

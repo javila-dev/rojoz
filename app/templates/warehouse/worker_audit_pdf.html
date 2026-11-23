@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Auditoría de entregas – {{ worker.document_id }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 14mm 12mm 16mm 12mm;
+        }
+        :root {
+            --accent: #A0372A;
+            --accent-light: #F3E8E6;
+            --dark: #111827;
+            --muted: #6b7280;
+            --border: #e5e7eb;
+            --bg: #f9fafb;
+            --amber: #92400e;
+            --amber-bg: #fffbeb;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: "Helvetica Neue", Arial, sans-serif;
+            color: var(--dark);
+            font-size: 10px;
+            line-height: 1.45;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 2.5px solid var(--accent);
+            padding-bottom: 12px;
+            margin-bottom: 14px;
+        }
+        .brand { font-size: 17px; font-weight: 700; color: var(--accent); }
+        .brand-sub { color: var(--muted); font-size: 8.5px; margin-top: 2px; }
+        .doc-right { text-align: right; }
+        .doc-label {
+            font-size: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: var(--muted);
+            font-weight: 600;
+        }
+        .doc-title {
+            font-size: 14px;
+            font-weight: 800;
+            margin-top: 2px;
+        }
+        .doc-meta { color: var(--muted); font-size: 8.5px; margin-top: 3px; }
+
+        .worker-box {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-bottom: 14px;
+            background: #fff;
+        }
+        .worker-name { font-size: 13px; font-weight: 700; }
+        .worker-meta { color: var(--muted); font-size: 9px; margin-top: 2px; }
+        .flags { margin-top: 6px; }
+        .flag {
+            display: inline-block;
+            background: var(--accent-light);
+            color: var(--accent);
+            font-size: 8px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-right: 4px;
+        }
+        .flag.warn { background: var(--amber-bg); color: var(--amber); }
+
+        .section { margin-bottom: 14px; page-break-inside: avoid; }
+        .section-title {
+            font-size: 10.5px;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 6px;
+            padding-bottom: 3px;
+            border-bottom: 1px solid var(--accent-light);
+        }
+        .hint { color: var(--muted); font-size: 8.5px; margin-bottom: 6px; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 9px;
+        }
+        th {
+            text-align: left;
+            background: var(--bg);
+            border-bottom: 1px solid var(--border);
+            padding: 5px 6px;
+            font-size: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            color: var(--muted);
+        }
+        td {
+            border-bottom: 1px solid #f3f4f6;
+            padding: 5px 6px;
+            vertical-align: top;
+        }
+        .num { text-align: right; font-variant-numeric: tabular-nums; }
+        .pending { color: var(--amber); font-weight: 700; }
+        .empty { color: var(--muted); text-align: center; padding: 14px; }
+
+        .issue {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-bottom: 10px;
+            page-break-inside: avoid;
+            background: #fff;
+        }
+        .issue-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        .issue-id { font-weight: 700; font-size: 11px; }
+        .issue-meta { color: var(--muted); font-size: 8.5px; margin-top: 2px; }
+        .issue-meta strong { color: var(--dark); font-weight: 600; }
+
+        .evidence {
+            display: flex;
+            gap: 10px;
+            margin-top: 8px;
+        }
+        .ev-card {
+            flex: 1;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px;
+            background: var(--bg);
+            min-height: 90px;
+        }
+        .ev-title {
+            font-size: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--muted);
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+        .ev-card img {
+            max-width: 100%;
+            max-height: 110px;
+            object-fit: contain;
+            display: block;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 4px;
+        }
+        .ev-missing {
+            color: var(--muted);
+            font-size: 8.5px;
+            text-align: center;
+            padding: 20px 6px;
+        }
+
+        .returns {
+            margin-top: 8px;
+            border-top: 1px dashed var(--border);
+            padding-top: 6px;
+        }
+        .returns-title {
+            font-size: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--muted);
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .footer {
+            margin-top: 16px;
+            padding-top: 8px;
+            border-top: 1px solid var(--border);
+            font-size: 8px;
+            color: var(--muted);
+            display: flex;
+            justify-content: space-between;
+        }
+        .opts { margin-top: 4px; font-size: 8px; color: var(--muted); }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <div class="brand">Constructora Rojoz</div>
+            <div class="brand-sub">Bodega · Control de entregas y custodia</div>
+        </div>
+        <div class="doc-right">
+            <div class="doc-label">Documento</div>
+            <div class="doc-title">Auditoría de entregas</div>
+            <div class="doc-meta">Generado {{ generated_at|date:"d/m/Y H:i" }}</div>
+        </div>
+    </div>
+
+    <div class="worker-box">
+        <div>
+            <div class="worker-name">{{ worker.full_name }}</div>
+            <div class="worker-meta">
+                C.C. {{ worker.document_id }}
+                {% if worker.blood_type %} · {{ worker.blood_type }}{% endif %}
+                {% if worker.phone %} · {{ worker.phone }}{% endif %}
+            </div>
+            <div class="flags">
+                <span class="flag">{{ issue_evidence|length }} entrega{{ issue_evidence|length|pluralize:"s" }}</span>
+                <span class="flag {% if custody %}warn{% endif %}">{{ custody|length }} en custodia</span>
+            </div>
+            <div class="opts">
+                Evidencias:
+                foto {% if include_photo %}sí{% else %}no{% endif %} ·
+                devoluciones {% if include_returns %}sí{% else %}no{% endif %} ·
+                firma {% if include_signature %}sí{% else %}no{% endif %}
+            </div>
+        </div>
+        <div class="doc-right" style="min-width: 120px;">
+            <div class="doc-label">Solicitado por</div>
+            <div style="font-weight:600; margin-top:2px;">{{ generated_by }}</div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">En su poder (restitución pendiente)</div>
+        <p class="hint">Ítems con reintegro obligatorio que aún no han sido devueltos por completo.</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Ítem</th>
+                    <th class="num">Pendiente</th>
+                    <th>Entrega</th>
+                    <th>Fecha / hora</th>
+                    <th>Quién entregó</th>
+                    <th>Bodega</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for line in custody %}
+                <tr>
+                    <td>
+                        <strong>{{ line.item.name }}</strong><br>
+                        <span style="color:var(--muted)">{{ line.item.sku }} · {{ line.item.unit }}</span>
+                    </td>
+                    <td class="num pending">{{ line.pending }}</td>
+                    <td>#{{ line.voucher_id }}</td>
+                    <td>
+                        {% with when=line.voucher.posted_at|default:line.voucher.created_at %}
+                        {{ when|date:"d/m/Y H:i" }}
+                        {% endwith %}
+                    </td>
+                    <td>
+                        {% if line.voucher.created_by %}
+                            {{ line.voucher.created_by.get_full_name|default:line.voucher.created_by.username }}
+                        {% else %}—{% endif %}
+                    </td>
+                    <td>{{ line.voucher.warehouse.code }}</td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="6" class="empty">Sin ítems en custodia.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Historial de entregas</div>
+        <p class="hint">Salidas confirmadas, con responsable de bodega y detalle de ítems.</p>
+
+        {% for entry in issue_evidence %}
+        {% with voucher=entry.voucher %}
+        <div class="issue">
+            <div class="issue-head">
+                <div>
+                    <div class="issue-id">Entrega #{{ voucher.pk }} · {{ voucher.get_issue_type_display }}</div>
+                    <div class="issue-meta">
+                        <strong>{{ entry.when|date:"d/m/Y H:i" }}</strong>
+                        · Bodega {{ voucher.warehouse.code }}
+                        · Entregó <strong>{{ entry.delivered_by }}</strong>
+                        {% if voucher.cost_center %} · {{ voucher.cost_center }}{% endif %}
+                    </div>
+                    {% if voucher.notes %}
+                    <div class="issue-meta" style="margin-top:3px;">Nota: {{ voucher.notes }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Ítem</th>
+                        <th class="num">Entregado</th>
+                        <th class="num">Devuelto</th>
+                        <th class="num">Pendiente</th>
+                        <th>Exige reintegro</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for line in voucher.lines.all %}
+                    <tr>
+                        <td>
+                            <strong>{{ line.item.name }}</strong><br>
+                            <span style="color:var(--muted)">{{ line.item.sku }}</span>
+                        </td>
+                        <td class="num">{{ line.quantity }}</td>
+                        <td class="num">{{ line.quantity_returned }}</td>
+                        <td class="num {% if line.quantity_pending %}pending{% endif %}">
+                            {% if line.requires_return %}{{ line.quantity_pending }}{% else %}—{% endif %}
+                        </td>
+                        <td>{% if line.requires_return %}Sí (custodia){% else %}No{% endif %}</td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="5" class="empty">Sin líneas</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+
+            {% if include_returns %}
+            <div class="returns">
+                <div class="returns-title">Devoluciones / reintegros</div>
+                {% if entry.returns %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Ítem</th>
+                            <th class="num">Cant.</th>
+                            <th>Condición</th>
+                            <th>Fecha</th>
+                            <th>Registró</th>
+                            <th>Nº reintegro</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for ret in entry.returns %}
+                        <tr>
+                            <td>{{ ret.item.name }}</td>
+                            <td class="num">{{ ret.quantity }}</td>
+                            <td>{{ ret.condition }}</td>
+                            <td>{{ ret.when|date:"d/m/Y H:i" }}</td>
+                            <td>{{ ret.by }}</td>
+                            <td>#{{ ret.return_id }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="empty" style="padding:8px 0;">Sin devoluciones registradas en esta entrega.</div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {% if include_photo or include_signature %}
+            <div class="evidence">
+                {% if include_photo %}
+                <div class="ev-card">
+                    <div class="ev-title">Foto de entrega</div>
+                    {% if entry.photo_data_uri %}
+                    <img src="{{ entry.photo_data_uri }}" alt="Foto entrega">
+                    {% else %}
+                    <div class="ev-missing">Sin foto registrada</div>
+                    {% endif %}
+                </div>
+                {% endif %}
+                {% if include_signature %}
+                <div class="ev-card">
+                    <div class="ev-title">Firma del receptor</div>
+                    {% if entry.signature_data_uri %}
+                    <img src="{{ entry.signature_data_uri }}" alt="Firma">
+                    {% else %}
+                    <div class="ev-missing">Sin firma registrada</div>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+        {% endwith %}
+        {% empty %}
+        <div class="empty">No hay entregas confirmadas para este trabajador.</div>
+        {% endfor %}
+    </div>
+
+    <div class="footer">
+        <div>Constructora Rojoz · Bodega · Uso interno</div>
+        <div>{{ worker.document_id }} · {{ generated_at|date:"d/m/Y H:i" }}</div>
+    </div>
+</body>
+</html>

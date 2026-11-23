@@ -1,0 +1,146 @@
+{# Estilos Tom Select compartidos (compras / entregas) #}
+<style>
+  .ts-wrapper.line-item-ts,
+  .ts-wrapper.supplier-ts,
+  .ts-wrapper.search-select-ts {
+    width: 100%;
+    border: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+    min-height: 0 !important;
+    box-shadow: none !important;
+  }
+  .ts-wrapper.line-item-ts::after,
+  .ts-wrapper.line-item-ts::before,
+  .ts-wrapper.supplier-ts::after,
+  .ts-wrapper.supplier-ts::before,
+  .ts-wrapper.search-select-ts::after,
+  .ts-wrapper.search-select-ts::before {
+    display: none !important;
+    content: none !important;
+  }
+  .ts-wrapper.line-item-ts > select.line-item,
+  .ts-wrapper.supplier-ts > select.supplier-select,
+  .ts-wrapper.search-select-ts > select.search-select,
+  .ts-wrapper.search-select-ts > select.worker-search,
+  .ts-wrapper.search-select-ts > select.house-search {
+    display: none !important;
+  }
+  .ts-wrapper.line-item-ts .ts-control,
+  .ts-wrapper.supplier-ts .ts-control,
+  .ts-wrapper.search-select-ts .ts-control {
+    min-height: 2rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.5rem;
+    border: 1px solid #d1d5db;
+    font-size: 0.875rem;
+    background: #fff;
+    box-shadow: none;
+  }
+  .ts-wrapper.supplier-ts .ts-control,
+  .ts-wrapper.search-select-ts .ts-control {
+    min-height: 3rem;
+    padding: 0.5rem 0.75rem;
+  }
+  .ts-wrapper.line-item-ts .ts-control::after,
+  .ts-wrapper.supplier-ts .ts-control::after,
+  .ts-wrapper.search-select-ts .ts-control::after {
+    border-color: #6b7280 transparent transparent transparent;
+  }
+  .ts-wrapper.line-item-ts.focus .ts-control,
+  .ts-wrapper.supplier-ts.focus .ts-control,
+  .ts-wrapper.search-select-ts.focus .ts-control {
+    border-color: #A0372A;
+    box-shadow: 0 0 0 2px rgba(160, 55, 42, 0.15);
+  }
+  .ts-wrapper.line-item-ts .ts-dropdown,
+  .ts-wrapper.supplier-ts .ts-dropdown,
+  .ts-wrapper.search-select-ts .ts-dropdown,
+  body > .ts-dropdown {
+    border-radius: 0.5rem;
+    border: 1px solid #e5e7eb;
+    border-top: 1px solid #e5e7eb;
+    z-index: 9999;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+  }
+  .ts-wrapper.line-item-ts .ts-dropdown .option,
+  .ts-wrapper.supplier-ts .ts-dropdown .option,
+  .ts-wrapper.search-select-ts .ts-dropdown .option,
+  body > .ts-dropdown .option {
+    font-size: 0.875rem;
+    padding: 0.4rem 0.65rem;
+  }
+  .ts-wrapper.line-item-ts .ts-dropdown .active,
+  .ts-wrapper.supplier-ts .ts-dropdown .active,
+  .ts-wrapper.search-select-ts .ts-dropdown .active,
+  body > .ts-dropdown .active {
+    background: #fef2f2;
+    color: #7A2518;
+  }
+  body > .ts-dropdown .option.ts-empty-opt,
+  body > .ts-dropdown .option[data-value=""] {
+    display: none !important;
+  }
+  .ts-wrapper.line-item-ts .clear-button,
+  .ts-wrapper.supplier-ts .clear-button,
+  .ts-wrapper.search-select-ts .clear-button {
+    font-size: 1rem;
+    margin-right: 0.35rem;
+  }
+  .ts-wrapper.line-item-ts .ts-dropdown .option.ts-empty-opt,
+  .ts-wrapper.line-item-ts .ts-dropdown .option[data-value=""],
+  .ts-wrapper.supplier-ts .ts-dropdown .option.ts-empty-opt,
+  .ts-wrapper.supplier-ts .ts-dropdown .option[data-value=""],
+  .ts-wrapper.search-select-ts .ts-dropdown .option.ts-empty-opt,
+  .ts-wrapper.search-select-ts .ts-dropdown .option[data-value=""] {
+    display: none !important;
+  }
+
+  /* Detalle de entrega: fuente compacta, cant. ancha, custodia estrecha */
+  #issue-lines-table {
+    width: 100%;
+    max-width: 100%;
+    table-layout: fixed;
+    font-size: 0.75rem;
+  }
+  #issue-lines-table tr:hover {
+    transform: none;
+  }
+  #issue-lines-table th,
+  #issue-lines-table td {
+    overflow: hidden;
+    vertical-align: top;
+    font-size: 0.75rem;
+  }
+  #issue-lines-table .ts-wrapper.line-item-ts,
+  #issue-lines-table .select,
+  #issue-lines-table .input {
+    max-width: 100%;
+    min-width: 0 !important;
+    font-size: 0.75rem;
+    min-height: 2rem;
+    height: 2rem;
+  }
+  #issue-lines-table .line-qty {
+    min-width: 4.75rem !important;
+    width: 100%;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  #issue-lines-table .line-return-cell {
+    white-space: normal;
+  }
+  #issue-lines-table .line-replacement-wrap {
+    line-height: 1.15;
+  }
+  #issue-lines-table .line-replacement-wrap .checkbox {
+    --size: 0.85rem;
+  }
+  #issue-lines-table .ts-wrapper.line-item-ts .ts-control {
+    overflow: hidden;
+    font-size: 0.75rem;
+    min-height: 2rem;
+    padding-top: 0.2rem;
+    padding-bottom: 0.2rem;
+  }
+</style>

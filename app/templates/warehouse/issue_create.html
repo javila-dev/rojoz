@@ -1,0 +1,1567 @@
+{% extends "base.html" %}
+{% block title %}Nueva entrega{% endblock %}
+{% block extra_head %}
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/css/tom-select.default.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/js/tom-select.complete.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.2.0/dist/signature_pad.umd.min.js"></script>
+{% include "warehouse/partials/purchase_invoice_editor_css.html" %}
+{% include "warehouse/partials/face_feedback_js.html" %}
+{% endblock %}
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6">
+{% include "warehouse/_nav.html" %}
+
+<form id="issue-create-form" method="post" class="space-y-6">
+    {% csrf_token %}
+    {{ form.photo_data }}
+    {{ form.signature_data }}
+
+    {% if form.non_field_errors %}
+    <div class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <div class="card bg-white border border-gray-200 shadow-sm">
+        <div class="card-body space-y-4 pt-5">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="min-w-0 flex-1">
+                    <h1 class="text-2xl font-bold text-gray-900 leading-tight">Nueva entrega</h1>
+                    <p class="text-sm text-gray-500 mt-0.5">Completa la hoja. Al confirmar, se pedirá foto y firma de quien recibe para guardar y descontar inventario.</p>
+                </div>
+                <div class="flex flex-wrap items-center justify-end gap-2 shrink-0">
+                    <label for="{{ form.warehouse.id_for_label }}" class="text-sm font-medium text-gray-700 whitespace-nowrap">
+                        {{ form.warehouse.label }}{% if form.warehouse.field.required %}<span class="text-rojoz-500"> *</span>{% endif %}
+                    </label>
+                    <div class="w-52">
+                        {{ form.warehouse }}
+                    </div>
+                </div>
+                {% if form.warehouse.errors %}
+                <p class="text-sm text-red-600 w-full text-right">{{ form.warehouse.errors.0 }}</p>
+                {% elif form.warehouse.help_text %}
+                <p class="text-sm text-amber-700 w-full text-right">{{ form.warehouse.help_text }}</p>
+                {% endif %}
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-x-4 gap-y-3">
+                <div class="xl:col-span-5">{% include "warehouse/_field.html" with field=form.worker %}</div>
+                <div class="xl:col-span-4">{% include "warehouse/_field.html" with field=form.cost_center %}</div>
+                <div id="issue-house-wrap" class="xl:col-span-3{% if not form.house.value and not form.house.errors %} hidden{% endif %}">
+                    {% include "warehouse/_field.html" with field=form.house %}
+                </div>
+            </div>
+
+            {% include "warehouse/partials/issue_lines_panel.html" %}
+
+            <div>
+                {% include "warehouse/_field.html" with field=form.notes %}
+            </div>
+        </div>
+    </div>
+
+    <div class="flex justify-end gap-3">
+        <a href="{% url 'warehouse:issue_list' %}" class="btn btn-ghost">Cancelar</a>
+        <button type="button" id="btn-open-verify" class="btn btn-primary">Confirmar entrega</button>
+    </div>
+</form>
+</div>
+
+<dialog id="issue-verify-modal" class="modal">
+    <div id="issue-verify-box" class="modal-box max-w-md w-full p-0 overflow-hidden transition-[max-width] duration-300 ease-out flex flex-col">
+        <div class="px-5 pt-4 pb-3 border-b border-gray-100 shrink-0">
+            <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <h3 class="font-bold text-base text-gray-900">Confirmar entrega</h3>
+                        <span id="verify-identity-badge"
+                              class="badge badge-success badge-sm hidden whitespace-nowrap">
+                            Identidad confirmada
+                        </span>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-0.5" id="verify-step-subtitle">Verifica la identidad de quien recibe</p>
+                </div>
+                <form method="dialog">
+                    <button type="submit" class="btn btn-ghost btn-xs btn-circle" aria-label="Cerrar">✕</button>
+                </form>
+            </div>
+
+            <ol id="verify-steps-nav" class="mt-3 flex items-center gap-1.5" aria-label="Pasos de verificación">
+                <li class="verify-step-chip flex-1" data-step="face">
+                    <div class="flex items-center justify-center gap-1.5 rounded-md border px-2 py-1.5 text-[11px] font-medium transition-colors">
+                        <span class="verify-step-num inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-semibold">1</span>
+                        <span class="truncate">Identidad</span>
+                    </div>
+                </li>
+                <li class="verify-step-chip flex-1 hidden" data-step="custody" id="verify-chip-custody">
+                    <div class="flex items-center justify-center gap-1.5 rounded-md border px-2 py-1.5 text-[11px] font-medium transition-colors">
+                        <span class="verify-step-num inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-semibold">2</span>
+                        <span class="truncate">Evidencia</span>
+                    </div>
+                </li>
+                <li class="verify-step-chip flex-1" data-step="signature">
+                    <div class="flex items-center justify-center gap-1.5 rounded-md border px-2 py-1.5 text-[11px] font-medium transition-colors">
+                        <span class="verify-step-num inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-semibold" id="verify-sig-num">2</span>
+                        <span class="truncate">Firma</span>
+                    </div>
+                </li>
+            </ol>
+        </div>
+
+        <div id="verify-body" class="px-5 py-4 min-h-0 flex-1 overflow-y-auto overscroll-contain">
+            {# Cámara: cuadrada en identidad, un poco más ancha en evidencia #}
+            <div id="verify-camera-wrap" class="verify-camera-face mx-auto mb-3">
+                <div class="relative mx-auto overflow-hidden rounded-xl border border-gray-200 bg-black shadow-sm verify-camera-frame">
+                    <video id="video" class="absolute inset-0 h-full w-full object-cover scale-x-[-1]" autoplay playsinline muted></video>
+                    {# Fotograma congelado al capturar (mientras compara / tras OK). #}
+                    <img id="photo-freeze" class="absolute inset-0 hidden h-full w-full object-cover" alt="">
+                    <div class="verify-face-guide pointer-events-none absolute inset-0 flex items-center justify-center">
+                        <div class="verify-face-oval border-2 border-white/70 rounded-full"></div>
+                    </div>
+                </div>
+                <canvas id="photo-canvas" class="hidden"></canvas>
+            </div>
+
+            <section data-verify-panel="face" class="space-y-2">
+                <img id="photo-preview" class="hidden" alt="">
+                <div id="face-feedback" class="text-xs text-center min-h-[1.1rem]"></div>
+                <div class="flex justify-center pt-0.5">
+                    <button type="button" id="btn-capture" class="btn btn-outline btn-sm">Capturar y verificar</button>
+                </div>
+            </section>
+
+            <section data-verify-panel="custody" class="hidden space-y-2">
+                <p class="text-xs text-gray-600 text-center">
+                    Foto del ítem actual que se <strong>reintegra / reemplaza</strong>.
+                    Captura congela la cámara; el resultado del análisis aparece debajo.
+                </p>
+                {# Feedback amplio debajo del frame (no en la fila de la tabla) #}
+                <div id="custody-vision-panel" class="hidden rounded-lg border px-3 py-2.5 text-left text-sm space-y-2"></div>
+                <div id="custody-photos-list" class="max-h-48 overflow-y-auto rounded-lg border border-gray-200"></div>
+            </section>
+
+            <section data-verify-panel="signature" class="hidden space-y-3">
+                <div id="verify-receipt-summary" class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 space-y-1.5">
+                    <p class="text-sm text-gray-800" id="verify-receipt-intro"></p>
+                    <ol id="verify-receipt-list" class="list-decimal list-inside text-sm text-gray-700 space-y-0.5"></ol>
+                </div>
+                <p class="text-xs text-gray-600">Firma para confirmar que recibes lo anterior.</p>
+                <canvas id="signature-pad" class="w-full border border-gray-300 rounded-lg bg-white touch-none" height="140"></canvas>
+                <button type="button" id="btn-clear-sig" class="btn btn-ghost btn-xs">Limpiar firma</button>
+            </section>
+        </div>
+
+        <div id="verify-footer" class="px-5 py-3 border-t border-gray-100 flex items-center justify-between gap-2 bg-gray-50/80 shrink-0">
+            <button type="button" id="btn-verify-back" class="btn btn-ghost btn-sm" disabled>Atrás</button>
+            <div class="flex items-center gap-2">
+                <form method="dialog">
+                    <button type="submit" class="btn btn-ghost btn-sm" id="btn-close-verify">Cancelar</button>
+                </form>
+                <button type="button" id="btn-verify-next" class="btn btn-primary btn-sm" disabled>Siguiente</button>
+                <button type="button" id="btn-confirm-issue" class="btn btn-primary btn-sm hidden" disabled>Guardar entrega</button>
+            </div>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+{# Dialog propio en top-layer (cubre sidebar + modal de entrega) #}
+<dialog id="custody-lightbox" aria-label="Vista de evidencia">
+    <button type="button" id="custody-lightbox-close"
+            class="absolute top-4 right-4 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full bg-white text-gray-800 shadow-lg hover:bg-gray-100"
+            aria-label="Cerrar">
+        <i class="ri-close-line text-xl"></i>
+    </button>
+    <img id="custody-lightbox-img" class="max-h-[85vh] max-w-[min(96vw,56rem)] rounded-xl object-contain shadow-2xl ring-1 ring-white/20" alt="Evidencia">
+</dialog>
+
+<style>
+  #custody-lightbox {
+    position: fixed;
+    inset: 0;
+    padding: 1.5rem;
+    margin: 0;
+    border: 0;
+    background: transparent;
+    max-width: none;
+    max-height: none;
+    width: 100vw;
+    height: 100vh;
+    box-sizing: border-box;
+  }
+  #custody-lightbox[open] {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #custody-lightbox::backdrop {
+    background: rgba(0, 0, 0, 0.78);
+    backdrop-filter: blur(6px);
+  }
+
+  .verify-step-chip .rounded-md {
+    border-color: #e5e7eb;
+    background: #fff;
+    color: #6b7280;
+  }
+  .verify-step-chip .verify-step-num {
+    background: #f3f4f6;
+    color: #6b7280;
+  }
+  .verify-step-chip.is-active .rounded-md {
+    border-color: #A0372A;
+    background: #fef2f2;
+    color: #7A2518;
+  }
+  .verify-step-chip.is-active .verify-step-num {
+    background: #A0372A;
+    color: #fff;
+  }
+  .verify-step-chip.is-done .rounded-md {
+    border-color: #bbf7d0;
+    background: #f0fdf4;
+    color: #166534;
+  }
+  .verify-step-chip.is-done .verify-step-num {
+    background: #16a34a;
+    color: #fff;
+  }
+  #verify-camera-wrap.verify-camera-face {
+    max-width: 13.5rem;
+  }
+  #verify-camera-wrap.verify-camera-face .verify-camera-frame {
+    width: 13.5rem;
+    height: 13.5rem;
+  }
+  #verify-camera-wrap.verify-camera-face .verify-face-guide {
+    display: flex;
+  }
+  #verify-camera-wrap.verify-camera-face .verify-face-oval {
+    width: 58%;
+    height: 72%;
+  }
+  #verify-camera-wrap.verify-camera-custody {
+    max-width: 17rem;
+  }
+  #verify-camera-wrap.verify-camera-custody .verify-camera-frame {
+    width: 17rem;
+    height: 12.75rem; /* 4:3 */
+  }
+  #verify-camera-wrap.verify-camera-custody .verify-face-guide {
+    display: none;
+  }
+  #issue-verify-box {
+    transition: max-width 0.3s ease-out;
+    max-height: min(92vh, 52rem);
+    display: flex;
+    flex-direction: column;
+  }
+  #issue-verify-box.is-wide {
+    max-width: 36rem !important; /* más ancho en paso evidencia */
+  }
+  #verify-body {
+    -webkit-overflow-scrolling: touch;
+  }
+  #verify-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+  }
+  #custody-photos-list table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.75rem;
+  }
+  #custody-photos-list th,
+  #custody-photos-list td {
+    padding: 0.5rem 0.6rem;
+    vertical-align: middle;
+    border-bottom: 1px solid #f3f4f6;
+  }
+  #custody-photos-list thead th {
+    background: #f9fafb;
+    font-weight: 600;
+    color: #6b7280;
+    text-align: left;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+  #custody-photos-list tr:last-child td {
+    border-bottom: 0;
+  }
+  #custody-photos-list .custody-thumb {
+    width: 2.75rem;
+    height: 2.75rem;
+    object-fit: cover;
+    border-radius: 0.375rem;
+    border: 1px solid #e5e7eb;
+    cursor: zoom-in;
+    background: #f3f4f6;
+  }
+  #custody-photos-list .custody-thumb-empty {
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 0.375rem;
+    border: 1px dashed #d1d5db;
+    background: #f9fafb;
+    color: #9ca3af;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+  }
+</style>
+
+{% include "warehouse/partials/issue_editor_js.html" %}
+<script>
+(function () {
+  const form = document.getElementById('issue-create-form');
+  const modal = document.getElementById('issue-verify-modal');
+  const video = document.getElementById('video');
+  const canvas = document.getElementById('photo-canvas');
+  const preview = document.getElementById('photo-preview');
+  const freeze = document.getElementById('photo-freeze');
+  const faceGuide = document.querySelector('#verify-camera-wrap .verify-face-guide');
+  const feedback = document.getElementById('face-feedback');
+  const photoInput = document.getElementById('id_photo_data');
+  const sigInput = document.getElementById('id_signature_data');
+  const workerIdInput = document.getElementById('id_worker');
+  const btnSubmit = document.getElementById('btn-confirm-issue');
+  const btnNext = document.getElementById('btn-verify-next');
+  const btnBack = document.getElementById('btn-verify-back');
+  const stepSubtitle = document.getElementById('verify-step-subtitle');
+  const identityBadge = document.getElementById('verify-identity-badge');
+  const cameraWrap = document.getElementById('verify-camera-wrap');
+  const canvasSig = document.getElementById('signature-pad');
+  if (!modal || !canvasSig || typeof SignaturePad === 'undefined') return;
+
+  const sigPad = new SignaturePad(canvasSig, { backgroundColor: 'rgb(255,255,255)' });
+  let faceOk = false;
+  let faceBusy = false;
+  let cameraStream = null;
+  const blockOnFail = {{ face_settings.block_on_fail|yesno:"true,false" }};
+  const geminiReady = {{ gemini_ready|default:False|yesno:"true,false" }};
+  const visionCheckUrl = '{% url "warehouse:item_vision_check" %}';
+  const visionState = {}; // itemId -> { accepted, needs_override, ... }
+
+  function showFaceFreeze(dataUrl) {
+    if (!freeze || !dataUrl) return;
+    freeze.src = dataUrl;
+    freeze.classList.remove('hidden');
+    video?.classList.add('opacity-0');
+    faceGuide?.classList.add('hidden');
+  }
+
+  function clearFaceFreeze() {
+    if (freeze) {
+      freeze.classList.add('hidden');
+      freeze.removeAttribute('src');
+    }
+    video?.classList.remove('opacity-0');
+    faceGuide?.classList.remove('hidden');
+  }
+
+  const custodyList = document.getElementById('custody-photos-list');
+  const custodyChip = document.getElementById('verify-chip-custody');
+  const sigNum = document.getElementById('verify-sig-num');
+  let custodyItemIds = [];
+  let steps = ['face', 'signature'];
+  let stepIndex = 0;
+
+  const STEP_COPY = {
+    face: 'Verifica la identidad de quien recibe',
+    custody: 'Foto y cantidad a reintegrar',
+    signature: 'Firma de quien recibe para cerrar la entrega',
+  };
+
+  const custodyCheckUrl = '{% url "warehouse:issue_custody_check" %}';
+  let custodyAskItems = [];
+  let custodyCheckCache = null;
+
+  function collectReturnableItems() {
+    const items = [];
+    document.querySelectorAll('#issue-lines-body .issue-line-row').forEach((row) => {
+      const sel = row.querySelector('select.line-item');
+      const qty = parseFloat(row.querySelector('.line-qty')?.value || '0');
+      if (!sel || !sel.value || !(qty > 0)) return;
+      const opt = sel.options[sel.selectedIndex];
+      if (opt && opt.dataset.requiresReturn === '1') {
+        items.push({
+          id: String(sel.value),
+          name: (opt && opt.textContent) || ('Ítem #' + sel.value),
+          qty: qty,
+          allowsMultiple: opt.dataset.allowsMultiple === '1',
+        });
+      }
+    });
+    return items;
+  }
+
+  async function fetchCustodyCheck() {
+    const returnables = collectReturnableItems();
+    const workerId = (workerIdInput?.value || '').trim();
+    if (!workerId || !returnables.length) {
+      custodyCheckCache = { items: {}, returnables: [] };
+      return custodyCheckCache;
+    }
+    const ids = [...new Set(returnables.map((i) => i.id))];
+    try {
+      const resp = await fetch(
+        custodyCheckUrl +
+          '?worker=' + encodeURIComponent(workerId) +
+          '&items=' + encodeURIComponent(ids.join(','))
+      );
+      if (!resp.ok) {
+        custodyCheckCache = { items: {}, returnables };
+        return custodyCheckCache;
+      }
+      const data = await resp.json();
+      custodyCheckCache = { items: data.items || {}, returnables };
+      return custodyCheckCache;
+    } catch (_) {
+      custodyCheckCache = { items: {}, returnables };
+      return custodyCheckCache;
+    }
+  }
+
+  function custodyLineMessages(check) {
+    const msgs = [];
+    const map = check?.items || {};
+    (check?.returnables || []).forEach((it) => {
+      const info = map[it.id] || {};
+      if (!it.allowsMultiple && it.qty > 1 && !(info.has_pending && form.querySelector(
+        'input[type="hidden"][name="custody_replacement_' + it.id + '"]'
+      )?.value === '1')) {
+        // Sin reemplazo, max 1: no entregar más de uno.
+        if (!info.has_pending) {
+          msgs.push(it.name + ' (solo permite 1 en custodia; reduce la cantidad)');
+        }
+      }
+      const repl = form.querySelector(
+        'input[type="hidden"][name="custody_replacement_' + it.id + '"]'
+      );
+      if (info.requires_replacement) {
+        if (!repl || repl.value !== '1') {
+          msgs.push(
+            it.name +
+              ' (ya tiene ' +
+              (info.pending || '1') +
+              ' en custodia: marca Reemplazo en la línea)'
+          );
+          return;
+        }
+      }
+      if (repl && repl.value === '1' && info.has_pending) {
+        const pending = parseFloat(info.pending || '0') || 0;
+        const retRaw = form.querySelector(
+          'input[type="hidden"][name="custody_return_qty_' + it.id + '"]'
+        )?.value;
+        const ret = parseFloat(retRaw || '');
+        if (!(ret > 0) || (pending > 0 && ret > pending + 1e-9)) {
+          msgs.push(
+            it.name +
+              ' (indica cuántas reintegras: entre 0 y ' +
+              (info.pending || '1') +
+              ')'
+          );
+        }
+      }
+    });
+    return msgs;
+  }
+
+  function refreshCustodyItemIds() {
+    custodyItemIds = (custodyAskItems || []).map((it) => String(it.id));
+  }
+
+  function setVisionHidden(itemId, result, overrideChecked) {
+    const fields = {
+      verdict: 'custody_vision_verdict_' + itemId,
+      label: 'custody_vision_label_' + itemId,
+      confidence: 'custody_vision_confidence_' + itemId,
+      reason: 'custody_vision_reason_' + itemId,
+      override: 'custody_vision_override_' + itemId,
+    };
+    Object.keys(fields).forEach((k) => {
+      let el = form.querySelector('input[name="' + fields[k] + '"]');
+      if (!el) {
+        el = document.createElement('input');
+        el.type = 'hidden';
+        el.name = fields[k];
+        form.appendChild(el);
+      }
+      if (k === 'override') {
+        el.value = overrideChecked ? '1' : '';
+      } else if (k === 'confidence') {
+        el.value =
+          result && result.confidence != null && result.confidence !== ''
+            ? String(result.confidence)
+            : '';
+      } else {
+        el.value = result ? String(result[k] || '') : '';
+      }
+    });
+  }
+
+  function visionAcceptedForItem(itemId) {
+    if (!geminiReady) return true;
+    const st = visionState[String(itemId)];
+    if (!st) return false;
+    if (st.accepted) return true;
+    const ov = form.querySelector(
+      'input[name="custody_vision_override_' + itemId + '"]'
+    );
+    return !!(ov && ov.value === '1');
+  }
+
+  const custodyVisionPanel = document.getElementById('custody-vision-panel');
+  let activeCustodyItemId = null;
+
+  function setCustodyVisionPanel(html, tone) {
+    if (!custodyVisionPanel) return;
+    if (!html) {
+      custodyVisionPanel.classList.add('hidden');
+      custodyVisionPanel.innerHTML = '';
+      custodyVisionPanel.className =
+        'hidden rounded-lg border px-3 py-2.5 text-left text-sm space-y-2';
+      return;
+    }
+    const tones = {
+      loading: 'border-amber-200 bg-amber-50 text-amber-900',
+      ok: 'border-green-200 bg-green-50 text-green-900',
+      no: 'border-red-200 bg-red-50 text-red-900',
+      warn: 'border-amber-200 bg-amber-50 text-amber-900',
+      muted: 'border-gray-200 bg-gray-50 text-gray-800',
+    };
+    custodyVisionPanel.className =
+      'rounded-lg border px-3 py-2.5 text-left text-sm space-y-2 ' +
+      (tones[tone] || tones.warn);
+    custodyVisionPanel.innerHTML = html;
+    custodyVisionPanel.classList.remove('hidden');
+  }
+
+  function renderVisionPanelResult(result) {
+    if (!result) {
+      setCustodyVisionPanel('', '');
+      return;
+    }
+    const label = result.label
+      ? '<span class="font-medium">Como: ' + escapeHtml(result.label) + '</span>'
+      : '';
+    const conf =
+      result.confidence != null
+        ? ' · ' + Math.round(Number(result.confidence)) + '%'
+        : '';
+    let tone = 'warn';
+    let title = 'Requiere confirmación';
+    if (result.accepted) {
+      tone = 'ok';
+      title = 'Foto válida';
+    } else if (result.verdict === 'no') {
+      tone = 'no';
+      title = 'No coincide';
+    } else if (result.verdict === 'error' || result.verdict === 'skipped') {
+      tone = 'muted';
+      title = 'Sin verificación automática';
+    }
+    let html =
+      '<div class="font-semibold">' +
+      title +
+      conf +
+      (label ? ' · ' + label : '') +
+      '</div>' +
+      '<p class="text-xs leading-relaxed opacity-90">' +
+      escapeHtml(result.reason || '') +
+      '</p>';
+    if (result.needs_override && !result.accepted) {
+      html +=
+        '<label class="flex items-start gap-2 cursor-pointer text-xs pt-1 border-t border-black/5">' +
+        '<input type="checkbox" class="checkbox checkbox-sm mt-0.5 custody-vision-override" data-item-id="' +
+        escapeHtml(String(result._itemId || '')) +
+        '">' +
+        '<span>Confirmo que en la foto está el ítem. En cualquier auditoría es mi responsabilidad la aceptación.</span>' +
+        '</label>';
+    }
+    setCustodyVisionPanel(html, tone);
+  }
+
+  function renderVisionRowFeedback(row, result) {
+    // Ya no metemos el detalle en la fila (quedaba apretado); solo estado corto.
+    if (!row) return;
+    const box = row.querySelector('.custody-vision-box');
+    if (box) box.innerHTML = '';
+    const status = row.querySelector('.custody-status');
+    if (!status || !result) return;
+    if (result.accepted) {
+      status.textContent = 'Listo';
+      status.className = 'custody-status text-[11px] text-green-700 mr-2';
+    } else {
+      status.textContent = 'Revisar';
+      status.className = 'custody-status text-[11px] text-amber-800 mr-2';
+    }
+  }
+
+  async function runCustodyVision(itemId, dataUrl, row) {
+    const id = String(itemId);
+    activeCustodyItemId = id;
+    const status = row?.querySelector('.custody-status');
+
+    if (!geminiReady) {
+      const result = {
+        accepted: true,
+        needs_override: false,
+        verdict: 'skipped',
+        label: '',
+        reason: 'Verificación visual desactivada.',
+        confidence: null,
+        _itemId: id,
+      };
+      visionState[id] = result;
+      setVisionHidden(id, result, false);
+      renderVisionRowFeedback(row, result);
+      renderVisionPanelResult(result);
+      return;
+    }
+
+    if (status) {
+      status.textContent = 'Analizando…';
+      status.className = 'custody-status text-[11px] text-amber-700 mr-2';
+    }
+    setCustodyVisionPanel(
+      '<div class="flex items-center gap-2">' +
+        '<span class="loading loading-spinner loading-sm"></span>' +
+        '<span class="font-medium">Analizando la foto…</span>' +
+      '</div>' +
+      '<p class="text-xs opacity-80">Comparando con el ítem genérico. Espera un momento.</p>',
+      'loading'
+    );
+
+    try {
+      const body = new FormData();
+      body.append('item_id', id);
+      body.append('photo_data', dataUrl);
+      body.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+      const res = await fetch(visionCheckUrl, { method: 'POST', body });
+      const data = await res.json();
+      const result = data.result || {};
+      result._itemId = id;
+      visionState[id] = result;
+      setVisionHidden(id, result, false);
+      renderVisionRowFeedback(row, result);
+      renderVisionPanelResult(result);
+    } catch (_) {
+      const result = {
+        accepted: false,
+        needs_override: true,
+        verdict: 'error',
+        label: '',
+        reason:
+          'No se pudo verificar. Puedes confirmar bajo tu responsabilidad.',
+        confidence: null,
+        _itemId: id,
+      };
+      visionState[id] = result;
+      setVisionHidden(id, result, false);
+      renderVisionRowFeedback(row, result);
+      renderVisionPanelResult(result);
+    }
+    renderStepUI();
+  }
+
+  function custodyStepReady() {
+    if (!custodyAskItems.length) return true;
+    return custodyAskItems.every((it) => {
+      const photo = form.querySelector('input[name="custody_photo_' + it.id + '"]');
+      if (!(photo && photo.value)) return false;
+      return visionAcceptedForItem(it.id);
+    });
+  }
+
+  function currentStep() {
+    return steps[stepIndex] || 'face';
+  }
+
+  function stepComplete(step) {
+    if (step === 'face') return !!(faceOk && photoInput?.value);
+    if (step === 'custody') return custodyStepReady();
+    if (step === 'signature') return !sigPad.isEmpty();
+    return false;
+  }
+
+  function syncPadSize() {
+    const ratio = Math.max(window.devicePixelRatio || 1, 1);
+    const rect = canvasSig.getBoundingClientRect();
+    if (!rect.width) return;
+    const data = sigPad.isEmpty() ? null : sigPad.toDataURL();
+    canvasSig.width = Math.floor(rect.width * ratio);
+    canvasSig.height = Math.floor(160 * ratio);
+    const ctx = canvasSig.getContext('2d');
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.scale(ratio, ratio);
+    sigPad.clear();
+    if (data) sigPad.fromDataURL(data);
+  }
+
+  function renderStepUI() {
+    const step = currentStep();
+    if (stepSubtitle) stepSubtitle.textContent = STEP_COPY[step] || '';
+    identityBadge?.classList.toggle('hidden', !(faceOk && photoInput?.value));
+    document.getElementById('issue-verify-box')?.classList.toggle(
+      'is-wide',
+      step === 'custody'
+    );
+
+    document.querySelectorAll('[data-verify-panel]').forEach((panel) => {
+      panel.classList.toggle('hidden', panel.dataset.verifyPanel !== step);
+    });
+
+    const needsCamera = step === 'face' || (step === 'custody' && custodyItemIds.length > 0);
+    const faceDone = step === 'face' && !!(faceOk && photoInput?.value);
+    const hasCapture = !!(step === 'face' && photoInput?.value);
+    // Mantener el marco con fotograma congelado (no dejar la pantalla en blanco).
+    cameraWrap?.classList.toggle('hidden', !needsCamera);
+    cameraWrap?.classList.toggle('verify-camera-face', step === 'face');
+    cameraWrap?.classList.toggle('verify-camera-custody', step === 'custody');
+    if (step === 'face') {
+      if (hasCapture) {
+        showFaceFreeze(photoInput.value);
+      } else if (!faceBusy) {
+        clearFaceFreeze();
+      }
+    } else if (step === 'custody') {
+      const activePhoto = activeCustodyItemId
+        ? form.querySelector(
+            'input[name="custody_photo_' + activeCustodyItemId + '"]'
+          )?.value
+        : '';
+      if (activePhoto) {
+        showFaceFreeze(activePhoto);
+        faceGuide?.classList.add('hidden');
+      } else {
+        clearFaceFreeze();
+        // En evidencia no usamos óvalo facial.
+        faceGuide?.classList.add('hidden');
+      }
+    } else {
+      clearFaceFreeze();
+    }
+    const btnCapture = document.getElementById('btn-capture');
+    if (btnCapture && step === 'face') {
+      btnCapture.disabled = faceBusy;
+      btnCapture.textContent = faceBusy
+        ? 'Comparando…'
+        : (hasCapture ? 'Volver a capturar' : 'Capturar y verificar');
+      btnCapture.classList.toggle('btn-ghost', !faceBusy && hasCapture);
+      btnCapture.classList.toggle('btn-outline', faceBusy || !hasCapture);
+    }
+
+    document.querySelectorAll('.verify-step-chip').forEach((chip) => {
+      const key = chip.dataset.step;
+      if (chip.classList.contains('hidden')) return;
+      const idx = steps.indexOf(key);
+      chip.classList.toggle('is-active', key === step);
+      chip.classList.toggle('is-done', idx > -1 && idx < stepIndex);
+    });
+
+    if (btnBack) btnBack.disabled = stepIndex <= 0;
+    const isLast = stepIndex >= steps.length - 1;
+    btnNext?.classList.toggle('hidden', isLast);
+    btnSubmit?.classList.toggle('hidden', !isLast);
+
+    const ok = stepComplete(step);
+    if (btnNext) btnNext.disabled = !ok;
+    if (btnSubmit) btnSubmit.disabled = !ok;
+
+    if (step === 'signature') {
+      fillReceiptSummary();
+      requestAnimationFrame(syncPadSize);
+      stopCamera();
+    }
+    if (needsCamera && !cameraStream) {
+      startCamera();
+    }
+  }
+
+  function formatQtyDisplay(n) {
+    if (!isFinite(n)) return String(n);
+    if (Math.abs(n - Math.round(n)) < 1e-9) return String(Math.round(n));
+    return n.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  }
+
+  function unitPhrase(unit, qty) {
+    const u = String(unit || 'UND').toUpperCase();
+    const plural = !(Math.abs(Number(qty) - 1) < 1e-9);
+    const map = {
+      UND: ['unidad', 'unidades'],
+      KG: ['kilogramo', 'kilogramos'],
+      M: ['metro', 'metros'],
+      M2: ['metro cuadrado', 'metros cuadrados'],
+      L: ['litro', 'litros'],
+      CAJA: ['caja', 'cajas'],
+      PAR: ['par', 'pares'],
+      ROLLO: ['rollo', 'rollos'],
+    };
+    const pair = map[u] || [u.toLowerCase(), u.toLowerCase()];
+    return plural ? pair[1] : pair[0];
+  }
+
+  function workerFirstName() {
+    const sel = workerIdInput;
+    if (!sel) return 'Trabajador';
+    const ts = sel.tomselect;
+    const val = ts ? ts.getValue() : sel.value;
+    if (ts && val) {
+      const opt = ts.options[val];
+      if (opt && opt.first_name) return String(opt.first_name).trim();
+      const text = (opt && opt.text) || '';
+      let m = text.match(/^(.+?)\s*\(/);
+      if (m) return m[1].trim().split(/\s+/)[0];
+      m = text.match(/—\s*(.+)$/);
+      if (m) return m[1].trim().split(/\s+/)[0];
+      if (text) return text.trim().split(/\s+/)[0];
+    }
+    const native = sel.options[sel.selectedIndex];
+    if (native) {
+      const fn = native.dataset.firstName;
+      if (fn) return fn.trim();
+      const text = (native.textContent || '').trim();
+      let m = text.match(/—\s*(.+)$/);
+      if (m) return m[1].trim().split(/\s+/)[0];
+      if (text) return text.split(/\s+/)[0];
+    }
+    return 'Trabajador';
+  }
+
+  function collectDeliveryLines() {
+    const lines = [];
+    document.querySelectorAll('#issue-lines-body .issue-line-row').forEach((row) => {
+      const sel = row.querySelector('select.line-item');
+      const qtyRaw = row.querySelector('.line-qty')?.value || '';
+      const qty = parseFloat(qtyRaw);
+      if (!sel || !sel.value || !(qty > 0)) return;
+      const opt = sel.options[sel.selectedIndex];
+      const name = (opt && opt.textContent ? opt.textContent.trim() : '') || ('Ítem #' + sel.value);
+      const unit = (opt && opt.dataset.unit) || 'UND';
+      lines.push({ qty, unit, name });
+    });
+    return lines;
+  }
+
+  function fillReceiptSummary() {
+    const intro = document.getElementById('verify-receipt-intro');
+    const list = document.getElementById('verify-receipt-list');
+    if (!intro || !list) return;
+    const first = workerFirstName();
+    intro.textContent = first + ', confirmas que estás recibiendo:';
+    const lines = collectDeliveryLines();
+    list.innerHTML = '';
+    if (!lines.length) {
+      const li = document.createElement('li');
+      li.className = 'text-gray-500 list-none';
+      li.textContent = 'Sin ítems en la entrega.';
+      list.appendChild(li);
+      return;
+    }
+    lines.forEach((line) => {
+      const li = document.createElement('li');
+      li.textContent =
+        formatQtyDisplay(line.qty) +
+        ' ' +
+        unitPhrase(line.unit, line.qty) +
+        ' de ' +
+        line.name;
+      list.appendChild(li);
+    });
+  }
+
+  function buildSteps(askItems) {
+    custodyAskItems = askItems || [];
+    custodyItemIds = [];
+    steps = custodyAskItems.length ? ['face', 'custody', 'signature'] : ['face', 'signature'];
+    stepIndex = 0;
+    custodyChip?.classList.toggle('hidden', !custodyAskItems.length);
+    if (sigNum) sigNum.textContent = custodyAskItems.length ? '3' : '2';
+  }
+
+  function escapeHtml(s) {
+    return String(s ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function openCustodyLightbox(src) {
+    const box = document.getElementById('custody-lightbox');
+    const img = document.getElementById('custody-lightbox-img');
+    if (!box || !img || !src) return;
+    img.src = src;
+    // showModal → top-layer sobre el modal de entrega y el sidebar
+    if (typeof box.showModal === 'function') {
+      if (!box.open) box.showModal();
+    } else {
+      box.setAttribute('open', '');
+    }
+  }
+
+  function closeCustodyLightbox() {
+    const box = document.getElementById('custody-lightbox');
+    const img = document.getElementById('custody-lightbox-img');
+    if (img) img.removeAttribute('src');
+    if (!box) return;
+    if (typeof box.close === 'function' && box.open) box.close();
+    else box.removeAttribute('open');
+  }
+
+  function buildCustodyPhotoUI(askItems) {
+    form.querySelectorAll('input[name^="custody_photo_"]').forEach((el) => el.remove());
+    form.querySelectorAll('input[name^="custody_vision_"]').forEach((el) => el.remove());
+    Object.keys(visionState).forEach((k) => delete visionState[k]);
+    setCustodyVisionPanel('', '');
+    clearFaceFreeze();
+    activeCustodyItemId = null;
+    if (!custodyList) return;
+    const items = askItems || [];
+    if (!items.length) {
+      custodyList.innerHTML = '';
+      refreshCustodyItemIds();
+      return;
+    }
+
+    items.forEach((it) => {
+      let replHidden = form.querySelector(
+        'input[type="hidden"][name="custody_replacement_' + it.id + '"]'
+      );
+      if (!replHidden) {
+        replHidden = document.createElement('input');
+        replHidden.type = 'hidden';
+        replHidden.name = 'custody_replacement_' + it.id;
+        form.appendChild(replHidden);
+      }
+      replHidden.value = '1';
+
+      const photoHidden = document.createElement('input');
+      photoHidden.type = 'hidden';
+      photoHidden.name = 'custody_photo_' + it.id;
+      photoHidden.id = 'custody_photo_' + it.id;
+      form.appendChild(photoHidden);
+
+      const pending = parseFloat(it.pending || '1') || 1;
+      let retHidden = form.querySelector(
+        'input[type="hidden"][name="custody_return_qty_' + it.id + '"]'
+      );
+      if (!retHidden) {
+        retHidden = document.createElement('input');
+        retHidden.type = 'hidden';
+        retHidden.name = 'custody_return_qty_' + it.id;
+        form.appendChild(retHidden);
+      }
+      let retVal = parseFloat(retHidden.value || '');
+      if (!(retVal > 0) || retVal > pending) {
+        // Default: min(cant. entrega, pendiente)
+        let delivery = 0;
+        document.querySelectorAll('#issue-lines-body .issue-line-row').forEach((row) => {
+          const sel = row.querySelector('select.line-item');
+          if (sel && String(sel.value) === String(it.id)) {
+            delivery += parseFloat(row.querySelector('.line-qty')?.value || '0') || 0;
+          }
+        });
+        retVal = Math.min(delivery > 0 ? delivery : 1, pending);
+        retHidden.value = String(retVal);
+      }
+      it._returnQty = retVal;
+      it._pendingNum = pending;
+    });
+
+    let rowsHtml = '';
+    items.forEach((it, idx) => {
+      const pending = it._pendingNum || 1;
+      const retQty = it._returnQty || 1;
+      const qtyCell =
+        pending > 1
+          ? (
+              '<input type="number" min="0.01" max="' +
+              escapeHtml(String(pending)) +
+              '" step="any" class="input input-bordered input-xs w-16 custody-return-qty px-1 h-7 text-xs" ' +
+              'data-item-id="' +
+              escapeHtml(it.id) +
+              '" value="' +
+              escapeHtml(String(retQty)) +
+              '" title="Cuántas unidades reintegra (máx. ' +
+              escapeHtml(formatQtyDisplay(pending)) +
+              ')">'
+            )
+          : '<span class="tabular-nums">' + escapeHtml(formatQtyDisplay(retQty)) + '</span>';
+
+      rowsHtml +=
+        '<tr class="custody-row bg-white" data-item-id="' + escapeHtml(it.id) + '">' +
+          '<td class="text-gray-400 w-8">' + (idx + 1) + '</td>' +
+          '<td>' +
+            '<span class="font-medium text-gray-900">' + escapeHtml(it.name) + '</span>' +
+          '</td>' +
+          '<td class="whitespace-nowrap text-amber-800">' +
+            'Tiene ' + escapeHtml(formatQtyDisplay(pending)) +
+          '</td>' +
+          '<td class="whitespace-nowrap">' + qtyCell + '</td>' +
+          '<td>' +
+            '<div class="custody-thumb-wrap relative">' +
+              '<span class="custody-thumb-empty custody-thumb-placeholder">Sin foto</span>' +
+              '<img class="custody-preview custody-thumb hidden" alt="Evidencia" title="Ver foto">' +
+              '<div class="custody-thumb-loading absolute inset-0 hidden items-center justify-center rounded bg-black/50 text-white text-[10px] font-medium">Analizando…</div>' +
+            '</div>' +
+          '</td>' +
+          '<td class="text-right whitespace-nowrap">' +
+            '<span class="custody-status text-[11px] text-gray-500 mr-2">Pendiente</span>' +
+            '<button type="button" class="btn btn-outline btn-xs btn-custody-capture" data-mode="capture" data-item-id="' +
+              escapeHtml(it.id) +
+            '">Capturar</button>' +
+          '</td>' +
+        '</tr>';
+    });
+
+    custodyList.innerHTML =
+      '<table>' +
+        '<thead><tr>' +
+          '<th>#</th>' +
+          '<th>Ítem</th>' +
+          '<th>Tiene</th>' +
+          '<th>Reintegra</th>' +
+          '<th>Foto</th>' +
+          '<th></th>' +
+        '</tr></thead>' +
+        '<tbody>' + rowsHtml + '</tbody>' +
+      '</table>';
+
+    custodyList.querySelectorAll('.custody-return-qty').forEach((inp) => {
+      inp.addEventListener('input', () => {
+        const id = inp.dataset.itemId;
+        let hidden = form.querySelector(
+          'input[type="hidden"][name="custody_return_qty_' + id + '"]'
+        );
+        if (!hidden) {
+          hidden = document.createElement('input');
+          hidden.type = 'hidden';
+          hidden.name = 'custody_return_qty_' + id;
+          form.appendChild(hidden);
+        }
+        hidden.value = inp.value;
+        // Reflejar en la línea del editor si existe.
+        document.querySelectorAll('#issue-lines-body .issue-line-row').forEach((row) => {
+          const sel = row.querySelector('select.line-item');
+          if (sel && String(sel.value) === String(id)) {
+            const lineQty = row.querySelector('.line-return-qty');
+            if (lineQty) lineQty.value = inp.value;
+          }
+        });
+      });
+    });
+    refreshCustodyItemIds();
+  }
+
+  async function resetVerifyState() {
+    faceOk = false;
+    faceBusy = false;
+    if (photoInput) photoInput.value = '';
+    if (sigInput) sigInput.value = '';
+    if (preview) {
+      preview.removeAttribute('src');
+      preview.classList.add('hidden');
+    }
+    clearFaceFreeze();
+    if (feedback) feedback.textContent = '';
+    sigPad.clear();
+    form.querySelectorAll('input[name^="custody_photo_"]').forEach((el) => el.remove());
+    form.querySelectorAll('input[name^="custody_vision_"]').forEach((el) => el.remove());
+    Object.keys(visionState).forEach((k) => delete visionState[k]);
+    if (custodyList) custodyList.innerHTML = '';
+    custodyItemIds = [];
+    custodyAskItems = [];
+    const check = await fetchCustodyCheck();
+    const map = check.items || {};
+    // Solo ítems marcados como reemplazo en la línea (y con custodia pendiente).
+    const ask = (check.returnables || [])
+      .filter((it) => {
+        if (!map[it.id]?.has_pending) return false;
+        const hidden = form.querySelector(
+          'input[type="hidden"][name="custody_replacement_' + it.id + '"]'
+        );
+        return hidden && hidden.value === '1';
+      })
+      .map((it) => ({ ...it, pending: map[it.id]?.pending || '' }));
+    buildSteps(ask);
+    buildCustodyPhotoUI(ask);
+    renderStepUI();
+  }
+
+  function stopCamera() {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach((t) => t.stop());
+      cameraStream = null;
+    }
+    if (video) video.srcObject = null;
+  }
+
+  async function startCamera() {
+    if (cameraStream) return;
+    try {
+      cameraStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'user',
+          width: { ideal: 720 },
+          height: { ideal: 720 },
+        },
+        audio: false,
+      });
+      if (video) video.srcObject = cameraStream;
+    } catch (_) {
+      if (feedback) {
+        feedback.innerHTML = '<span class="text-error">Sin cámara. Actívala para verificar a quien recibe.</span>';
+      }
+    }
+  }
+
+  const stockLookupUrl = '{% url "warehouse:item_stock_lookup" %}';
+
+  const DECIMAL_UNITS = new Set(['KG', 'M', 'M2', 'L']);
+
+  function unitAllowsDecimals(unit) {
+    return DECIMAL_UNITS.has(String(unit || '').toUpperCase());
+  }
+
+  function hasFilledLines() {
+    const rows = document.querySelectorAll('#issue-lines-body .issue-line-row');
+    for (const row of rows) {
+      const sel = row.querySelector('select.line-item');
+      const qty = parseFloat(row.querySelector('.line-qty')?.value || '0');
+      if (sel && sel.value && qty > 0) return true;
+    }
+    return false;
+  }
+
+  function quantityUnitErrors() {
+    const errors = [];
+    document.querySelectorAll('#issue-lines-body .issue-line-row').forEach((row) => {
+      const sel = row.querySelector('select.line-item');
+      const qtyEl = row.querySelector('.line-qty');
+      const qty = parseFloat(qtyEl?.value || '0');
+      if (!sel?.value || !(qty > 0)) return;
+      const opt = sel.options[sel.selectedIndex];
+      const unit = (opt?.dataset?.unit || 'UND').toUpperCase();
+      const name = (opt?.textContent || '').trim() || 'Ítem';
+      if (!unitAllowsDecimals(unit) && Math.abs(qty - Math.round(qty)) > 1e-9) {
+        errors.push(name + ' (' + unit + '): la cantidad debe ser entera.');
+      }
+    });
+    return errors;
+  }
+
+  function formatQty(n) {
+    if (!isFinite(n)) return '0';
+    if (Math.abs(n - Math.round(n)) < 1e-9) return String(Math.round(n));
+    return n.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  }
+
+  function collectNeededItems() {
+    const needed = {};
+    document.querySelectorAll('#issue-lines-body .issue-line-row').forEach((row) => {
+      const sel = row.querySelector('select.line-item');
+      const qty = parseFloat(row.querySelector('.line-qty')?.value || '0');
+      if (!sel?.value || !(qty > 0)) return;
+      const id = String(sel.value);
+      const name = (sel.options[sel.selectedIndex]?.textContent || '').trim() || ('Ítem #' + id);
+      if (!needed[id]) needed[id] = { name: name, qty: 0 };
+      needed[id].qty += qty;
+    });
+    return needed;
+  }
+
+  async function stockErrorsForConfirm() {
+    const wh = (document.getElementById('id_warehouse')?.value || '').trim();
+    const needed = collectNeededItems();
+    const ids = Object.keys(needed);
+    if (!wh || !ids.length) return null;
+    try {
+      const resp = await fetch(
+        stockLookupUrl +
+          '?warehouse=' + encodeURIComponent(wh) +
+          '&items=' + encodeURIComponent(ids.join(','))
+      );
+      const data = await resp.json();
+      const stocks = data.stocks || {};
+      const errors = [];
+      ids.forEach((id) => {
+        const available = parseFloat(stocks[id] != null ? stocks[id] : '0');
+        const req = needed[id].qty;
+        if (!(available >= req)) {
+          errors.push(
+            needed[id].name +
+              ': pediste ' + formatQty(req) +
+              ', disponible ' + formatQty(isFinite(available) ? available : 0)
+          );
+        }
+      });
+      return errors;
+    } catch (_) {
+      return ['No se pudo verificar el stock. Intenta de nuevo.'];
+    }
+  }
+
+  async function canOpenModal() {
+    const wh = document.getElementById('id_warehouse');
+    const workerId = (workerIdInput?.value || '').trim();
+    if (!wh?.value) {
+      alert('Selecciona la bodega.');
+      return false;
+    }
+    if (!workerId) {
+      alert('Selecciona quién recibe.');
+      return false;
+    }
+    const houseWrap = document.getElementById('issue-house-wrap');
+    const house = document.getElementById('id_house');
+    if (houseWrap && !houseWrap.classList.contains('hidden') && !(house?.value || '').trim()) {
+      alert('Selecciona la casa.');
+      return false;
+    }
+    if (!hasFilledLines()) {
+      alert('Agrega al menos un ítem con cantidad.');
+      return false;
+    }
+    const qtyErrors = quantityUnitErrors();
+    if (qtyErrors.length) {
+      alert('Revisa las cantidades según la unidad del ítem.\n\n• ' + qtyErrors.join('\n• '));
+      return false;
+    }
+    const custodyCheck = await fetchCustodyCheck();
+    const custodyMsgs = custodyLineMessages(custodyCheck);
+    if (custodyMsgs.length) {
+      alert(
+        'Revisa la custodia en las líneas del ítem.\n\n• ' +
+          custodyMsgs.join('\n• ')
+      );
+      return false;
+    }
+    const stockErrors = await stockErrorsForConfirm();
+    if (stockErrors && stockErrors.length) {
+      alert('No hay stock suficiente para confirmar la entrega.\n\n• ' + stockErrors.join('\n• '));
+      return false;
+    }
+    return true;
+  }
+
+  document.getElementById('btn-open-verify')?.addEventListener('click', async () => {
+    const btn = document.getElementById('btn-open-verify');
+    if (btn) btn.disabled = true;
+    try {
+      if (!(await canOpenModal())) return;
+      await resetVerifyState();
+      modal.showModal();
+      await startCamera();
+      renderStepUI();
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  });
+
+  modal.addEventListener('close', () => {
+    stopCamera();
+    closeCustodyLightbox();
+  });
+
+  btnBack?.addEventListener('click', () => {
+    if (stepIndex <= 0) return;
+    stepIndex -= 1;
+    renderStepUI();
+  });
+
+  btnNext?.addEventListener('click', () => {
+    if (!stepComplete(currentStep())) return;
+    if (stepIndex >= steps.length - 1) return;
+    stepIndex += 1;
+    renderStepUI();
+  });
+
+  custodyList?.addEventListener('click', async (e) => {
+    const thumb = e.target.closest('.custody-preview');
+    if (thumb && thumb.getAttribute('src') && !thumb.classList.contains('hidden')) {
+      e.preventDefault();
+      openCustodyLightbox(thumb.getAttribute('src'));
+      return;
+    }
+
+    const btn = e.target.closest('.btn-custody-capture');
+    if (!btn) return;
+    const itemId = btn.dataset.itemId;
+    if (!itemId) return;
+    const row = btn.closest('tr.custody-row') || btn.closest('tr[data-item-id]');
+
+    // «Repetir»: vuelve a cámara en vivo (sin analizar todavía).
+    if (btn.dataset.mode === 'retake') {
+      clearFaceFreeze();
+      setCustodyVisionPanel('', '');
+      activeCustodyItemId = null;
+      const hidden = document.getElementById('custody_photo_' + itemId);
+      if (hidden) hidden.value = '';
+      ['verdict', 'label', 'confidence', 'reason', 'override'].forEach((k) => {
+        const el = form.querySelector(
+          'input[name="custody_vision_' + k + '_' + itemId + '"]'
+        );
+        if (el) el.value = '';
+      });
+      delete visionState[String(itemId)];
+      const img = row?.querySelector('img.custody-preview');
+      const placeholder = row?.querySelector('.custody-thumb-placeholder');
+      const status = row?.querySelector('.custody-status');
+      if (img) {
+        img.removeAttribute('src');
+        img.classList.add('hidden');
+      }
+      if (placeholder) {
+        placeholder.classList.remove('hidden');
+        placeholder.style.display = '';
+      }
+      if (status) {
+        status.textContent = 'Pendiente';
+        status.className = 'custody-status text-[11px] text-gray-500 mr-2';
+      }
+      btn.textContent = 'Capturar';
+      btn.dataset.mode = 'capture';
+      if (!cameraStream) await startCamera();
+      renderStepUI();
+      return;
+    }
+
+    if (!video) return;
+    if (!cameraStream) {
+      alert('Espera a que la cámara esté lista.');
+      return;
+    }
+    const w = video.videoWidth || 640;
+    const h = video.videoHeight || 480;
+    canvas.width = w;
+    canvas.height = h;
+    const ctxCustody = canvas.getContext('2d');
+    ctxCustody.setTransform(1, 0, 0, 1, 0, 0);
+    // Misma orientación que el preview (espejado).
+    ctxCustody.translate(w, 0);
+    ctxCustody.scale(-1, 1);
+    ctxCustody.drawImage(video, 0, 0, w, h);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+
+    let hidden = document.getElementById('custody_photo_' + itemId);
+    if (!hidden) {
+      hidden = document.createElement('input');
+      hidden.type = 'hidden';
+      hidden.name = 'custody_photo_' + itemId;
+      hidden.id = 'custody_photo_' + itemId;
+      form.appendChild(hidden);
+    }
+    hidden.value = dataUrl;
+
+    // Congela el frame grande (como identidad) y analiza debajo.
+    showFaceFreeze(dataUrl);
+    faceGuide?.classList.add('hidden');
+
+    const img = row?.querySelector('img.custody-preview');
+    const placeholder = row?.querySelector('.custody-thumb-placeholder');
+    const status = row?.querySelector('.custody-status');
+    if (img) {
+      img.removeAttribute('src');
+      img.classList.add('hidden');
+    }
+    if (placeholder) {
+      placeholder.classList.add('hidden');
+      placeholder.style.display = 'none';
+    }
+    if (status) {
+      status.textContent = 'Analizando…';
+      status.className = 'custody-status text-[11px] text-amber-700 mr-2';
+    }
+    btn.textContent = 'Repetir';
+    btn.dataset.mode = 'retake';
+    btn.disabled = true;
+
+    try {
+      await runCustodyVision(itemId, dataUrl, row);
+      if (img && dataUrl) {
+        img.src = dataUrl;
+        img.classList.remove('hidden');
+        img.style.display = 'inline-block';
+      }
+    } finally {
+      btn.disabled = false;
+      renderStepUI();
+    }
+  });
+
+  custodyVisionPanel?.addEventListener('change', (e) => {
+    const cb = e.target.closest('.custody-vision-override');
+    if (!cb) return;
+    const itemId = cb.dataset.itemId;
+    if (!itemId) return;
+    const st = visionState[String(itemId)] || {
+      verdict: 'uncertain',
+      label: '',
+      reason: '',
+      confidence: null,
+    };
+    setVisionHidden(itemId, st, !!cb.checked);
+    renderStepUI();
+  });
+
+  // Legacy: por si quedara un checkbox en la fila
+  custodyList?.addEventListener('change', (e) => {
+    const cb = e.target.closest('.custody-vision-override');
+    if (!cb) return;
+    const itemId = cb.dataset.itemId;
+    if (!itemId) return;
+    const st = visionState[String(itemId)] || {
+      verdict: 'uncertain',
+      label: '',
+      reason: '',
+      confidence: null,
+    };
+    setVisionHidden(itemId, st, !!cb.checked);
+    renderStepUI();
+  });
+
+  document.getElementById('custody-lightbox-close')?.addEventListener('click', closeCustodyLightbox);
+  document.getElementById('custody-lightbox')?.addEventListener('click', (e) => {
+    // Clic en el fondo (no en la imagen ni el botón) cierra.
+    if (e.target && e.target.id === 'custody-lightbox') closeCustodyLightbox();
+  });
+  document.getElementById('custody-lightbox')?.addEventListener('cancel', (e) => {
+    e.preventDefault();
+    closeCustodyLightbox();
+  });
+
+  document.getElementById('btn-capture')?.addEventListener('click', async () => {
+    const workerId = (workerIdInput?.value || '').trim();
+    if (!workerId) {
+      if (feedback) feedback.innerHTML = '<span class="text-error">Primero selecciona quién recibe.</span>';
+      return;
+    }
+    if (faceBusy) return;
+
+    // Si ya hay captura, este click es "volver a capturar": reabre cámara en vivo.
+    if (freeze && !freeze.classList.contains('hidden') && freeze.getAttribute('src') && !faceBusy) {
+      faceOk = false;
+      if (photoInput) photoInput.value = '';
+      clearFaceFreeze();
+      if (feedback) feedback.textContent = '';
+      cameraWrap?.classList.remove('hidden');
+      cameraWrap?.classList.add('verify-camera-face');
+      if (!cameraStream) await startCamera();
+      renderStepUI();
+      return;
+    }
+
+    faceOk = false;
+    faceBusy = true;
+    cameraWrap?.classList.remove('hidden');
+    cameraWrap?.classList.add('verify-camera-face');
+    if (!cameraStream) await startCamera();
+    // Esperar a que el video tenga frame real.
+    if (video && (!video.videoWidth || !video.videoHeight)) {
+      await new Promise((resolve) => {
+        const t = setTimeout(resolve, 800);
+        video.addEventListener(
+          'loadeddata',
+          () => {
+            clearTimeout(t);
+            resolve();
+          },
+          { once: true }
+        );
+      });
+    }
+    const w = video.videoWidth || 640;
+    const h = video.videoHeight || 480;
+    canvas.width = w;
+    canvas.height = h;
+    const ctxFace = canvas.getContext('2d');
+    ctxFace.setTransform(1, 0, 0, 1, 0, 0);
+    // Misma orientación que el enrolamiento (selfie espejada).
+    ctxFace.translate(w, 0);
+    ctxFace.scale(-1, 1);
+    ctxFace.drawImage(video, 0, 0, w, h);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+    photoInput.value = dataUrl;
+    showFaceFreeze(dataUrl);
+    if (feedback) {
+      feedback.innerHTML = '<span class="text-gray-600">Comparando…</span>';
+    }
+    renderStepUI();
+
+    try {
+      const body = new FormData();
+      body.append('photo_data', dataUrl);
+      body.append('mode', 'match');
+      body.append('worker_id', workerId);
+      body.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+      const res = await fetch('{% url "warehouse:face_validate" %}', { method: 'POST', body });
+      const data = await res.json();
+      if (data.match_passed) {
+        faceOk = true;
+        if (feedback) feedback.textContent = '';
+        stopCamera();
+      } else {
+        faceOk = !blockOnFail;
+        if (feedback) {
+          window.renderFaceIssues(feedback, data.issues, {
+            warningHtml: !blockOnFail
+              ? 'Se puede continuar, pero quedó registrado el aviso.'
+              : '',
+          });
+        }
+        stopCamera();
+      }
+    } catch (_) {
+      faceOk = false;
+      if (feedback) {
+        feedback.innerHTML = '<div class="text-error">No se pudo verificar. Intenta de nuevo.</div>';
+      }
+      stopCamera();
+    } finally {
+      faceBusy = false;
+      renderStepUI();
+    }
+  });
+
+  document.getElementById('btn-clear-sig')?.addEventListener('click', () => {
+    sigPad.clear();
+    if (sigInput) sigInput.value = '';
+    renderStepUI();
+  });
+  canvasSig.addEventListener('mouseup', () => renderStepUI());
+  canvasSig.addEventListener('touchend', () => renderStepUI());
+  canvasSig.addEventListener('pointerup', () => renderStepUI());
+
+  btnSubmit?.addEventListener('click', () => {
+    if (!faceOk || !photoInput.value) {
+      alert('Debes verificar la identidad.');
+      return;
+    }
+    if (!custodyStepReady()) {
+      alert('Indica si es reemplazo o adicional, y captura la foto cuando sea reemplazo.');
+      return;
+    }
+    if (sigPad.isEmpty()) {
+      alert('La firma es obligatoria.');
+      return;
+    }
+    sigInput.value = sigPad.toDataURL('image/png');
+    stopCamera();
+    form.requestSubmit();
+  });
+
+  {% if form.is_bound and form.errors %}
+  (async function reopenOnError() {
+    await resetVerifyState();
+    modal.showModal();
+    await startCamera();
+    renderStepUI();
+  })();
+  {% endif %}
+})();
+</script>
+{% endblock %}

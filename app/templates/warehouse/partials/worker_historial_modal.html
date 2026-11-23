@@ -1,0 +1,109 @@
+<div class="flex items-start justify-between gap-3 px-5 pt-4 pb-3 border-b border-gray-100">
+    <div class="flex gap-3 min-w-0">
+        {% if worker.enrollment_photo %}
+        <img src="{% url 'warehouse:worker_photo' worker.pk %}" alt=""
+             class="w-12 h-12 rounded-lg object-cover border border-gray-200 shrink-0">
+        {% else %}
+        <div class="w-12 h-12 rounded-lg border border-dashed border-gray-300 bg-gray-50 flex items-center justify-center text-gray-400 shrink-0">
+            <i class="ri-user-line"></i>
+        </div>
+        {% endif %}
+        <div class="min-w-0">
+            <p class="text-[11px] uppercase tracking-wider text-gray-400 font-semibold">Historial</p>
+            <h3 class="font-bold text-base text-gray-900 truncate leading-tight">{{ worker.full_name }}</h3>
+            <p class="text-xs text-gray-500 mt-0.5">
+                C.C. {{ worker.document_id }}
+                · {{ custody_count }} en custodia
+                · {{ issues_count }} entrega{{ issues_count|pluralize:"s" }}
+            </p>
+        </div>
+    </div>
+    <form method="dialog">
+        <button type="submit" class="btn btn-ghost btn-xs btn-circle" aria-label="Cerrar">✕</button>
+    </form>
+</div>
+
+<div class="px-5 pt-3">
+    <div role="tablist" class="tabs tabs-boxed bg-gray-100 p-1 rounded-xl w-full">
+        <button type="button" role="tab" class="tab tab-sm flex-1 hist-tab is-active" data-hist-tab="custody">
+            En custodia
+            {% if custody_count %}<span class="ml-1 text-[10px] opacity-70">({{ custody_count }})</span>{% endif %}
+        </button>
+        <button type="button" role="tab" class="tab tab-sm flex-1 hist-tab" data-hist-tab="history">
+            Movimientos
+        </button>
+    </div>
+</div>
+
+<div class="px-5 py-3 min-h-[16rem] max-h-[55vh] overflow-y-auto" id="historial-tab-panels">
+    <div data-hist-panel="custody" class="space-y-2">
+        {% if custody %}
+        <div class="overflow-x-auto rounded-lg border border-gray-100">
+            <table class="table table-sm w-full text-sm">
+                <thead>
+                    <tr class="text-xs text-gray-500">
+                        <th>Ítem</th>
+                        <th class="text-right">Pend.</th>
+                        <th>Desde</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for line in custody %}
+                    <tr>
+                        <td>
+                            <div class="font-medium">{{ line.item.name }}</div>
+                            <div class="text-[11px] text-gray-400">{{ line.item.sku }} · ent. #{{ line.voucher_id }}</div>
+                        </td>
+                        <td class="text-right font-semibold tabular-nums text-amber-800">{{ line.pending }}</td>
+                        <td class="text-xs text-gray-600 whitespace-nowrap">
+                            {% with when=line.voucher.posted_at|default:line.voucher.created_at %}
+                            {{ when|date:"d/m/Y" }}
+                            {% endwith %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-sm text-gray-500 text-center py-10">Sin ítems en custodia.</p>
+        {% endif %}
+    </div>
+
+    <div data-hist-panel="history" class="hidden space-y-2" id="historial-movimientos-list">
+        {% include "warehouse/partials/worker_historial_movimientos.html" %}
+    </div>
+</div>
+
+<div class="px-5 py-3 border-t border-gray-100 bg-gray-50/80 flex flex-wrap items-center justify-between gap-2">
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-600">
+        <label class="flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" class="checkbox checkbox-xs" name="pdf_foto" value="1" checked form="">
+            Foto
+        </label>
+        <label class="flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" class="checkbox checkbox-xs" name="pdf_devoluciones" value="1" checked form="">
+            Devoluciones
+        </label>
+        <label class="flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" class="checkbox checkbox-xs" name="pdf_firma" value="1" checked form="">
+            Firma
+        </label>
+    </div>
+    <a id="btn-historial-pdf"
+       href="{% url 'warehouse:worker_audit_pdf' worker.pk %}?foto=1&devoluciones=1&firma=1"
+       target="_blank" rel="noopener"
+       class="btn btn-primary btn-sm gap-1">
+        <i class="ri-printer-line"></i> Imprimir PDF
+    </a>
+</div>
+
+<style>
+  .hist-tab.is-active {
+    background: #fff;
+    color: #A0372A;
+    font-weight: 600;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.06);
+  }
+</style>

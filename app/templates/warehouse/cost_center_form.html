@@ -1,0 +1,20 @@
+{% extends "warehouse/_form_shell.html" %}
+
+{% block form_body %}
+<div class="space-y-6">
+    <section>
+        <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Centro de costo</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
+            {% include "warehouse/_field.html" with field=form.name %}
+            {% include "warehouse/_field.html" with field=form.kind %}
+            <div class="flex items-center gap-3 pb-3 md:col-span-2">
+                {{ form.is_active }}
+                <span class="text-sm text-gray-700">{{ form.is_active.label }}</span>
+            </div>
+        </div>
+        {% if form.instance.pk and form.instance.code %}
+        <p class="mt-2 text-xs text-gray-500">Código interno: <span class="font-medium text-gray-700">{{ form.instance.code }}</span></p>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

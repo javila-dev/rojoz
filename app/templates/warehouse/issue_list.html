@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Entregas{% endblock %}
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6">
+{% include "warehouse/_nav.html" %}
+<div class="flex flex-wrap justify-between gap-3 items-end">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900">Entregas</h1>
+        <p class="text-sm text-gray-500 mt-1">Historial de salidas a trabajadores.</p>
+    </div>
+    <a href="{% url 'warehouse:issue_create' %}" class="btn btn-primary btn-sm">Nueva entrega</a>
+</div>
+
+<form method="get" role="search" class="flex flex-col md:flex-row md:flex-wrap gap-2 md:items-center">
+    {% include "warehouse/_doc_filter_fields.html" %}
+    <label class="sr-only" for="filter-tipo">Tipo</label>
+    <select id="filter-tipo" name="tipo" class="select select-bordered select-sm md:w-48" onchange="this.form.submit()">
+        <option value="">Todos los tipos</option>
+        {% for value, label in issue_types %}
+        <option value="{{ value }}"{% if tipo == value %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+    <div class="relative flex-1 md:min-w-[14rem]">
+        <label class="sr-only" for="filter-q">Buscar</label>
+        <i class="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true"></i>
+        <input id="filter-q" type="search" name="q" value="{{ q }}" placeholder="Cédula, trabajador, bodega o #"
+               class="input input-bordered input-sm w-full pl-9">
+    </div>
+    <button type="submit" class="btn btn-sm btn-neutral-elegant">Buscar</button>
+    {% if filters_active %}
+    <a href="{{ request.path }}" class="btn btn-sm btn-ghost text-gray-600">Limpiar</a>
+    {% endif %}
+</form>
+
+<div class="card bg-white border border-gray-200 shadow-sm overflow-hidden"><div class="card-body overflow-x-auto">
+<table class="table w-full text-sm">
+<thead>
+<tr>
+    <th>#</th>
+    <th>Fecha</th>
+    <th>Trabajador</th>
+    <th>Bodega</th>
+    <th>Tipo</th>
+    <th>Entregó</th>
+    <th>Estado</th>
+    <th></th>
+</tr>
+</thead>
+<tbody>
+{% for o in page_obj %}
+<tr>
+    <td class="font-semibold tabular-nums">{{ o.pk }}</td>
+    <td class="whitespace-nowrap text-gray-600">
+        {% with when=o.posted_at|default:o.created_at %}
+        {{ when|date:"d/m/Y" }} <span class="text-gray-400">{{ when|time:"H:i" }}</span>
+        {% endwith %}
+    </td>
+    <td>
+        <div class="font-medium">{{ o.worker.full_name }}</div>
+        <div class="text-xs text-gray-400">{{ o.worker.document_id }}</div>
+    </td>
+    <td>{{ o.warehouse.code }}</td>
+    <td>{{ o.get_issue_type_display }}</td>
+    <td class="text-gray-600 text-xs">
+        {% if o.created_by %}
+            {{ o.created_by.get_full_name|default:o.created_by.username }}
+        {% else %}—{% endif %}
+    </td>
+    <td>
+        {% if o.status == 'POSTED' %}
+        <span class="badge badge-ghost badge-sm text-success">{{ o.get_status_display }}</span>
+        {% elif o.status == 'DRAFT' %}
+        <span class="badge badge-ghost badge-sm text-warning">{{ o.get_status_display }}</span>
+        {% else %}
+        <span class="badge badge-ghost badge-sm">{{ o.get_status_display }}</span>
+        {% endif %}
+    </td>
+    <td class="text-right whitespace-nowrap">
+        {% if o.status == 'POSTED' %}
+        <a class="btn btn-ghost btn-xs" target="_blank" rel="noopener"
+           href="{% url 'warehouse:issue_delivery_pdf' o.pk %}" title="Hoja de entrega">
+            <i class="ri-file-pdf-2-line"></i>
+        </a>
+        {% endif %}
+        <a class="btn btn-ghost btn-xs" href="{% url 'warehouse:issue_detail' o.pk %}">Ver</a>
+    </td>
+</tr>
+{% empty %}
+<tr><td colspan="8" class="py-10 text-center">
+    {% if filters_active %}
+    <p class="text-gray-700 font-medium">Ninguna entrega coincide con los filtros.</p>
+    <p class="text-sm text-gray-500 mt-1">Ajusta la búsqueda o <a href="{{ request.path }}" class="link">limpia los filtros</a>.</p>
+    {% else %}
+    <p class="text-gray-700 font-medium">Aún no hay entregas.</p>
+    <p class="text-sm text-gray-500 mt-1">Registra la primera con «Nueva entrega».</p>
+    {% endif %}
+</td></tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+{% include "partials/pagination.html" with page_obj=page_obj label="entregas" %}
+</div>
+
+</div>
+{% endblock %}

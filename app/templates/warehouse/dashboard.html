@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% load permission_tags %}
+
+{% block title %}Bodega – Panel{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6">
+    {% include "warehouse/_nav.html" %}
+
+    <div class="flex items-end justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Bodega</h1>
+            <p class="text-sm text-gray-500 mt-1">Control de herramientas, materiales, equipos y EPP</p>
+        </div>
+        <a href="{% url 'warehouse:issue_create' %}" class="btn btn-primary btn-sm shrink-0">Nueva entrega</a>
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="card bg-white border shadow-sm">
+            <div class="card-body py-4">
+                <p class="text-sm text-gray-500">Bodegas activas</p>
+                <p class="text-3xl font-bold text-rojoz-600">{{ warehouse_count }}</p>
+            </div>
+        </div>
+        <div class="card bg-white border shadow-sm">
+            <div class="card-body py-4">
+                <p class="text-sm text-gray-500">Stock bajo</p>
+                <p class="text-3xl font-bold">{{ low_stock|length }}</p>
+            </div>
+        </div>
+        <div class="card bg-white border shadow-sm">
+            <div class="card-body py-4">
+                <p class="text-sm text-gray-500">Custodia pendiente</p>
+                <p class="text-3xl font-bold">{{ pending_custody|length }}</p>
+            </div>
+        </div>
+        <div class="card bg-white border shadow-sm">
+            <div class="card-body py-4">
+                <p class="text-sm text-gray-500">Fallos faciales hoy</p>
+                <p class="text-3xl font-bold">{{ face_fails }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-6">
+        <div class="card bg-white border shadow-sm">
+            <div class="card-body">
+                <h2 class="font-bold text-lg mb-3">Stock bajo mínimo</h2>
+                <div class="overflow-x-auto">
+                    <table class="table table-sm w-full">
+                        <thead><tr><th>Ítem</th><th>Bodega</th><th>Cant.</th></tr></thead>
+                        <tbody>
+                        {% for b in low_stock %}
+                        <tr>
+                            <td>{{ b.item.sku }}</td>
+                            <td>{{ b.warehouse.code }}</td>
+                            <td class="font-semibold text-rojoz-600">{{ b.quantity }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="3" class="text-gray-500">Sin alertas</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card bg-white border shadow-sm">
+            <div class="card-body">
+                <h2 class="font-bold text-lg mb-3">Custodia sin devolver</h2>
+                <div class="overflow-x-auto">
+                    <table class="table table-sm w-full">
+                        <thead><tr><th>Trabajador</th><th>Ítem</th><th>Pend.</th></tr></thead>
+                        <tbody>
+                        {% for line in pending_custody %}
+                        <tr>
+                            <td>{{ line.voucher.worker.full_name }}</td>
+                            <td>{{ line.item.sku }}</td>
+                            <td>{{ line.pending }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="3" class="text-gray-500">Sin pendientes</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card bg-white border shadow-sm">
+        <div class="card-body">
+            <h2 class="font-bold text-lg mb-3">Movimientos recientes</h2>
+            <table class="table table-sm w-full">
+                <thead><tr><th>Fecha</th><th>Tipo</th><th>Ítem</th><th>Cant.</th><th>Bodega</th></tr></thead>
+                <tbody>
+                {% for m in recent_moves %}
+                <tr>
+                    <td>{{ m.created_at|date:"d/m H:i" }}</td>
+                    <td>{{ m.get_move_type_display }}</td>
+                    <td>{{ m.item.sku }}</td>
+                    <td>{{ m.quantity }}</td>
+                    <td>{{ m.warehouse.code }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-gray-500">Sin movimientos</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

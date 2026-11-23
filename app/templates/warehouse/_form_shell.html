@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% load permission_tags %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6">
+    {% include "warehouse/_nav.html" %}
+
+    <div class="max-w-3xl mx-auto w-full space-y-6">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">{{ title }}</h1>
+            {% if subtitle %}<p class="text-sm text-gray-500 mt-1">{{ subtitle }}</p>{% endif %}
+        </div>
+
+        <form method="post" enctype="multipart/form-data" class="card bg-white border border-gray-200 shadow-sm">
+            {% csrf_token %}
+            <div class="card-body space-y-6">
+                {% if form.non_field_errors %}
+                <div class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{{ form.non_field_errors }}</div>
+                {% endif %}
+
+                {% block form_body %}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
+                    {% for field in form %}
+                        {% include "warehouse/_field.html" with field=field full=False %}
+                    {% endfor %}
+                </div>
+                {% endblock %}
+
+                <div class="flex items-center justify-between gap-3 pt-2 border-t border-gray-100">
+                    <div class="flex gap-2">{% block form_extra_actions %}{% endblock %}</div>
+                    <div class="flex items-center gap-3">
+                        {% if cancel_url %}<a href="{{ cancel_url }}" class="btn btn-ghost">Cancelar</a>{% endif %}
+                        <button type="submit" class="btn btn-primary">{{ submit_label|default:"Guardar" }}</button>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Centros de costo{% endblock %}
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6">
+{% include "warehouse/_nav.html" %}
+<div class="flex justify-between items-center">
+    <h1 class="text-3xl font-bold">Centros de costo</h1>
+    <a href="{% url 'warehouse:cost_center_create' %}" class="btn btn-primary">Nuevo</a>
+</div>
+
+<form method="get" role="search" class="flex flex-col md:flex-row gap-2 md:items-center">
+    <label class="sr-only" for="filter-tipo">Tipo</label>
+    <select id="filter-tipo" name="tipo" class="select select-bordered select-sm md:w-40" onchange="this.form.submit()">
+        <option value="">Todos los tipos</option>
+        {% for value, label in kinds %}
+        <option value="{{ value }}"{% if tipo == value %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+    <label class="sr-only" for="filter-activo">Estado</label>
+    <select id="filter-activo" name="activo" class="select select-bordered select-sm md:w-40" onchange="this.form.submit()">
+        <option value="">Activos e inactivos</option>
+        <option value="si"{% if activo == "si" %} selected{% endif %}>Solo activos</option>
+        <option value="no"{% if activo == "no" %} selected{% endif %}>Solo inactivos</option>
+    </select>
+    <div class="relative flex-1">
+        <label class="sr-only" for="filter-q">Buscar</label>
+        <i class="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true"></i>
+        <input id="filter-q" type="search" name="q" value="{{ q }}" placeholder="Código, nombre o proyecto"
+               class="input input-bordered input-sm w-full pl-9">
+    </div>
+    <button type="submit" class="btn btn-sm btn-neutral-elegant">Buscar</button>
+    {% if filters_active %}
+    <a href="{{ request.path }}" class="btn btn-sm btn-ghost text-gray-600">Limpiar</a>
+    {% endif %}
+</form>
+
+<div class="card bg-white border shadow-sm overflow-hidden"><div class="card-body overflow-x-auto">
+<table class="table w-full text-sm">
+<thead><tr><th>Código</th><th>Nombre</th><th>Tipo</th><th>Activo</th><th></th></tr></thead>
+<tbody>
+{% for o in items %}
+<tr>
+    <td class="font-semibold">{{ o.code }}</td>
+    <td>
+        {{ o.name }}
+        {% if o.project %}<div class="text-xs text-gray-500">{{ o.project.name }}</div>{% endif %}
+    </td>
+    <td>{{ o.get_kind_display }}</td>
+    <td>{% if o.is_active %}Sí{% else %}No{% endif %}</td>
+    <td class="text-right"><a class="btn btn-xs" href="{% url 'warehouse:cost_center_edit' o.pk %}">Editar</a></td>
+</tr>
+{% empty %}
+<tr><td colspan="5" class="py-10 text-center">
+    {% if filters_active %}
+    <p class="text-gray-700 font-medium">Ningún centro de costo coincide con los filtros.</p>
+    <p class="text-sm text-gray-500 mt-1">Ajusta la búsqueda o <a href="{{ request.path }}" class="link">limpia los filtros</a>.</p>
+    {% else %}
+    <p class="text-gray-700 font-medium">Aún no hay centros de costo.</p>
+    <p class="text-sm text-gray-500 mt-1">Crea el primero con «Nuevo».</p>
+    {% endif %}
+</td></tr>
+{% endfor %}
+</tbody></table>
+</div>
+{% include "partials/pagination.html" with page_obj=page_obj label="centros de costo" %}
+</div>
+</div>
+{% endblock %}

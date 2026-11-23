@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% block title %}{{ invoice.get_document_type_display }} {{ invoice.invoice_number }}{% endblock %}
+{% block extra_head %}
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/css/tom-select.default.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/js/tom-select.complete.min.js"></script>
+{% include "warehouse/partials/purchase_invoice_editor_css.html" %}
+{% endblock %}
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6">
+{% include "warehouse/_nav.html" %}
+
+<form id="purchase-invoice-form" method="post" enctype="multipart/form-data" class="space-y-6">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+    <div class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <div class="card bg-white border border-gray-200 shadow-sm">
+        <div class="card-body space-y-4 pt-5">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="min-w-0 flex-1">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <h1 class="text-2xl font-bold text-gray-900 leading-tight">
+                            {{ invoice.get_document_type_display }} {{ invoice.invoice_number }}
+                        </h1>
+                        <span class="badge {% if readonly %}badge-success{% else %}badge-warning{% endif %} badge-outline">
+                            {{ invoice.get_status_display }}
+                        </span>
+                    </div>
+                    <p class="text-sm text-gray-500 mt-0.5">
+                        {% if readonly %}
+                        Factura cerrada e inmutable. El inventario ya fue actualizado.
+                        {% else %}
+                        Revisa y guarda cambios. El inventario solo aumenta al cerrar la factura.
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="flex flex-wrap items-center justify-end gap-2 shrink-0">
+                    <label for="{{ form.warehouse.id_for_label }}" class="text-sm font-medium text-gray-700 whitespace-nowrap">
+                        {{ form.warehouse.label }}{% if form.warehouse.field.required %}<span class="text-rojoz-500"> *</span>{% endif %}
+                    </label>
+                    <div class="w-52">
+                        {{ form.warehouse }}
+                    </div>
+                    {% if not readonly and invoice.attachment and openai_ready %}
+                    <button
+                        type="button"
+                        class="btn btn-outline btn-sm shrink-0"
+                        onclick="if(confirm('¿Leer de nuevo con IA? Se reemplazarán las líneas actuales.')) document.getElementById('ai-reread-form').requestSubmit();"
+                    >
+                        Extraer con IA
+                    </button>
+                    {% endif %}
+                </div>
+                {% if form.warehouse.errors %}
+                <p class="text-sm text-red-600 w-full text-right">{{ form.warehouse.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-x-4 gap-y-3">
+                <div id="ai-field-document_type" class="xl:col-span-2">
+                    {% include "warehouse/_field.html" with field=form.document_type %}
+                </div>
+                <div id="ai-field-supplier" class="xl:col-span-4">
+                    <div class="flex items-end gap-1">
+                        <div class="min-w-0 flex-1">
+                            {% include "warehouse/_field.html" with field=form.supplier %}
+                        </div>
+                        {% if not readonly %}
+                        <div class="tooltip tooltip-left mb-1" data-tip="Nuevo proveedor">
+                            <button
+                                type="button"
+                                class="btn btn-ghost btn-sm btn-square"
+                                aria-label="Nuevo proveedor"
+                                hx-get="{% url 'warehouse:purchase_quick_supplier' %}"
+                                hx-target="#quick-create-modal-root"
+                                hx-swap="innerHTML"
+                            >
+                                <i class="ri-user-add-line text-lg"></i>
+                            </button>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div id="ai-field-invoice_number" class="xl:col-span-2">{% include "warehouse/_field.html" with field=form.invoice_number %}</div>
+                <div id="ai-field-invoice_date" class="xl:col-span-2">{% include "warehouse/_field.html" with field=form.invoice_date %}</div>
+                <div id="ai-field-received_date" class="xl:col-span-2">{% include "warehouse/_field.html" with field=form.received_date %}</div>
+            </div>
+
+            {% include "warehouse/partials/purchase_ai_panel.html" %}
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3 pt-2">
+                {% include "warehouse/partials/purchase_attachment_field.html" %}
+                <div id="ai-field-notes">{% include "warehouse/_field.html" with field=form.notes %}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex justify-end gap-3">
+        <a href="{% url 'warehouse:purchase_list' %}" class="btn btn-ghost">Volver</a>
+        {% if not readonly %}
+        <button
+            type="submit"
+            name="action"
+            value="discard"
+            class="btn btn-ghost text-red-600"
+            formnovalidate
+            onclick="return confirm('¿Descartar este borrador? Se eliminará la factura y no afectará el inventario.');"
+        >Descartar</button>
+        <button type="submit" name="action" value="save" class="btn btn-outline">Guardar borrador</button>
+        <button
+            type="submit"
+            name="action"
+            value="close"
+            class="btn btn-primary"
+            onclick="return confirm('¿Cerrar la factura? Quedará inmutable y se cargará el inventario.');"
+        >Cerrar factura</button>
+        {% endif %}
+    </div>
+</form>
+
+<div id="quick-create-modal-root"></div>
+{% if not readonly and invoice.attachment and openai_ready %}
+<form id="ai-reread-form" method="post" action="{% url 'warehouse:purchase_extract_ai' invoice.pk %}" class="hidden">
+    {% csrf_token %}
+</form>
+{% endif %}
+</div>
+
+{% if not readonly %}
+{% include "warehouse/partials/purchase_invoice_editor_js.html" %}
+{% else %}
+<script>
+(function () {
+  function money(n) {
+    if (!isFinite(n)) return '—';
+    return n.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function recalcTotals() {
+    const body = document.getElementById('invoice-lines-body');
+    const grand = document.getElementById('invoice-lines-grand-total');
+    if (!body) return;
+    let sum = 0;
+    body.querySelectorAll('.invoice-line-row').forEach((row) => {
+      const qty = parseFloat(row.querySelector('.line-qty')?.value || '0');
+      const cost = parseFloat(row.querySelector('.line-cost')?.value || '0');
+      const lineTotal = qty * cost;
+      const cell = row.querySelector('.line-total');
+      if (cell) cell.textContent = money(lineTotal);
+      if (isFinite(lineTotal)) sum += lineTotal;
+    });
+    if (grand) grand.textContent = money(sum);
+  }
+  function enhanceLineItemSelect(sel) {
+    if (!sel || typeof TomSelect === 'undefined' || sel.tomselect) return;
+    sel.className = 'line-item';
+    new TomSelect(sel, {
+      allowEmptyOption: true,
+      readOnly: true,
+      create: false,
+      placeholder: 'Elegir ítem…',
+      dropdownParent: 'body',
+      wrapperClass: 'ts-wrapper line-item-ts',
+      copyClassesToDropdown: false,
+    });
+  }
+  function enhanceSupplierSelect(sel) {
+    sel = sel || document.getElementById('id_supplier');
+    if (!sel || typeof TomSelect === 'undefined' || sel.tomselect) return;
+    sel.classList.remove('select', 'select-bordered');
+    if (!sel.classList.contains('supplier-select')) sel.classList.add('supplier-select');
+    new TomSelect(sel, {
+      allowEmptyOption: true,
+      readOnly: true,
+      create: false,
+      placeholder: 'Buscar proveedor…',
+      dropdownParent: 'body',
+      wrapperClass: 'ts-wrapper supplier-ts',
+      copyClassesToDropdown: false,
+    });
+  }
+  document.querySelectorAll('select.line-item').forEach(enhanceLineItemSelect);
+  enhanceSupplierSelect();
+  recalcTotals();
+})();
+</script>
+{% endif %}
+{% endblock %}

@@ -47,10 +47,18 @@ INSTALLED_APPS = [
     "finance",
     "documents",
     "portal",
+    "warehouse",
 ]
 
 # Modelo de Usuario Personalizado
 AUTH_USER_MODEL = 'users.User'
+
+# Bodega facial: microservicio remoto (ver README_faceapi.md).
+# WAREHOUSE_FACE_URL vacío → stub local (solo tests/CI).
+# WAREHOUSE_FACE_BACKEND: "" (auto) | "remote" | "stub"
+WAREHOUSE_FACE_URL = os.environ.get("WAREHOUSE_FACE_URL", "").rstrip("/")
+WAREHOUSE_FACE_API_KEY = os.environ.get("WAREHOUSE_FACE_API_KEY", "")
+WAREHOUSE_FACE_BACKEND = os.environ.get("WAREHOUSE_FACE_BACKEND", "")
 
 LOGIN_URL = "users:login"
 LOGIN_REDIRECT_URL = "users:dashboard"

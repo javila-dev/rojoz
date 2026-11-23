@@ -1,0 +1,62 @@
+{# Campo Soporte + botón ver. Espera: form.attachment, attachment_view_url, has_tmp_attachment, tmp_filename, readonly, invoice (opcional) #}
+<div id="ai-field-attachment">
+    {% if readonly %}
+    <div class="flex items-end gap-1">
+        <div class="min-w-0 flex-1">
+            <label class="label py-1">
+                <span class="label-text text-sm font-medium text-gray-700">Soporte</span>
+            </label>
+            {% if invoice.attachment %}
+            <p class="text-sm text-gray-700 truncate">{{ invoice.attachment.name|cut:"warehouse/invoices/" }}</p>
+            {% else %}
+            <p class="text-sm text-gray-400">Sin archivo</p>
+            {% endif %}
+        </div>
+        <div class="tooltip tooltip-left mb-0.5" data-tip="Ver soporte">
+            <a
+                id="purchase-attachment-view"
+                href="{% if attachment_view_url %}{{ attachment_view_url }}{% else %}#{% endif %}"
+                target="_blank"
+                rel="noopener"
+                class="btn btn-ghost btn-sm btn-square{% if not attachment_view_url %} pointer-events-none opacity-40{% endif %}"
+                aria-label="Ver soporte"
+                {% if not attachment_view_url %}aria-disabled="true"{% endif %}
+                data-server-url="{{ attachment_view_url|default:'' }}"
+            >
+                <i class="ri-eye-line text-lg"></i>
+            </a>
+        </div>
+    </div>
+    {% else %}
+    <div class="flex items-end gap-1">
+        <div class="min-w-0 flex-1">
+            {% include "warehouse/_field.html" with field=form.attachment %}
+        </div>
+        <div class="tooltip tooltip-left mb-1" data-tip="Ver soporte">
+            <a
+                id="purchase-attachment-view"
+                href="{% if attachment_view_url %}{{ attachment_view_url }}{% else %}#{% endif %}"
+                target="_blank"
+                rel="noopener"
+                class="btn btn-ghost btn-sm btn-square{% if not attachment_view_url %} pointer-events-none opacity-40{% endif %}"
+                aria-label="Ver soporte"
+                {% if not attachment_view_url %}aria-disabled="true"{% endif %}
+                data-server-url="{{ attachment_view_url|default:'' }}"
+            >
+                <i class="ri-eye-line text-lg"></i>
+            </a>
+        </div>
+    </div>
+    {% if has_tmp_attachment and tmp_filename %}
+    <p id="purchase-attachment-filename" class="mt-1 text-xs text-gray-600 truncate" data-server-name="{{ tmp_filename }}">
+        Archivo: {{ tmp_filename }}
+    </p>
+    {% elif invoice.attachment %}
+    <p id="purchase-attachment-filename" class="mt-1 text-xs text-gray-600 truncate" data-server-name="{{ invoice.attachment.name|cut:'warehouse/invoices/' }}">
+        Archivo: {{ invoice.attachment.name|cut:"warehouse/invoices/" }}
+    </p>
+    {% else %}
+    <p id="purchase-attachment-filename" class="mt-1 text-xs text-gray-600 truncate hidden" data-server-name=""></p>
+    {% endif %}
+    {% endif %}
+</div>

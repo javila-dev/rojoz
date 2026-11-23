@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+{% block title %}Trabajadores{% endblock %}
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6">
+{% include "warehouse/_nav.html" %}
+<div class="flex flex-wrap justify-between gap-3 items-end">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900">Trabajadores</h1>
+        <p class="text-sm text-gray-500 mt-1">Al crear un trabajador se exige foto de control y consentimiento firmado.</p>
+    </div>
+    <a href="{% url 'warehouse:worker_enroll' %}" class="btn btn-primary btn-sm">Nuevo trabajador</a>
+</div>
+
+<form method="get" role="search" class="flex flex-col md:flex-row gap-2 md:items-center">
+    <label class="sr-only" for="filter-estado">Enrolamiento</label>
+    <select id="filter-estado" name="estado" class="select select-bordered select-sm md:w-52" onchange="this.form.submit()">
+        <option value="">Todos los enrolamientos</option>
+        <option value="listo"{% if estado == "listo" %} selected{% endif %}>Listos para entregas</option>
+        <option value="incompleto"{% if estado == "incompleto" %} selected{% endif %}>Enrolamiento incompleto</option>
+    </select>
+    <label class="sr-only" for="filter-activo">Estado</label>
+    <select id="filter-activo" name="activo" class="select select-bordered select-sm md:w-40" onchange="this.form.submit()">
+        <option value="">Activos e inactivos</option>
+        <option value="si"{% if activo == "si" %} selected{% endif %}>Solo activos</option>
+        <option value="no"{% if activo == "no" %} selected{% endif %}>Solo inactivos</option>
+    </select>
+    <div class="relative flex-1">
+        <label class="sr-only" for="filter-q">Buscar</label>
+        <i class="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true"></i>
+        <input id="filter-q" type="search" name="q" value="{{ q }}" placeholder="Cédula o nombre"
+               class="input input-bordered input-sm w-full pl-9">
+    </div>
+    <button type="submit" class="btn btn-sm btn-neutral-elegant">Buscar</button>
+    {% if filters_active %}
+    <a href="{{ request.path }}" class="btn btn-sm btn-ghost text-gray-600">Limpiar</a>
+    {% endif %}
+</form>
+<div class="card bg-white border border-gray-200 shadow-sm overflow-hidden"><div class="card-body overflow-x-auto">
+<table class="table w-full text-sm">
+<thead><tr><th>Cédula</th><th>Nombre</th><th>Nac.</th><th>Sangre</th><th>Estado</th><th></th></tr></thead>
+<tbody>
+{% for o in items %}
+<tr>
+    <td class="font-semibold">{{ o.document_id }}</td>
+    <td>
+        <button type="button"
+                class="btn-historial-open font-medium text-gray-900 hover:text-rojoz-700 text-left"
+                data-historial-url="{% url 'warehouse:worker_historial' o.pk %}">
+            {{ o.full_name }}
+        </button>
+        {% if o.gender %}<div class="text-xs text-gray-400">{{ o.get_gender_display }}</div>{% endif %}
+    </td>
+    <td class="whitespace-nowrap text-gray-600">{% if o.birth_date %}{{ o.birth_date|date:"d/m/Y" }}{% else %}—{% endif %}</td>
+    <td>{{ o.blood_type|default:"—" }}</td>
+    <td>
+        {% if o.is_enrolled and o.has_consent %}
+        <span class="badge badge-ghost badge-sm text-success">Listo para entregas</span>
+        {% else %}
+        <span class="badge badge-ghost badge-sm text-warning">Enrolamiento incompleto</span>
+        {% endif %}
+    </td>
+    <td class="text-right whitespace-nowrap">
+        <button type="button"
+                class="btn btn-ghost btn-xs gap-1 btn-historial-open"
+                data-historial-url="{% url 'warehouse:worker_historial' o.pk %}"
+                title="Historial y custodia">
+            <i class="ri-history-line text-base"></i>
+            Historial
+        </button>
+        {% if o.has_consent %}
+        <a class="btn btn-ghost btn-xs" target="_blank" href="{% url 'warehouse:worker_consent_pdf' o.pk %}" title="PDF autorización">
+            <i class="ri-file-pdf-2-line"></i>
+        </a>
+        {% endif %}
+        {% if not o.is_enrolled or not o.has_consent %}
+        <a class="btn btn-ghost btn-xs" href="{% url 'warehouse:worker_enroll' %}?document_id={{ o.document_id }}" title="Completar enrolamiento">
+            Completar
+        </a>
+        {% elif request.user.is_superuser %}
+        <a class="btn btn-ghost btn-xs gap-1"
+           href="{% url 'warehouse:worker_reenroll' o.pk %}"
+           title="Solo foto nueva; no pide datos ni autorización otra vez">
+            <i class="ri-refresh-line"></i>
+            Re-enrolar
+        </a>
+        {% endif %}
+    </td>
+</tr>
+{% empty %}
+<tr><td colspan="6" class="py-10 text-center">
+    {% if filters_active %}
+    <p class="text-gray-700 font-medium">Ningún trabajador coincide con los filtros.</p>
+    <p class="text-sm text-gray-500 mt-1">Ajusta la búsqueda o <a href="{{ request.path }}" class="link">limpia los filtros</a>.</p>
+    {% else %}
+    <p class="text-gray-700 font-medium">Aún no hay trabajadores.</p>
+    <p class="text-sm text-gray-500 mt-1">Crea el primero con foto y consentimiento.</p>
+    {% endif %}
+</td></tr>
+{% endfor %}
+</tbody></table>
+</div>
+{% include "partials/pagination.html" with page_obj=page_obj label="trabajadores" %}
+</div>
+</div>
+
+<dialog id="worker-historial-modal" class="modal">
+    <div class="modal-box max-w-2xl w-full p-0 overflow-hidden" id="worker-historial-body">
+        <div class="p-8 text-center text-sm text-gray-500">Cargando…</div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function () {
+  const modal = document.getElementById('worker-historial-modal');
+  const body = document.getElementById('worker-historial-body');
+  if (!modal || !body) return;
+
+  function wireTabs(root) {
+    const tabs = root.querySelectorAll('.hist-tab');
+    const panels = root.querySelectorAll('[data-hist-panel]');
+    tabs.forEach((tab) => {
+      tab.addEventListener('click', () => {
+        const key = tab.dataset.histTab;
+        tabs.forEach((t) => t.classList.toggle('is-active', t === tab));
+        panels.forEach((p) => p.classList.toggle('hidden', p.dataset.histPanel !== key));
+      });
+    });
+  }
+
+  function syncPdfLink(root) {
+    const btn = root.querySelector('#btn-historial-pdf');
+    if (!btn) return;
+    const base = btn.href.split('?')[0];
+    function update() {
+      const params = new URLSearchParams();
+      if (root.querySelector('input[name="pdf_foto"]')?.checked) params.set('foto', '1');
+      if (root.querySelector('input[name="pdf_devoluciones"]')?.checked) params.set('devoluciones', '1');
+      if (root.querySelector('input[name="pdf_firma"]')?.checked) params.set('firma', '1');
+      const q = params.toString();
+      btn.href = q ? base + '?' + q : base;
+    }
+    root.querySelectorAll('input[name^="pdf_"]').forEach((el) => {
+      el.addEventListener('change', update);
+    });
+    update();
+  }
+
+  async function loadMore(btn) {
+    const url = btn.dataset.url;
+    const offset = btn.dataset.offset || '0';
+    btn.disabled = true;
+    btn.textContent = 'Cargando…';
+    try {
+      const resp = await fetch(url + '?offset=' + encodeURIComponent(offset), {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      });
+      if (!resp.ok) throw new Error('fail');
+      const html = await resp.text();
+      const wrap = document.getElementById('historial-more-wrap');
+      const list = document.getElementById('historial-movimientos-list');
+      if (wrap) wrap.remove();
+      if (list) {
+        const tmp = document.createElement('div');
+        tmp.innerHTML = html.trim();
+        while (tmp.firstChild) list.appendChild(tmp.firstChild);
+        const next = list.querySelector('#btn-historial-more');
+        if (next) next.addEventListener('click', () => loadMore(next));
+      }
+    } catch (_) {
+      btn.disabled = false;
+      btn.textContent = 'Ver más';
+      alert('No se pudieron cargar más movimientos.');
+    }
+  }
+
+  function wireMore(root) {
+    const btn = root.querySelector('#btn-historial-more');
+    if (btn) btn.addEventListener('click', () => loadMore(btn));
+  }
+
+  async function openHistorial(url) {
+    body.innerHTML = '<div class="p-8 text-center text-sm text-gray-500">Cargando…</div>';
+    modal.showModal();
+    try {
+      const resp = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+      if (!resp.ok) throw new Error('fail');
+      body.innerHTML = await resp.text();
+      wireTabs(body);
+      syncPdfLink(body);
+      wireMore(body);
+    } catch (_) {
+      body.innerHTML =
+        '<div class="p-8 text-center text-sm text-error">No se pudo cargar el historial.</div>';
+    }
+  }
+
+  document.querySelectorAll('.btn-historial-open').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const url = btn.dataset.historialUrl;
+      if (url) openHistorial(url);
+    });
+  });
+
+  const params = new URLSearchParams(window.location.search);
+  const openId = params.get('historial');
+  if (openId) {
+    const match = [...document.querySelectorAll('.btn-historial-open')].find((b) =>
+      (b.dataset.historialUrl || '').includes('/trabajadores/' + openId + '/')
+    );
+    if (match) {
+      match.click();
+    } else if (/^\d+$/.test(openId)) {
+      // El trabajador puede no estar en la página actual del listado.
+      openHistorial('{% url "warehouse:worker_historial" 0 %}'.replace('/0/', '/' + openId + '/'));
+    }
+  }
+})();
+</script>
+{% endblock %}

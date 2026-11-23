@@ -1,0 +1,4 @@
+# Deps opcionales solo para el stub local (tests/CI sin WAREHOUSE_FACE_URL).
+# El reconocimiento real va contra el microservicio face-api (README_faceapi.md).
+numpy>=1.24
+opencv-python-headless>=4.8

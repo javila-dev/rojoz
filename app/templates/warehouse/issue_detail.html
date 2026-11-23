@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}Entrega #{{ voucher.pk }}{% endblock %}
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6">
+{% include "warehouse/_nav.html" %}
+<div class="space-y-4">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="flex flex-wrap items-center gap-2 min-w-0">
+            <h1 class="text-3xl font-bold text-gray-900">Entrega #{{ voucher.pk }}</h1>
+            {% if voucher.status == 'POSTED' %}
+            <span class="badge badge-success badge-sm">Confirmada</span>
+            {% elif voucher.status == 'DRAFT' %}
+            <span class="badge badge-warning badge-sm">Borrador</span>
+            {% elif voucher.status == 'VOID' %}
+            <span class="badge badge-ghost badge-sm">Anulada</span>
+            {% else %}
+            <span class="badge badge-ghost badge-sm">{{ voucher.get_status_display }}</span>
+            {% endif %}
+        </div>
+        {% if voucher.status == 'POSTED' %}
+        <a class="btn btn-outline btn-sm gap-1 shrink-0" target="_blank" rel="noopener"
+           href="{% url 'warehouse:issue_delivery_pdf' voucher.pk %}">
+            <i class="ri-file-pdf-2-line"></i> Hoja de entrega
+        </a>
+        {% endif %}
+    </div>
+
+    <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 rounded-xl border border-gray-200 bg-white px-4 py-3.5 text-sm">
+        <div class="min-w-0">
+            <dt class="text-xs font-medium uppercase tracking-wide text-gray-500">Quién recibe</dt>
+            <dd class="mt-0.5 text-gray-900">
+                <a class="link link-hover font-semibold" href="{% url 'warehouse:worker_list' %}?historial={{ voucher.worker_id }}">
+                    {{ voucher.worker.full_name }}
+                </a>
+                <span class="block text-gray-500 font-normal">Cédula {{ voucher.worker.document_id }}</span>
+            </dd>
+        </div>
+        <div class="min-w-0">
+            <dt class="text-xs font-medium uppercase tracking-wide text-gray-500">Bodega</dt>
+            <dd class="mt-0.5 text-gray-900">{{ voucher.warehouse }}</dd>
+        </div>
+        <div class="min-w-0">
+            <dt class="text-xs font-medium uppercase tracking-wide text-gray-500">Tipo de entrega</dt>
+            <dd class="mt-0.5 text-gray-900">{{ voucher.get_issue_type_display }}</dd>
+        </div>
+        {% if voucher.cost_center %}
+        <div class="min-w-0">
+            <dt class="text-xs font-medium uppercase tracking-wide text-gray-500">Centro de costo</dt>
+            <dd class="mt-0.5 text-gray-900">{{ voucher.cost_center }}</dd>
+        </div>
+        {% endif %}
+        {% if voucher.house %}
+        <div class="min-w-0 sm:col-span-2">
+            <dt class="text-xs font-medium uppercase tracking-wide text-gray-500">Casa / contrato</dt>
+            <dd class="mt-0.5 text-gray-900">
+                {% with party=voucher.house.parties.all.0 %}
+                {{ party.full_name|default:voucher.house.prefixed_contract_number }}
+                {% endwith %}
+                {% if voucher.house.lot_metadata.id_inmueble %}
+                <span class="text-gray-500"> · {{ voucher.house.lot_metadata.id_inmueble }}</span>
+                {% endif %}
+                {% if voucher.house.project %}
+                <span class="block text-gray-500">{{ voucher.house.project.name }}</span>
+                {% endif %}
+            </dd>
+        </div>
+        {% endif %}
+    </dl>
+</div>
+
+<div class="card bg-white border shadow-sm"><div class="card-body overflow-x-auto">
+<h2 class="font-bold mb-2">Ítems</h2>
+<table class="table table-sm w-full">
+<thead><tr><th>Ítem</th><th>Cant.</th><th title="Propiedad del ítem (custodia), no un reintegro ya hecho">Exige reintegro</th><th>Evidencia / IA</th></tr></thead>
+<tbody>
+{% for line in lines %}
+<tr>
+    <td>{{ line.item.name }}</td>
+    <td>{{ line.quantity }}</td>
+    <td>{% if line.requires_return %}Sí <span class="text-xs text-gray-500">(custodia)</span>{% else %}No{% endif %}</td>
+    <td class="text-sm align-top">
+        {% if line.custody_photo %}
+        <a class="link" href="{% url 'warehouse:issue_line_custody_photo' voucher.pk line.pk %}" target="_blank" rel="noopener">Ver foto</a>
+        {% if line.vision_verdict %}
+        <div class="mt-1.5 space-y-0.5 text-xs max-w-xs">
+            <div>
+                {% if line.vision_verdict == 'yes' %}
+                <span class="text-green-700 font-medium">IA: coincide</span>
+                {% elif line.vision_verdict == 'no' %}
+                <span class="text-red-700 font-medium">IA: no coincide</span>
+                {% elif line.vision_verdict == 'uncertain' %}
+                <span class="text-amber-700 font-medium">IA: dudoso</span>
+                {% else %}
+                <span class="text-gray-700 font-medium">IA: {{ line.vision_verdict }}</span>
+                {% endif %}
+                {% if line.vision_confidence != None %}
+                <span class="text-gray-500">({{ line.vision_confidence|floatformat:0 }}%)</span>
+                {% endif %}
+                {% if line.vision_label %}
+                <span class="text-gray-500">· como «{{ line.vision_label }}»</span>
+                {% endif %}
+            </div>
+            {% if line.vision_reason %}
+            <div class="text-gray-500">{{ line.vision_reason }}</div>
+            {% endif %}
+            {% if line.vision_override %}
+            <div class="rounded-md border border-amber-200 bg-amber-50 text-amber-900 px-2 py-1 mt-1">
+                <span class="font-medium">Aceptado bajo responsabilidad</span>
+                {% if line.vision_override_by %}
+                <span class="block">Por {{ line.vision_override_by.get_full_name|default:line.vision_override_by.username }}</span>
+                {% endif %}
+                {% if line.vision_checked_at %}
+                <span class="block text-amber-800/80">{{ line.vision_checked_at|date:"d/m/Y H:i" }}</span>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+        {% else %}
+        —
+        {% endif %}
+    </td>
+</tr>
+{% empty %}<tr><td colspan="4" class="text-gray-500">Sin ítems</td></tr>{% endfor %}
+</tbody></table>
+</div></div>
+
+{% if voucher.status == 'DRAFT' %}
+<div class="alert alert-warning">
+    <span>Este borrador quedó a medias. Usa <a class="link font-medium" href="{% url 'warehouse:issue_create' %}">Nueva entrega</a> para registrar una entrega completa en un solo paso.</span>
+</div>
+{% endif %}
+
+<div class="flex justify-end">
+    <a href="{% url 'warehouse:issue_list' %}" class="btn btn-ghost">Volver al listado</a>
+</div>
+</div>
+{% endblock %}

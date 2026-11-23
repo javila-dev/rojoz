@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Stock{% endblock %}
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6">
+{% include "warehouse/_nav.html" %}
+<h1 class="text-3xl font-bold">Stock</h1>
+
+<form method="get" role="search" class="flex flex-col md:flex-row md:flex-wrap gap-2 md:items-center">
+    {% if warehouses|length > 1 or bodega %}
+    <label class="sr-only" for="filter-bodega">Bodega</label>
+    <select id="filter-bodega" name="bodega" class="select select-bordered select-sm md:w-48" onchange="this.form.submit()">
+        <option value="">Todas las bodegas</option>
+        {% for w in warehouses %}
+        <option value="{{ w.pk }}"{% if bodega == w.pk %} selected{% endif %}>{{ w.code }} · {{ w.name }}</option>
+        {% endfor %}
+    </select>
+    {% endif %}
+    <label class="sr-only" for="filter-tipo">Tipo de ítem</label>
+    <select id="filter-tipo" name="tipo" class="select select-bordered select-sm md:w-44" onchange="this.form.submit()">
+        <option value="">Todos los tipos</option>
+        {% for value, label in kinds %}
+        <option value="{{ value }}"{% if tipo == value %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+    <label class="sr-only" for="filter-nivel">Existencias</label>
+    <select id="filter-nivel" name="nivel" class="select select-bordered select-sm md:w-44" onchange="this.form.submit()">
+        <option value="">Todas las existencias</option>
+        {% for value, label in levels %}
+        <option value="{{ value }}"{% if nivel == value %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+    <div class="relative flex-1 md:min-w-[14rem]">
+        <label class="sr-only" for="filter-q">Buscar</label>
+        <i class="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true"></i>
+        <input id="filter-q" type="search" name="q" value="{{ q }}" placeholder="SKU o nombre del ítem"
+               class="input input-bordered input-sm w-full pl-9">
+    </div>
+    <button type="submit" class="btn btn-sm btn-neutral-elegant">Buscar</button>
+    {% if filters_active %}
+    <a href="{{ request.path }}" class="btn btn-sm btn-ghost text-gray-600">Limpiar</a>
+    {% endif %}
+</form>
+
+<div class="card bg-white border shadow-sm overflow-hidden"><div class="card-body overflow-x-auto">
+<table class="table w-full text-sm">
+<thead><tr><th>Bodega</th><th>SKU</th><th>Nombre</th><th>Cantidad</th><th>Mín.</th></tr></thead>
+<tbody>
+{% for b in balances %}
+<tr class="hover:bg-gray-50 cursor-pointer {% if b.quantity <= b.item.min_stock %}bg-red-50{% endif %}"
+    onclick="window.location='{% url 'warehouse:stock_item_detail' b.item_id %}?warehouse={{ b.warehouse_id }}'"
+    role="link"
+    tabindex="0"
+    onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.location='{% url 'warehouse:stock_item_detail' b.item_id %}?warehouse={{ b.warehouse_id }}';}">
+    <td>{{ b.warehouse.code }}</td>
+    <td class="font-semibold">{{ b.item.sku }}</td>
+    <td>{{ b.item.name }}</td>
+    <td>{{ b.quantity }}</td>
+    <td>{{ b.item.min_stock }}</td>
+</tr>
+{% empty %}
+<tr><td colspan="5" class="py-10 text-center">
+    {% if filters_active %}
+    <p class="text-gray-700 font-medium">Ningún saldo coincide con los filtros.</p>
+    <p class="text-sm text-gray-500 mt-1">Ajusta la búsqueda o <a href="{{ request.path }}" class="link">limpia los filtros</a>.</p>
+    {% else %}
+    <p class="text-gray-700 font-medium">Aún no hay saldos de stock.</p>
+    <p class="text-sm text-gray-500 mt-1">Los saldos aparecen al confirmar ingresos de compra.</p>
+    {% endif %}
+</td></tr>
+{% endfor %}
+</tbody></table>
+</div>
+{% include "partials/pagination.html" with page_obj=page_obj label="saldos" %}
+</div>
+</div>
+{% endblock %}

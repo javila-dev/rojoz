@@ -1,0 +1,585 @@
+{% extends "base.html" %}
+{% block title %}Nuevo trabajador{% endblock %}
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.2.0/dist/signature_pad.umd.min.js"></script>
+{% include "warehouse/partials/face_feedback_js.html" %}
+<style>
+  .wh-step { display: none; }
+  .wh-step.is-active { display: block; }
+  #wizard-steps .step { font-size: 0.75rem; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6">
+{% include "warehouse/_nav.html" %}
+
+<div class="max-w-2xl mx-auto w-full space-y-6">
+<div>
+    <h1 class="text-2xl font-bold text-gray-900">
+        {% if prefill_document %}Completar enrolamiento{% else %}Nuevo trabajador{% endif %}
+    </h1>
+    <p class="text-sm text-gray-500 mt-1">Sigue los pasos. Al final se crea con foto y autorización firmada.</p>
+</div>
+
+<ul id="wizard-steps" class="steps steps-horizontal w-full text-xs sm:text-sm mb-2">
+    <li class="step step-primary" data-step="1">Datos</li>
+    <li class="step" data-step="2">Foto</li>
+    <li class="step" data-step="3">Autorización</li>
+</ul>
+
+<form method="post" id="enroll-form" class="space-y-4">
+{% csrf_token %}
+{{ form.photo_data }}
+{{ form.signature_data }}
+{{ form.full_name }}
+
+{# ─── Paso 1: Datos ─── #}
+<section class="wh-step is-active card bg-white border border-gray-200 shadow-sm" data-step="1">
+    <div class="card-body space-y-5">
+        <div>
+            <h2 class="text-lg font-semibold text-gray-900">¿Quién es el trabajador?</h2>
+            <p class="text-sm text-gray-500">
+                Escanea el reverso con un lector <span class="font-medium text-gray-700">PDF417</span>
+                (2D). Un lector de barras simple no lo lee. También puedes escribir a mano.
+            </p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+            <div class="sm:col-span-2">{% include "warehouse/_field.html" with field=form.document_id %}</div>
+            {% include "warehouse/_field.html" with field=form.first_name %}
+            {% include "warehouse/_field.html" with field=form.middle_name %}
+            {% include "warehouse/_field.html" with field=form.last_name %}
+            {% include "warehouse/_field.html" with field=form.second_last_name %}
+            {% include "warehouse/_field.html" with field=form.birth_date %}
+            {% include "warehouse/_field.html" with field=form.gender %}
+            {% include "warehouse/_field.html" with field=form.blood_type %}
+            {% include "warehouse/_field.html" with field=form.phone %}
+        </div>
+
+        <div class="hidden">
+            {% include "warehouse/_field.html" with field=form.afis_code %}
+            {% include "warehouse/_field.html" with field=form.finger_card %}
+        </div>
+
+        {# Captura del lector USB PDF417 (modo teclado) #}
+        <input type="text" id="usb-scan" autocomplete="off" tabindex="-1"
+               class="sr-only" aria-hidden="true">
+
+        <p id="scan-feedback" class="text-sm text-gray-600 min-h-[1.25rem]"></p>
+        <p id="step1-error" class="text-sm text-error hidden"></p>
+
+        <div class="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-gray-100">
+            <span id="scan-badge" class="badge badge-ghost badge-sm hidden mr-auto">Datos leídos</span>
+            <div class="tooltip tooltip-top" data-tip="Escanear con lector PDF417">
+                <button type="button" id="btn-scan-usb" class="btn btn-ghost btn-lg btn-square"
+                        aria-label="Escanear con lector PDF417">
+                    <i class="ri-barcode-box-line text-2xl text-gray-700"></i>
+                </button>
+            </div>
+            <button type="button" class="btn btn-primary btn-lg" id="btn-next-1">Continuar</button>
+        </div>
+    </div>
+</section>
+
+{# ─── Paso 2: Foto ─── #}
+<section class="wh-step card bg-white border border-gray-200 shadow-sm" data-step="2">
+    <div class="card-body space-y-4">
+        <div>
+            <h2 class="text-lg font-semibold text-gray-900">Foto de control</h2>
+            <p class="text-sm text-gray-500">Centra el rostro en el óvalo. Buena luz, sin gorra ni lentes oscuros.</p>
+        </div>
+
+        <div id="camera-stage" class="relative mx-auto w-full max-w-[360px] aspect-[4/5] overflow-hidden rounded-2xl bg-black shadow-inner ring-1 ring-black/10">
+            <video id="video" class="absolute inset-0 h-full w-full object-cover scale-x-[-1]" autoplay playsinline muted></video>
+            <img id="photo-preview" class="absolute inset-0 hidden h-full w-full object-cover" alt="Vista previa">
+            <canvas id="photo-canvas" class="hidden"></canvas>
+            <div id="face-mask" class="pointer-events-none absolute inset-0"
+                 style="background: radial-gradient(ellipse 38% 42% at 50% 44%, transparent 0 99%, rgba(15,15,15,0.58) 100%);"></div>
+            <div id="face-oval" class="pointer-events-none absolute left-1/2 top-[44%] h-[66%] w-[58%] -translate-x-1/2 -translate-y-1/2 rounded-[50%] border-2 border-white/85"></div>
+            <p id="face-hint" class="pointer-events-none absolute bottom-3 left-0 right-0 text-center text-[11px] font-medium text-white/90 drop-shadow">
+                Alinea el rostro con el óvalo
+            </p>
+        </div>
+
+        <div id="face-feedback" class="text-sm text-center min-h-[1.25rem]"></div>
+        <div class="flex flex-wrap justify-center gap-2">
+            <button type="button" id="btn-capture" class="btn btn-primary btn-lg">Capturar foto</button>
+            <button type="button" id="btn-retake" class="btn btn-ghost hidden">Volver a capturar</button>
+        </div>
+
+        <div class="flex justify-between gap-3 pt-2 border-t border-gray-100">
+            <button type="button" class="btn btn-ghost" data-prev>Atrás</button>
+            <button type="button" class="btn btn-primary btn-lg" id="btn-next-2" disabled>Continuar</button>
+        </div>
+    </div>
+</section>
+
+{# ─── Paso 3: Consentimientos + firma + crear ─── #}
+<section class="wh-step card bg-white border border-gray-200 shadow-sm" data-step="3">
+    <div class="card-body space-y-5">
+        <div>
+            <h2 class="text-lg font-semibold text-gray-900">Autorización y responsabilidad</h2>
+            <p class="text-sm text-gray-500">Lee y acepta cada punto. Luego firma para crear el trabajador.</p>
+        </div>
+
+        <div class="flex gap-4 items-start">
+            <img id="summary-photo" src="" alt="" class="w-20 h-24 object-cover rounded-xl border border-gray-200 bg-gray-50 hidden">
+            <div class="flex-1 space-y-1.5 text-sm">
+                <div class="flex justify-between gap-2 border-b border-gray-100 py-1">
+                    <span class="text-gray-500">Cédula</span>
+                    <span class="font-semibold" id="summary-doc">—</span>
+                </div>
+                <div class="flex justify-between gap-2 border-b border-gray-100 py-1">
+                    <span class="text-gray-500">Nombre</span>
+                    <span class="font-semibold text-right" id="summary-name">—</span>
+                </div>
+                <div class="flex justify-between gap-2 py-1">
+                    <span class="text-gray-500">Teléfono</span>
+                    <span class="font-semibold" id="summary-phone">—</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="space-y-3">
+            {% for section in consent_sections %}
+            <label class="flex items-start gap-3 rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-3 cursor-pointer hover:border-rojoz-200">
+                <input type="checkbox" class="checkbox checkbox-sm mt-1 consent-check" data-consent="{{ section.id }}">
+                <span class="min-w-0">
+                    <span class="block text-sm font-semibold text-gray-900">{{ section.title }}</span>
+                    <span class="block text-sm text-gray-600 mt-1 leading-relaxed">{{ section.body }}</span>
+                </span>
+            </label>
+            {% endfor %}
+        </div>
+
+        <div>
+            <p class="text-sm font-medium text-gray-800 mb-2">Firma del trabajador</p>
+            <canvas id="signature-pad" class="w-full border-2 border-dashed border-gray-300 rounded-xl bg-white touch-none" height="180"></canvas>
+            <button type="button" id="btn-clear-sig" class="btn btn-sm btn-ghost mt-1">Limpiar firma</button>
+        </div>
+
+        <p id="step3-error" class="text-sm text-error hidden"></p>
+
+        <div class="flex justify-between gap-3 pt-2 border-t border-gray-100">
+            <button type="button" class="btn btn-ghost" data-prev>Atrás</button>
+            <button type="submit" id="btn-submit" class="btn btn-primary btn-lg" disabled>
+                {% if prefill_document %}Guardar enrolamiento{% else %}Crear trabajador{% endif %}
+            </button>
+        </div>
+        <p id="submit-hint" class="text-center text-xs text-gray-500">Acepta todos los puntos y firma para habilitar.</p>
+    </div>
+</section>
+</form>
+</div>
+</div>
+
+<script>
+(function () {
+  const form = document.getElementById('enroll-form');
+  const steps = Array.from(document.querySelectorAll('.wh-step'));
+  const stepIndicators = Array.from(document.querySelectorAll('#wizard-steps .step'));
+  let current = 1;
+  let photoOk = false;
+  let cameraStarted = false;
+
+  const video = document.getElementById('video');
+  const canvas = document.getElementById('photo-canvas');
+  const preview = document.getElementById('photo-preview');
+  const feedback = document.getElementById('face-feedback');
+  const faceMask = document.getElementById('face-mask');
+  const faceOval = document.getElementById('face-oval');
+  const faceHint = document.getElementById('face-hint');
+  const photoInput = document.getElementById('id_photo_data');
+  const sigInput = document.getElementById('id_signature_data');
+  const docInput = document.getElementById('id_document_id');
+  const nameInput = document.getElementById('id_full_name');
+  const firstNameInput = document.getElementById('id_first_name');
+  const middleNameInput = document.getElementById('id_middle_name');
+  const lastNameInput = document.getElementById('id_last_name');
+  const secondLastInput = document.getElementById('id_second_last_name');
+  const birthInput = document.getElementById('id_birth_date');
+  const genderInput = document.getElementById('id_gender');
+  const bloodInput = document.getElementById('id_blood_type');
+  const afisInput = document.getElementById('id_afis_code');
+  const fingerInput = document.getElementById('id_finger_card');
+  const phoneInput = document.getElementById('id_phone');
+  const btnCapture = document.getElementById('btn-capture');
+  const btnRetake = document.getElementById('btn-retake');
+  const btnNext1 = document.getElementById('btn-next-1');
+  const btnNext2 = document.getElementById('btn-next-2');
+  const btnSubmit = document.getElementById('btn-submit');
+  const canvasSig = document.getElementById('signature-pad');
+  const sigPad = new SignaturePad(canvasSig, { backgroundColor: 'rgb(255,255,255)' });
+  const scanFeedback = document.getElementById('scan-feedback');
+  const scanBadge = document.getElementById('scan-badge');
+  const consentChecks = () => Array.from(document.querySelectorAll('.consent-check'));
+
+  /** Parser PDF417 cédula amarilla colombiana (offsets fijos Registraduría). */
+  function decodeColombianPdf417(raw) {
+    if (!raw || !raw.includes('PubDSK_')) return null;
+    const clean = (s) => (s || '').trim().replace(/\0+$/g, '');
+    let middleName = clean(raw.substring(127, 150));
+    if (middleName.endsWith('-') || middleName.endsWith('+')) middleName = '';
+    const firstName = clean(raw.substring(104, 127));
+    const lastName = clean(raw.substring(58, 80));
+    const secondLastName = clean(raw.substring(81, 104));
+    const documentNumber = raw.substring(48, 58).replace(/^0+/, '');
+    const year = raw.substring(152, 156);
+    const month = raw.substring(156, 158);
+    const day = raw.substring(158, 160);
+    let birthDate = '';
+    if (/^\d{4}$/.test(year) && /^\d{2}$/.test(month) && /^\d{2}$/.test(day)) {
+      birthDate = year + '-' + month + '-' + day;
+    }
+    let gender = (raw.substring(151, 152) || '').toUpperCase();
+    if (gender !== 'M' && gender !== 'F') gender = '';
+    const bloodType = clean(raw.substring(166, 168)).toUpperCase();
+    const afisCode = clean(raw.substring(2, 10));
+    const fingerCard = clean(raw.substring(40, 48));
+    const parts = [firstName, middleName, lastName, secondLastName].filter(Boolean);
+    return {
+      documentNumber,
+      firstName,
+      middleName,
+      lastName,
+      secondLastName,
+      fullName: parts.join(' ').replace(/\s+/g, ' ').trim(),
+      birthDate,
+      gender,
+      bloodType,
+      afisCode,
+      fingerCard,
+    };
+  }
+
+  function syncFullName() {
+    const parts = [
+      firstNameInput?.value,
+      middleNameInput?.value,
+      lastNameInput?.value,
+      secondLastInput?.value,
+    ].map((v) => (v || '').trim()).filter(Boolean);
+    if (nameInput) nameInput.value = parts.join(' ');
+  }
+
+  [firstNameInput, middleNameInput, lastNameInput, secondLastInput].forEach((el) => {
+    if (el) el.addEventListener('input', syncFullName);
+  });
+
+  function applyCedulaData(parsed, sourceLabel) {
+    if (!parsed || !parsed.documentNumber) {
+      scanFeedback.innerHTML =
+        '<span class="text-error">No se pudo leer la cédula. Usa un lector PDF417 o escribe a mano.</span>';
+      return false;
+    }
+    docInput.value = parsed.documentNumber;
+    if (firstNameInput) firstNameInput.value = parsed.firstName || '';
+    if (middleNameInput) middleNameInput.value = parsed.middleName || '';
+    if (lastNameInput) lastNameInput.value = parsed.lastName || '';
+    if (secondLastInput) secondLastInput.value = parsed.secondLastName || '';
+    syncFullName();
+    if (!nameInput.value && parsed.fullName) nameInput.value = parsed.fullName;
+    if (birthInput && parsed.birthDate) birthInput.value = parsed.birthDate;
+    if (genderInput && parsed.gender) genderInput.value = parsed.gender;
+    if (bloodInput && parsed.bloodType) bloodInput.value = parsed.bloodType;
+    if (afisInput && parsed.afisCode) afisInput.value = parsed.afisCode;
+    if (fingerInput && parsed.fingerCard) fingerInput.value = parsed.fingerCard;
+    scanBadge.classList.remove('hidden');
+    scanBadge.className = 'badge badge-success badge-sm mr-auto';
+    scanBadge.textContent = 'Datos leídos';
+    const extras = [];
+    if (parsed.birthDate) extras.push('nacimiento');
+    if (parsed.bloodType) extras.push('sangre');
+    if (parsed.gender) extras.push('sexo');
+    scanFeedback.innerHTML =
+      '<span class="text-success font-medium">Listo' +
+      (sourceLabel ? ' (' + sourceLabel + ')' : '') +
+      '.</span> Se cargaron cédula, nombres' +
+      (extras.length ? ', ' + extras.join(', ') : '') +
+      '. Revisa antes de continuar.';
+    document.getElementById('step1-error').classList.add('hidden');
+    return true;
+  }
+
+  function handleBarcodeRaw(raw, sourceLabel) {
+    const text = typeof raw === 'string' ? raw : String(raw || '');
+    if (text.includes('PubDSK_')) {
+      return applyCedulaData(decodeColombianPdf417(text), sourceLabel);
+    }
+    const digits = text.replace(/\D/g, '');
+    if (digits.length >= 5 && digits.length <= 12) {
+      docInput.value = digits.replace(/^0+/, '') || digits;
+      scanFeedback.innerHTML =
+        '<span class="text-warning">Se leyó solo el número. Completa el resto a mano (¿lector 1D? Se necesita PDF417).</span>';
+      scanBadge.classList.remove('hidden');
+      scanBadge.className = 'badge badge-warning badge-sm mr-auto';
+      scanBadge.textContent = 'Solo cédula';
+      return true;
+    }
+    scanFeedback.innerHTML =
+      '<span class="text-error">Código no reconocido. Usa un lector PDF417 (2D) apuntando al reverso de la cédula.</span>';
+    return false;
+  }
+
+  // Lector USB PDF417: icono → captura el vuelco del escáner (modo teclado)
+  const usbScan = document.getElementById('usb-scan');
+  const btnScanUsb = document.getElementById('btn-scan-usb');
+  let usbIdle = null;
+
+  function armUsbScanner() {
+    usbScan.value = '';
+    usbScan.focus({ preventScroll: true });
+    scanFeedback.innerHTML =
+      '<span class="text-gray-700 font-medium">Listo para el lector PDF417.</span> Escanea el reverso de la cédula ahora.';
+    btnScanUsb.classList.add('ring', 'ring-rojoz-300', 'ring-offset-1');
+  }
+
+  function disarmUsbScanner() {
+    btnScanUsb.classList.remove('ring', 'ring-rojoz-300', 'ring-offset-1');
+  }
+
+  function consumeUsbScan() {
+    const raw = usbScan.value || '';
+    if (!raw.trim()) return;
+    const ok = handleBarcodeRaw(raw, 'lector');
+    usbScan.value = '';
+    disarmUsbScanner();
+    if (ok) usbScan.blur();
+  }
+
+  btnScanUsb.addEventListener('click', armUsbScanner);
+
+  usbScan.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      consumeUsbScan();
+    }
+  });
+
+  usbScan.addEventListener('input', () => {
+    clearTimeout(usbIdle);
+    usbIdle = setTimeout(() => {
+      if ((usbScan.value || '').length > 15 || (usbScan.value || '').includes('PubDSK_')) {
+        consumeUsbScan();
+      }
+    }, 100);
+  });
+
+  usbScan.addEventListener('blur', () => {
+    if (!(usbScan.value || '').trim()) disarmUsbScanner();
+  });
+
+  function showStep(n) {
+    current = n;
+    steps.forEach((el) => {
+      el.classList.toggle('is-active', Number(el.dataset.step) === n);
+    });
+    stepIndicators.forEach((el) => {
+      const s = Number(el.dataset.step);
+      el.classList.toggle('step-primary', s <= n);
+    });
+    if (n === 2) startCamera();
+    if (n === 3) {
+      fillSummary();
+      resizeSig();
+      updateFinalReady();
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function startCamera() {
+    if (cameraStarted || photoOk) return;
+    cameraStarted = true;
+    navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false,
+    }).then((stream) => {
+      video.srcObject = stream;
+    }).catch(() => {
+      feedback.innerHTML = '<span class="text-error">No se pudo acceder a la cámara.</span>';
+    });
+  }
+
+  function setGuideVisible(show) {
+    faceMask.classList.toggle('hidden', !show);
+    faceOval.classList.toggle('hidden', !show);
+    faceHint.classList.toggle('hidden', !show);
+  }
+
+  function resizeSig() {
+    const ratio = Math.max(window.devicePixelRatio || 1, 1);
+    const rect = canvasSig.getBoundingClientRect();
+    const data = sigPad.isEmpty() ? null : sigPad.toDataURL();
+    canvasSig.width = rect.width * ratio;
+    canvasSig.height = 180 * ratio;
+    const ctx = canvasSig.getContext('2d');
+    ctx.scale(ratio, ratio);
+    sigPad.clear();
+    if (data) sigPad.fromDataURL(data);
+  }
+  window.addEventListener('resize', () => { if (current === 3) resizeSig(); });
+
+  function validateStep1() {
+    syncFullName();
+    const doc = (docInput?.value || '').trim();
+    const name = (nameInput?.value || '').trim();
+    const err = document.getElementById('step1-error');
+    if (!doc || !name) {
+      err.textContent = 'Escanea la cédula o completa cédula, nombre y apellido.';
+      err.classList.remove('hidden');
+      return false;
+    }
+    err.classList.add('hidden');
+    return true;
+  }
+
+  function allConsentsChecked() {
+    const checks = consentChecks();
+    return checks.length > 0 && checks.every((c) => c.checked);
+  }
+
+  function updateFinalReady() {
+    const ready = allConsentsChecked() && !sigPad.isEmpty();
+    btnSubmit.disabled = !ready;
+    const hint = document.getElementById('submit-hint');
+    const err = document.getElementById('step3-error');
+    if (err) err.classList.add('hidden');
+    if (!hint) return;
+    if (ready) {
+      hint.textContent = 'Listo para guardar.';
+      hint.className = 'text-center text-xs text-success';
+    } else if (!allConsentsChecked() && sigPad.isEmpty()) {
+      hint.textContent = 'Acepta todos los puntos y firma para habilitar.';
+      hint.className = 'text-center text-xs text-gray-500';
+    } else if (!allConsentsChecked()) {
+      hint.textContent = 'Falta aceptar todos los consentimientos.';
+      hint.className = 'text-center text-xs text-warning';
+    } else {
+      hint.textContent = 'Falta la firma del trabajador.';
+      hint.className = 'text-center text-xs text-warning';
+    }
+  }
+
+  btnNext1.addEventListener('click', () => {
+    if (validateStep1()) showStep(2);
+  });
+
+  btnNext2.addEventListener('click', () => {
+    if (photoOk) showStep(3);
+  });
+
+  document.querySelectorAll('[data-prev]').forEach((btn) => {
+    btn.addEventListener('click', () => showStep(Math.max(1, current - 1)));
+  });
+
+  function fillSummary() {
+    syncFullName();
+    document.getElementById('summary-doc').textContent = (docInput?.value || '').trim() || '—';
+    document.getElementById('summary-name').textContent = (nameInput?.value || '').trim() || '—';
+    document.getElementById('summary-phone').textContent =
+      (phoneInput?.value || '').trim() || '—';
+    const img = document.getElementById('summary-photo');
+    if (photoInput.value) {
+      img.src = photoInput.value;
+      img.classList.remove('hidden');
+    }
+  }
+
+  btnCapture.addEventListener('click', async () => {
+    const w = video.videoWidth || 720;
+    const h = video.videoHeight || 960;
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.translate(w, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(video, 0, 0, w, h);
+
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+    photoInput.value = dataUrl;
+    preview.src = dataUrl;
+    preview.classList.remove('hidden');
+    video.classList.add('opacity-0');
+    setGuideVisible(false);
+    btnCapture.classList.add('hidden');
+    btnRetake.classList.remove('hidden');
+    feedback.textContent = 'Revisando la foto…';
+    btnNext2.disabled = true;
+
+    const body = new FormData();
+    body.append('photo_data', dataUrl);
+    body.append('mode', 'enroll');
+    body.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+    const res = await fetch('{% url "warehouse:face_validate" %}', { method: 'POST', body });
+    const data = await res.json();
+    if (data.ok) {
+      photoOk = true;
+      feedback.innerHTML = '<span class="text-success font-medium">Foto válida</span>';
+      btnNext2.disabled = false;
+    } else {
+      photoOk = false;
+      window.renderFaceIssues(feedback, data.issues);
+      btnNext2.disabled = true;
+    }
+  });
+
+  btnRetake.addEventListener('click', () => {
+    photoOk = false;
+    photoInput.value = '';
+    preview.classList.add('hidden');
+    preview.removeAttribute('src');
+    video.classList.remove('opacity-0');
+    setGuideVisible(true);
+    btnCapture.classList.remove('hidden');
+    btnRetake.classList.add('hidden');
+    feedback.textContent = '';
+    btnNext2.disabled = true;
+    if (!video.srcObject) {
+      cameraStarted = false;
+      startCamera();
+    }
+  });
+
+  document.getElementById('btn-clear-sig').addEventListener('click', () => {
+    sigPad.clear();
+    updateFinalReady();
+  });
+
+  if (typeof sigPad.addEventListener === 'function') {
+    sigPad.addEventListener('endStroke', updateFinalReady);
+  }
+  canvasSig.addEventListener('pointerup', updateFinalReady);
+  canvasSig.addEventListener('mouseup', updateFinalReady);
+  canvasSig.addEventListener('touchend', updateFinalReady);
+
+  consentChecks().forEach((c) => c.addEventListener('change', updateFinalReady));
+
+  form.addEventListener('submit', (e) => {
+    if (!validateStep1() || !photoOk || !allConsentsChecked() || sigPad.isEmpty()) {
+      e.preventDefault();
+      const err = document.getElementById('step3-error');
+      if (!photoOk) {
+        showStep(2);
+      } else if (!validateStep1()) {
+        showStep(1);
+      } else {
+        showStep(3);
+        if (err) {
+          err.textContent = !allConsentsChecked()
+            ? 'Debes aceptar todos los consentimientos.'
+            : 'Falta la firma del trabajador.';
+          err.classList.remove('hidden');
+        }
+      }
+      return;
+    }
+    sigInput.value = sigPad.toDataURL('image/png');
+    btnSubmit.disabled = true;
+    btnSubmit.innerHTML = '<span class="loading loading-spinner loading-sm"></span> Guardando trabajador…';
+    document.getElementById('submit-hint').textContent = 'Esto puede tardar unos segundos…';
+  });
+
+  showStep(1);
+})();
+</script>
+{% endblock %}

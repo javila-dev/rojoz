@@ -1,0 +1,177 @@
+{# Detalle de ítems para nueva entrega. Espera: lines, item_kinds, readonly #}
+<div id="issue-lines-panel" class="space-y-3 border-t border-gray-100 pt-5"
+     data-items-by-kind-url="{% url 'warehouse:items_by_kind' %}"
+     data-custody-check-url="{% url 'warehouse:issue_custody_check' %}">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+        <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-500">Detalle de ítems</h2>
+        {% if not readonly %}
+        <button type="button" class="btn btn-ghost btn-sm" id="btn-add-issue-line">+ Agregar línea</button>
+        {% endif %}
+    </div>
+
+    <div class="rounded-lg border border-gray-200 overflow-x-hidden">
+        <div class="max-h-[28rem] overflow-y-auto overflow-x-hidden">
+            <table class="table w-full text-xs table-fixed" id="issue-lines-table">
+                <colgroup>
+                    <col class="w-10">
+                    <col class="w-36">
+                    <col>
+                    <col class="w-14">
+                    <col class="w-16">
+                    <col class="w-28">
+                    <col class="w-[7.7rem]">
+                    <col class="w-10">
+                </colgroup>
+                <thead class="bg-gray-50 sticky top-0 z-[1] shadow-sm">
+                    <tr>
+                        <th class="bg-gray-50">#</th>
+                        <th class="bg-gray-50">Tipo</th>
+                        <th class="bg-gray-50">Ítem</th>
+                        <th class="bg-gray-50">Und.</th>
+                        <th class="bg-gray-50">Stock</th>
+                        <th class="bg-gray-50">Cant.</th>
+                        <th class="bg-gray-50" title="Si el trabajador ya tiene el ítem, marca Reemplazo en la línea para reintegrarlo aquí.">Custodia</th>
+                        <th class="bg-gray-50"></th>
+                    </tr>
+                </thead>
+                <tbody id="issue-lines-body">
+                {% for row in lines %}
+                    <tr class="issue-line-row align-top">
+                        <td class="line-num text-gray-400 pt-3">{{ forloop.counter }}</td>
+                        <td>
+                            <select name="i_{{ forloop.counter0 }}_kind" class="select select-bordered select-sm w-full line-kind" {% if readonly %}disabled{% endif %}>
+                                <option value="">Tipo…</option>
+                                {% for value, label in item_kinds %}
+                                <option value="{{ value }}" {% if row.kind == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                        <td>
+                            <select
+                                name="i_{{ forloop.counter0 }}_item"
+                                class="w-full line-item"
+                                data-selected="{{ row.item_id|default:'' }}"
+                                {% if readonly %}disabled{% endif %}
+                            >
+                                <option value=""></option>
+                            </select>
+                        </td>
+                        <td class="pt-3 text-xs text-gray-600 font-medium tabular-nums line-unit-label">—</td>
+                        <td class="pt-3 text-xs text-gray-600 tabular-nums line-stock-label">—</td>
+                        <td>
+                            <input type="number" step="0.01" min="0.01" name="i_{{ forloop.counter0 }}_quantity"
+                                   value="{{ row.quantity }}" class="input input-bordered input-sm w-full line-qty" {% if readonly %}readonly{% endif %}>
+                        </td>
+                        <td class="pt-2.5 text-xs text-gray-600 line-return-cell align-middle">
+                            <div class="line-return-label leading-none">—</div>
+                            <div class="line-replacement-wrap hidden rounded border border-amber-200 bg-amber-50 px-1.5 py-1 space-y-1">
+                                <label class="inline-flex items-center gap-1.5 max-w-full cursor-pointer">
+                                    <input type="checkbox" class="checkbox checkbox-xs shrink-0 line-replacement-check">
+                                    <span class="min-w-0 leading-tight">
+                                        <span class="block text-[11px] font-semibold text-amber-950">Reemplazo</span>
+                                        <span class="line-replacement-pending block text-[10px] text-amber-700 tabular-nums"></span>
+                                    </span>
+                                </label>
+                                <label class="line-return-qty-wrap hidden flex items-center gap-1">
+                                    <span class="text-[10px] text-amber-800 shrink-0">Devuelve</span>
+                                    <input type="number" min="0.01" step="any" class="input input-bordered input-xs w-14 line-return-qty px-1 py-0 h-6 text-[11px]">
+                                </label>
+                            </div>
+                        </td>
+                        <td class="pt-2">
+                            {% if not readonly %}
+                            <button type="button" class="btn btn-ghost btn-xs text-red-600 btn-remove-issue-line" title="Quitar">✕</button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr class="issue-line-row align-top">
+                        <td class="line-num text-gray-400 pt-3">1</td>
+                        <td>
+                            <select name="i_0_kind" class="select select-bordered select-sm w-full line-kind">
+                                <option value="">Tipo…</option>
+                                {% for value, label in item_kinds %}
+                                <option value="{{ value }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                        <td>
+                            <select name="i_0_item" class="w-full line-item" data-selected="">
+                                <option value=""></option>
+                            </select>
+                        </td>
+                        <td class="pt-3 text-xs text-gray-600 font-medium tabular-nums line-unit-label">—</td>
+                        <td class="pt-3 text-xs text-gray-600 tabular-nums line-stock-label">—</td>
+                        <td>
+                            <input type="number" step="0.01" min="0.01" name="i_0_quantity" value="1" class="input input-bordered input-sm w-full line-qty">
+                        </td>
+                        <td class="pt-2.5 text-xs text-gray-600 line-return-cell align-middle">
+                            <div class="line-return-label leading-none">—</div>
+                            <div class="line-replacement-wrap hidden rounded border border-amber-200 bg-amber-50 px-1.5 py-1 space-y-1">
+                                <label class="inline-flex items-center gap-1.5 max-w-full cursor-pointer">
+                                    <input type="checkbox" class="checkbox checkbox-xs shrink-0 line-replacement-check">
+                                    <span class="min-w-0 leading-tight">
+                                        <span class="block text-[11px] font-semibold text-amber-950">Reemplazo</span>
+                                        <span class="line-replacement-pending block text-[10px] text-amber-700 tabular-nums"></span>
+                                    </span>
+                                </label>
+                                <label class="line-return-qty-wrap hidden flex items-center gap-1">
+                                    <span class="text-[10px] text-amber-800 shrink-0">Devuelve</span>
+                                    <input type="number" min="0.01" step="any" class="input input-bordered input-xs w-14 line-return-qty px-1 py-0 h-6 text-[11px]">
+                                </label>
+                            </div>
+                        </td>
+                        <td class="pt-2">
+                            <button type="button" class="btn btn-ghost btn-xs text-red-600 btn-remove-issue-line" title="Quitar">✕</button>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <input type="hidden" name="i_TOTAL" id="i_TOTAL" value="{{ lines|length|default:1 }}">
+
+    <template id="issue-line-template">
+        <tr class="issue-line-row align-top">
+            <td class="line-num text-gray-400 pt-3">1</td>
+            <td>
+                <select name="i___IDX___kind" class="select select-bordered select-sm w-full line-kind">
+                    <option value="">Tipo…</option>
+                    {% for value, label in item_kinds %}
+                    <option value="{{ value }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </td>
+            <td>
+                <select name="i___IDX___item" class="w-full line-item" data-selected="">
+                    <option value=""></option>
+                </select>
+            </td>
+            <td class="pt-3 text-xs text-gray-600 font-medium tabular-nums line-unit-label">—</td>
+            <td class="pt-3 text-xs text-gray-600 tabular-nums line-stock-label">—</td>
+            <td>
+                <input type="number" step="0.01" min="0.01" name="i___IDX___quantity" value="1" class="input input-bordered input-sm w-full line-qty">
+            </td>
+            <td class="pt-2.5 text-xs text-gray-600 line-return-cell align-middle">
+                <div class="line-return-label leading-none">—</div>
+                <div class="line-replacement-wrap hidden rounded border border-amber-200 bg-amber-50 px-1.5 py-1 space-y-1">
+                    <label class="inline-flex items-center gap-1.5 max-w-full cursor-pointer">
+                        <input type="checkbox" class="checkbox checkbox-xs shrink-0 line-replacement-check">
+                        <span class="min-w-0 leading-tight">
+                            <span class="block text-[11px] font-semibold text-amber-950">Reemplazo</span>
+                            <span class="line-replacement-pending block text-[10px] text-amber-700 tabular-nums"></span>
+                        </span>
+                    </label>
+                    <label class="line-return-qty-wrap hidden flex items-center gap-1">
+                        <span class="text-[10px] text-amber-800 shrink-0">Devuelve</span>
+                        <input type="number" min="0.01" step="any" class="input input-bordered input-xs w-14 line-return-qty px-1 py-0 h-6 text-[11px]">
+                    </label>
+                </div>
+            </td>
+            <td class="pt-2">
+                <button type="button" class="btn btn-ghost btn-xs text-red-600 btn-remove-issue-line" title="Quitar">✕</button>
+            </td>
+        </tr>
+    </template>
+</div>

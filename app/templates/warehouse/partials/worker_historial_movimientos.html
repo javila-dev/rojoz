@@ -1,0 +1,57 @@
+{% for voucher in issues %}
+<article class="rounded-lg border border-gray-100 px-3 py-2.5 hover:bg-gray-50/80 transition">
+    <div class="flex flex-wrap items-start justify-between gap-2">
+        <div class="min-w-0">
+            <div class="flex flex-wrap items-center gap-1.5">
+                <span class="font-semibold text-sm text-gray-900">Entrega #{{ voucher.pk }}</span>
+                <span class="badge badge-ghost badge-xs">{{ voucher.get_issue_type_display }}</span>
+                <span class="badge badge-ghost badge-xs">{{ voucher.warehouse.code }}</span>
+            </div>
+            <p class="text-xs text-gray-500 mt-0.5">
+                {% with when=voucher.posted_at|default:voucher.created_at %}
+                {{ when|date:"d/m/Y" }} {{ when|time:"H:i" }}
+                {% endwith %}
+                ·
+                {% if voucher.created_by %}
+                    {{ voucher.created_by.get_full_name|default:voucher.created_by.username }}
+                {% else %}—{% endif %}
+            </p>
+            <p class="text-xs text-gray-600 mt-1 line-clamp-2">
+                {% for line in voucher.lines.all %}
+                    {{ line.item.name }} <span class="text-gray-400">×{{ line.quantity }}</span>{% if not forloop.last %}, {% endif %}
+                {% empty %}Sin ítems{% endfor %}
+            </p>
+        </div>
+        <div class="flex items-center gap-1 shrink-0">
+            <a href="{% url 'warehouse:issue_delivery_pdf' voucher.pk %}"
+               target="_blank" rel="noopener"
+               class="btn btn-ghost btn-xs gap-1"
+               title="Hoja de entrega PDF">
+                <i class="ri-file-pdf-2-line"></i>
+                <span class="hidden sm:inline">Hoja</span>
+            </a>
+            <a href="{% url 'warehouse:issue_detail' voucher.pk %}"
+               class="btn btn-ghost btn-xs"
+               title="Ver entrega">
+                <i class="ri-external-link-line"></i>
+            </a>
+        </div>
+    </div>
+</article>
+{% empty %}
+{% if issues_offset == 0 %}
+<p class="text-sm text-gray-500 text-center py-8">Sin entregas confirmadas.</p>
+{% endif %}
+{% endfor %}
+
+{% if has_more_issues %}
+<div id="historial-more-wrap" class="pt-1 pb-2 flex justify-center">
+    <button type="button"
+            class="btn btn-ghost btn-sm"
+            id="btn-historial-more"
+            data-url="{% url 'warehouse:worker_historial_movimientos' worker.pk %}"
+            data-offset="{{ issues_offset }}">
+        Ver más
+    </button>
+</div>
+{% endif %}

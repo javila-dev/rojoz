@@ -1,0 +1,599 @@
+{# JS editor de líneas de factura de compra #}
+<script>
+(function () {
+  const stockLookupUrl = '{% url "warehouse:item_stock_lookup" %}';
+
+  function money(n) {
+    if (!isFinite(n)) return '—';
+    return n.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function selectedWarehouseId() {
+    return (document.getElementById('id_warehouse')?.value || '').trim();
+  }
+
+  const DECIMAL_UNITS = new Set(['KG', 'M', 'M2', 'L']);
+
+  function unitAllowsDecimals(unit) {
+    return DECIMAL_UNITS.has(String(unit || '').toUpperCase());
+  }
+
+  function syncQtyInputForRow(row) {
+    const qty = row?.querySelector('.line-qty');
+    const sel = row?.querySelector('select.line-item');
+    if (!qty) return;
+    const opt = sel?.options?.[sel.selectedIndex];
+    const unit = opt?.dataset?.unit || 'UND';
+    const dec = unitAllowsDecimals(unit);
+    qty.step = dec ? '0.01' : '1';
+    if (!dec && qty.value) {
+      const n = Number(qty.value);
+      if (isFinite(n) && Math.abs(n - Math.round(n)) > 1e-9) {
+        qty.value = String(Math.round(n));
+      }
+    }
+  }
+
+  function formatStock(raw) {
+    const n = Number(raw);
+    if (!isFinite(n)) return '—';
+    if (Math.abs(n - Math.round(n)) < 1e-9) return String(Math.round(n));
+    return n.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  }
+
+  function syncStockLabel(row) {
+    const label = row?.querySelector('.line-stock-label');
+    const sel = row?.querySelector('select.line-item');
+    if (!label || !sel) return;
+    const itemId = (sel.value || '').trim();
+    if (!itemId) {
+      label.textContent = '—';
+      return;
+    }
+    const wh = selectedWarehouseId();
+    if (!wh) {
+      label.textContent = '—';
+      return;
+    }
+    label.textContent = '…';
+    fetch(stockLookupUrl + '?warehouse=' + encodeURIComponent(wh) + '&item=' + encodeURIComponent(itemId))
+      .then((r) => r.json())
+      .then((data) => {
+        const qty = (data.stocks || {})[String(itemId)];
+        label.textContent = qty != null ? formatStock(qty) : '0';
+      })
+      .catch(() => { label.textContent = '—'; });
+  }
+
+  function syncAllStockLabels() {
+    const wh = selectedWarehouseId();
+    const rows = [...document.querySelectorAll('#invoice-lines-body .invoice-line-row')];
+    const ids = [
+      ...new Set(
+        rows
+          .map((row) => (row.querySelector('select.line-item')?.value || '').trim())
+          .filter(Boolean)
+      ),
+    ];
+    if (!wh) {
+      rows.forEach((row) => {
+        const label = row.querySelector('.line-stock-label');
+        if (label) label.textContent = '—';
+      });
+      return;
+    }
+    if (!ids.length) {
+      rows.forEach((row) => {
+        const label = row.querySelector('.line-stock-label');
+        if (label) label.textContent = '—';
+      });
+      return;
+    }
+    rows.forEach((row) => {
+      const label = row.querySelector('.line-stock-label');
+      const itemId = (row.querySelector('select.line-item')?.value || '').trim();
+      if (label) label.textContent = itemId ? '…' : '—';
+    });
+    fetch(stockLookupUrl + '?warehouse=' + encodeURIComponent(wh) + '&items=' + encodeURIComponent(ids.join(',')))
+      .then((r) => r.json())
+      .then((data) => {
+        const stocks = data.stocks || {};
+        rows.forEach((row) => {
+          const label = row.querySelector('.line-stock-label');
+          const itemId = (row.querySelector('select.line-item')?.value || '').trim();
+          if (!label) return;
+          if (!itemId) {
+            label.textContent = '—';
+            return;
+          }
+          const qty = stocks[String(itemId)];
+          label.textContent = qty != null ? formatStock(qty) : '0';
+        });
+      })
+      .catch(() => {
+        rows.forEach((row) => {
+          const label = row.querySelector('.line-stock-label');
+          if (label) label.textContent = '—';
+        });
+      });
+  }
+
+  function reindexLines() {
+    const body = document.getElementById('invoice-lines-body');
+    const total = document.getElementById('m_TOTAL');
+    if (!body || !total) return;
+    const rows = [...body.querySelectorAll('.invoice-line-row')];
+    rows.forEach((row, idx) => {
+      const num = row.querySelector('.line-num');
+      if (num) num.textContent = String(idx + 1);
+      row.querySelectorAll('[name^="m_"]').forEach((el) => {
+        el.name = el.name.replace(/m_\d+_/, 'm_' + idx + '_');
+      });
+    });
+    total.value = String(rows.length);
+    recalcTotals();
+  }
+
+  function recalcTotals() {
+    const body = document.getElementById('invoice-lines-body');
+    const grand = document.getElementById('invoice-lines-grand-total');
+    if (!body) return;
+    let sum = 0;
+    body.querySelectorAll('.invoice-line-row').forEach((row) => {
+      const qty = parseFloat(row.querySelector('.line-qty')?.value || '0');
+      const cost = parseFloat(row.querySelector('.line-cost')?.value || '0');
+      const lineTotal = qty * cost;
+      const cell = row.querySelector('.line-total');
+      if (cell) cell.textContent = money(lineTotal);
+      if (isFinite(lineTotal)) sum += lineTotal;
+    });
+    if (grand) grand.textContent = money(sum);
+  }
+
+  function isDuplicateItem(selectEl) {
+    const val = (selectEl.value || '').trim();
+    if (!val) return false;
+    const body = document.getElementById('invoice-lines-body');
+    if (!body) return false;
+    let count = 0;
+    body.querySelectorAll('select.line-item').forEach((sel) => {
+      if ((sel.value || '').trim() === val) count += 1;
+    });
+    return count > 1;
+  }
+
+  function guardDuplicateItem(selectEl) {
+    if (!isDuplicateItem(selectEl)) {
+      selectEl.dataset.prevValue = selectEl.value;
+      return true;
+    }
+    const prev = selectEl.dataset.prevValue || '';
+    alert('Ese ítem ya está en otra línea. Usa una sola línea y suma la cantidad.');
+    if (selectEl.tomselect) selectEl.tomselect.setValue(prev, true);
+    else selectEl.value = prev;
+    return false;
+  }
+
+  function syncCreateItemButton(row) {
+    if (!row) return;
+    const btn = row.querySelector('.btn-create-item-line');
+    if (!btn) return;
+    const hasItem = !!(row.querySelector('select.line-item')?.value || '').trim();
+    const hasDesc = !!(row.querySelector('.line-description')?.value || '').trim();
+    btn.classList.toggle('hidden', !(hasDesc && !hasItem));
+  }
+
+  function syncAllCreateItemButtons() {
+    document.querySelectorAll('#invoice-lines-body .invoice-line-row').forEach(syncCreateItemButton);
+  }
+
+  function bindLineEvents(root) {
+    root.querySelectorAll('.line-qty, .line-cost').forEach((el) => {
+      if (el.dataset.boundQty) return;
+      el.dataset.boundQty = '1';
+      el.addEventListener('input', recalcTotals);
+    });
+    root.querySelectorAll('.line-description').forEach((el) => {
+      if (el.dataset.boundDesc) return;
+      el.dataset.boundDesc = '1';
+      el.addEventListener('input', () => syncCreateItemButton(el.closest('.invoice-line-row')));
+    });
+    root.querySelectorAll('select.line-item').forEach((sel) => {
+      if (!sel.dataset.prevValue) sel.dataset.prevValue = sel.value || '';
+      if (sel.dataset.boundItem) return;
+      sel.dataset.boundItem = '1';
+      sel.addEventListener('focus', () => {
+        sel.dataset.prevValue = sel.value || '';
+      });
+      sel.addEventListener('change', () => {
+        guardDuplicateItem(sel);
+        const row = sel.closest('.invoice-line-row');
+        syncCreateItemButton(row);
+        syncStockLabel(row);
+        syncQtyInputForRow(row);
+      });
+    });
+    root.querySelectorAll('.btn-remove-line').forEach((btn) => {
+      if (btn.dataset.boundRemove) return;
+      btn.dataset.boundRemove = '1';
+      btn.addEventListener('click', () => {
+        const body = document.getElementById('invoice-lines-body');
+        if (!body) return;
+        if (body.querySelectorAll('.invoice-line-row').length <= 1) {
+          const row = btn.closest('.invoice-line-row');
+          row.querySelectorAll('input, select').forEach((el) => {
+            if (el.type === 'hidden') el.value = '';
+            else if (el.tagName === 'SELECT') el.selectedIndex = 0;
+            else if (el.classList.contains('line-qty')) el.value = '1';
+            else if (el.classList.contains('line-cost')) el.value = '0';
+            else el.value = '';
+          });
+          const sel = row.querySelector('select.line-item');
+          if (sel) {
+            sel.dataset.prevValue = '';
+            if (sel.tomselect) sel.tomselect.clear(true);
+          }
+          recalcTotals();
+          syncCreateItemButton(row);
+          syncStockLabel(row);
+          return;
+        }
+        btn.closest('.invoice-line-row')?.remove();
+        reindexLines();
+      });
+    });
+    if (root.classList?.contains('invoice-line-row')) syncCreateItemButton(root);
+    else root.querySelectorAll?.('.invoice-line-row').forEach(syncCreateItemButton);
+  }
+
+  function addLine() {
+    const tpl = document.getElementById('invoice-line-template');
+    const body = document.getElementById('invoice-lines-body');
+    if (!tpl || !body) return;
+    const idx = body.querySelectorAll('.invoice-line-row').length;
+    const html = tpl.innerHTML.replaceAll('___IDX___', String(idx));
+    const wrap = document.createElement('tbody');
+    wrap.innerHTML = html.trim();
+    const row = wrap.firstElementChild;
+    body.appendChild(row);
+    bindLineEvents(row);
+    enhanceLineItemSelect(row.querySelector('select.line-item'));
+    reindexLines();
+    syncCreateItemButton(row);
+    const scroller = body.closest('.overflow-y-auto');
+    if (scroller) scroller.scrollTop = scroller.scrollHeight;
+    const newSel = row.querySelector('select.line-item');
+    if (newSel?.tomselect) newSel.tomselect.focus();
+    else newSel?.focus();
+  }
+
+  function collapseDuplicateItemsFromAi() {
+    const body = document.getElementById('invoice-lines-body');
+    if (!body) return;
+    const seen = new Map();
+    [...body.querySelectorAll('.invoice-line-row')].forEach((row) => {
+      const sel = row.querySelector('select.line-item');
+      const val = (sel?.value || '').trim();
+      if (!val) return;
+      if (!seen.has(val)) {
+        seen.set(val, row);
+        return;
+      }
+      const first = seen.get(val);
+      const qtyA = parseFloat(first.querySelector('.line-qty')?.value || '0') || 0;
+      const qtyB = parseFloat(row.querySelector('.line-qty')?.value || '0') || 0;
+      const costB = parseFloat(row.querySelector('.line-cost')?.value || '0');
+      const costInput = first.querySelector('.line-cost');
+      first.querySelector('.line-qty').value = String(qtyA + qtyB);
+      if (costInput && (!costInput.value || parseFloat(costInput.value) === 0) && isFinite(costB)) {
+        costInput.value = String(costB);
+      }
+      row.remove();
+    });
+    reindexLines();
+  }
+
+  function initInvoiceLines(opts) {
+    const body = document.getElementById('invoice-lines-body');
+    if (!body) return;
+    bindLineEvents(body);
+    enhanceAllLineItemSelects(body);
+    const addBtn = document.getElementById('btn-add-invoice-line');
+    if (addBtn && !addBtn.dataset.bound) {
+      addBtn.dataset.bound = '1';
+      addBtn.addEventListener('click', addLine);
+    }
+    if (opts && opts.collapseDuplicates) collapseDuplicateItemsFromAi();
+    else reindexLines();
+    syncAllCreateItemButtons();
+    syncAllStockLabels();
+    body.querySelectorAll('.invoice-line-row').forEach(syncQtyInputForRow);
+  }
+
+  document.getElementById('id_warehouse')?.addEventListener('change', syncAllStockLabels);
+
+  document.body.addEventListener('purchaseAiExtracted', function () {
+    const modal = document.getElementById('ai-extract-modal');
+    if (modal && modal.open) modal.close();
+    initInvoiceLines({ collapseDuplicates: true });
+    enhanceSupplierSelect(document.getElementById('id_supplier'));
+    const btn = document.getElementById('purchase-attachment-view');
+    if (btn) {
+      const tmpUrl = '{% url "warehouse:purchase_tmp_attachment" %}';
+      btn.dataset.serverUrl = tmpUrl;
+      enableAttachmentView(btn, tmpUrl);
+    }
+    const input = document.getElementById('id_attachment');
+    const localName = input && input.files && input.files[0] ? input.files[0].name : '';
+    const nameEl = document.getElementById('purchase-attachment-filename');
+    if (localName) {
+      if (nameEl) nameEl.dataset.serverName = localName;
+      setAttachmentFilename(localName);
+    }
+  });
+
+  let attachmentObjectUrl = null;
+
+  function enableAttachmentView(btn, href) {
+    if (!btn || !href || href === '#') {
+      if (!btn) return;
+      const server = btn.dataset.serverUrl || '';
+      if (server) {
+        btn.href = server;
+        btn.classList.remove('pointer-events-none', 'opacity-40');
+        btn.removeAttribute('aria-disabled');
+      } else {
+        btn.href = '#';
+        btn.classList.add('pointer-events-none', 'opacity-40');
+        btn.setAttribute('aria-disabled', 'true');
+      }
+      return;
+    }
+    btn.href = href;
+    btn.classList.remove('pointer-events-none', 'opacity-40');
+    btn.removeAttribute('aria-disabled');
+  }
+
+  function setAttachmentFilename(name) {
+    const el = document.getElementById('purchase-attachment-filename');
+    if (!el) return;
+    const text = (name || '').trim();
+    if (text) {
+      el.textContent = 'Archivo: ' + text;
+      el.classList.remove('hidden');
+    } else {
+      const server = (el.dataset.serverName || '').trim();
+      if (server) {
+        el.textContent = 'Archivo: ' + server;
+        el.classList.remove('hidden');
+      } else {
+        el.textContent = '';
+        el.classList.add('hidden');
+      }
+    }
+  }
+
+  function wireAttachmentPreview() {
+    const input = document.getElementById('id_attachment');
+    const btn = document.getElementById('purchase-attachment-view');
+    if (!btn || btn.dataset.previewBound === '1') return;
+    btn.dataset.previewBound = '1';
+    if (!input) return;
+    input.addEventListener('change', function () {
+      if (attachmentObjectUrl) {
+        URL.revokeObjectURL(attachmentObjectUrl);
+        attachmentObjectUrl = null;
+      }
+      const file = input.files && input.files[0];
+      if (file) {
+        attachmentObjectUrl = URL.createObjectURL(file);
+        enableAttachmentView(btn, attachmentObjectUrl);
+        setAttachmentFilename(file.name);
+      } else {
+        enableAttachmentView(btn, null);
+        setAttachmentFilename('');
+      }
+    });
+  }
+
+  document.body.addEventListener('htmx:afterSwap', function (e) {
+    if (e.detail?.target?.id === 'purchase-ai-panel') {
+      initInvoiceLines({ collapseDuplicates: true });
+    }
+  });
+
+  document.body.addEventListener('htmx:oobAfterSwap', function (e) {
+    if (e.detail?.target?.id === 'ai-field-supplier') {
+      enhanceSupplierSelect(document.getElementById('id_supplier'));
+    }
+  });
+
+  function enhanceSupplierSelect(sel) {
+    sel = sel || document.getElementById('id_supplier');
+    if (!sel || typeof TomSelect === 'undefined' || sel.tomselect) return;
+    const locked = !!sel.disabled;
+    sel.classList.remove('select', 'select-bordered');
+    if (!sel.classList.contains('supplier-select')) sel.classList.add('supplier-select');
+    const opts = {
+      allowEmptyOption: true,
+      create: false,
+      maxOptions: null,
+      placeholder: 'Buscar proveedor…',
+      sortField: { field: 'text', direction: 'asc' },
+      dropdownParent: 'body',
+      wrapperClass: 'ts-wrapper supplier-ts',
+      copyClassesToDropdown: false,
+      readOnly: locked,
+      render: {
+        option: function (data, escape) {
+          if (!data.value) {
+            return '<div class="option ts-empty-opt" style="display:none"></div>';
+          }
+          return '<div class="option">' + escape(data.text) + '</div>';
+        },
+        item: function (data, escape) {
+          if (!data.value) return '<div class="item"></div>';
+          return '<div class="item">' + escape(data.text) + '</div>';
+        },
+      },
+      onDropdownOpen: function () {
+        const first = this.dropdown_content.querySelector(
+          '[data-selectable]:not(.ts-empty-opt):not([data-value=""])'
+        );
+        if (first) this.setActiveOption(first);
+      },
+    };
+    if (!locked) opts.plugins = ['clear_button'];
+    const ts = new TomSelect(sel, opts);
+    if (locked) sel.disabled = true;
+    return ts;
+  }
+
+  function enhanceLineItemSelect(sel) {
+    if (!sel || typeof TomSelect === 'undefined' || sel.tomselect) return;
+    const locked = !!sel.disabled;
+    // Evitar que DaisyUI .select se copie al wrapper (doble flecha/borde).
+    sel.className = 'line-item';
+    const opts = {
+      allowEmptyOption: true,
+      create: false,
+      maxOptions: null,
+      placeholder: 'Elegir ítem…',
+      sortField: { field: 'text', direction: 'asc' },
+      dropdownParent: 'body',
+      wrapperClass: 'ts-wrapper line-item-ts',
+      copyClassesToDropdown: false,
+      readOnly: locked,
+      render: {
+        option: function (data, escape) {
+          if (!data.value) {
+            return '<div class="option ts-empty-opt" style="display:none"></div>';
+          }
+          return '<div class="option">' + escape(data.text) + '</div>';
+        },
+        item: function (data, escape) {
+          if (!data.value) return '<div class="item"></div>';
+          return '<div class="item">' + escape(data.text) + '</div>';
+        },
+      },
+      onDropdownOpen: function () {
+        const first = this.dropdown_content.querySelector(
+          '[data-selectable]:not(.ts-empty-opt):not([data-value=""])'
+        );
+        if (first) this.setActiveOption(first);
+      },
+    };
+    if (!locked) opts.plugins = ['clear_button'];
+    const ts = new TomSelect(sel, opts);
+    if (locked) sel.disabled = true;
+    ts.on('change', () => {
+      const row = sel.closest('.invoice-line-row');
+      syncCreateItemButton(row);
+      syncStockLabel(row);
+      syncQtyInputForRow(row);
+    });
+  }
+
+  function enhanceAllLineItemSelects(root) {
+    (root || document).querySelectorAll('select.line-item').forEach(enhanceLineItemSelect);
+  }
+
+  function addOptionToSelect(select, id, label, selected, unit) {
+    if (!select) return;
+    const value = String(id);
+    if (select.tomselect) {
+      const ts = select.tomselect;
+      if (!ts.options[value]) {
+        ts.addOption({ value: value, text: label });
+      } else {
+        ts.updateOption(value, { value: value, text: label });
+      }
+      // Mantener data-unit en el <option> nativo (Tom Select no lo copia).
+      const native = [...select.options].find((o) => o.value === value);
+      if (native && unit) native.dataset.unit = String(unit);
+      if (selected) {
+        ts.setValue(value, true);
+        select.dataset.prevValue = value;
+      }
+      return;
+    }
+    let opt = [...select.options].find((o) => o.value === value);
+    if (!opt) {
+      opt = new Option(label, value, false, false);
+      select.add(opt);
+    } else {
+      opt.textContent = label;
+    }
+    if (unit) opt.dataset.unit = String(unit);
+    if (selected) {
+      select.value = value;
+      select.dataset.prevValue = value;
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  }
+
+  document.body.addEventListener('closeQuickCreateModal', function () {
+    const root = document.getElementById('quick-create-modal-root');
+    if (root) root.innerHTML = '';
+  });
+
+  document.body.addEventListener('purchaseSupplierCreated', function (e) {
+    const { id, label } = e.detail || {};
+    if (!id) return;
+    addOptionToSelect(document.getElementById('id_supplier'), id, label, true);
+  });
+
+  document.body.addEventListener('purchaseItemCreated', function (e) {
+    const { id, label, lineIndex, unit } = e.detail || {};
+    if (!id) return;
+    document.querySelectorAll('select.line-item').forEach((sel) => {
+      addOptionToSelect(sel, id, label, false, unit);
+    });
+    const tpl = document.getElementById('invoice-line-template');
+    if (tpl) {
+      const tmp = document.createElement('div');
+      tmp.innerHTML = tpl.innerHTML;
+      tmp.querySelectorAll('select.line-item').forEach((sel) => {
+        addOptionToSelect(sel, id, label, false, unit);
+      });
+      tpl.innerHTML = tmp.innerHTML;
+    }
+    let target = null;
+    if (lineIndex !== undefined && lineIndex !== null && lineIndex !== '') {
+      const rows = [...document.querySelectorAll('#invoice-lines-body .invoice-line-row')];
+      target = rows[Number(lineIndex)]?.querySelector('select.line-item') || null;
+    }
+    if (!target) {
+      target = [...document.querySelectorAll('select.line-item')].find((s) => !s.value) || null;
+    }
+    if (target) {
+      addOptionToSelect(target, id, label, true, unit);
+      const row = target.closest('.invoice-line-row');
+      syncCreateItemButton(row);
+      syncStockLabel(row);
+      syncQtyInputForRow(row);
+    }
+  });
+
+  const quickItemUrl = "{% url 'warehouse:purchase_quick_item' %}";
+
+  document.body.addEventListener('click', function (e) {
+    const btn = e.target.closest('.btn-create-item-line');
+    if (!btn) return;
+    e.preventDefault();
+    const row = btn.closest('.invoice-line-row');
+    if (!row) return;
+    const body = document.getElementById('invoice-lines-body');
+    const idx = [...body.querySelectorAll('.invoice-line-row')].indexOf(row);
+    const desc = (row.querySelector('.line-description')?.value || '').trim();
+    const name = desc.toLocaleUpperCase('es-CO').replace(/\s+/g, ' ').slice(0, 40);
+    const url = quickItemUrl + '?line=' + encodeURIComponent(String(idx))
+      + (name ? '&name=' + encodeURIComponent(name) : '');
+    htmx.ajax('GET', url, { target: '#quick-create-modal-root', swap: 'innerHTML' });
+  });
+
+  initInvoiceLines();
+  wireAttachmentPreview();
+  enhanceSupplierSelect();
+})();
+</script>

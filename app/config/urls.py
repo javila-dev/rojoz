@@ -17,6 +17,7 @@ urlpatterns = [
     path('finanzas/', include('finance.urls')), # Cartera, comisiones
     path('documentos/', include('documents.urls')),  # Plantillas PDF
     path('portal/', include('portal.urls')),       # Portal del cliente
+    path('bodega/', include('warehouse.urls')),    # Bodega operativa
     path(
         "api/tesoreria/",
         include(("finance.api_urls", "finance_api"), namespace="finance_api"),

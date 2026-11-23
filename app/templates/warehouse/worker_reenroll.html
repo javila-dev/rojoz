@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+{% block title %}Re-enrolar foto · {{ worker.full_name }}{% endblock %}
+{% block extra_head %}
+{% include "warehouse/partials/face_feedback_js.html" %}
+{% endblock %}
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6">
+{% include "warehouse/_nav.html" %}
+
+<div class="max-w-xl mx-auto w-full space-y-6">
+<div>
+    <h1 class="text-2xl font-bold text-gray-900">
+        Re-enrolar foto
+    </h1>
+    <p class="text-sm text-gray-500 mt-1">
+        Solo se actualiza la foto y el reconocimiento facial. Los datos y la autorización quedan igual.
+    </p>
+</div>
+
+<form method="post" id="reenroll-form" class="space-y-4">
+{% csrf_token %}
+{{ form.photo_data }}
+
+<section class="card bg-white border border-gray-200 shadow-sm">
+    <div class="card-body space-y-4">
+        <div class="flex items-start gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+            {% if worker.enrollment_photo %}
+            <img src="{% url 'warehouse:worker_photo' worker.pk %}" alt=""
+                 class="w-14 h-16 object-cover rounded-lg border border-gray-200 bg-white">
+            {% endif %}
+            <div class="min-w-0 text-sm">
+                <p class="font-semibold text-gray-900 truncate">{{ worker.full_name }}</p>
+                <p class="text-gray-500">Cédula {{ worker.document_id }}</p>
+            </div>
+        </div>
+
+        <div>
+            <h2 class="text-lg font-semibold text-gray-900">Foto nueva</h2>
+            <p class="text-sm text-gray-500">Centra el rostro en el óvalo. Buena luz, sin gorra ni lentes oscuros.</p>
+        </div>
+
+        <div id="camera-stage" class="relative mx-auto w-full max-w-[360px] aspect-[4/5] overflow-hidden rounded-2xl bg-black shadow-inner ring-1 ring-black/10">
+            <video id="video" class="absolute inset-0 h-full w-full object-cover scale-x-[-1]" autoplay playsinline muted></video>
+            <img id="photo-preview" class="absolute inset-0 hidden h-full w-full object-cover" alt="Vista previa">
+            <canvas id="photo-canvas" class="hidden"></canvas>
+            <div id="face-mask" class="pointer-events-none absolute inset-0"
+                 style="background: radial-gradient(ellipse 38% 42% at 50% 44%, transparent 0 99%, rgba(15,15,15,0.58) 100%);"></div>
+            <div id="face-oval" class="pointer-events-none absolute left-1/2 top-[44%] h-[66%] w-[58%] -translate-x-1/2 -translate-y-1/2 rounded-[50%] border-2 border-white/85"></div>
+            <p id="face-hint" class="pointer-events-none absolute bottom-3 left-0 right-0 text-center text-[11px] font-medium text-white/90 drop-shadow">
+                Alinea el rostro con el óvalo
+            </p>
+        </div>
+
+        <div id="face-feedback" class="text-sm text-center min-h-[1.25rem]"></div>
+        {% if form.errors %}
+        <div class="text-sm text-error text-center">
+            {% for err in form.non_field_errors %}<div>{{ err }}</div>{% endfor %}
+            {% for field in form %}{% for err in field.errors %}<div>{{ err }}</div>{% endfor %}{% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="flex flex-wrap justify-center gap-2">
+            <button type="button" id="btn-capture" class="btn btn-primary btn-lg">Capturar foto</button>
+            <button type="button" id="btn-retake" class="btn btn-ghost hidden">Volver a capturar</button>
+        </div>
+
+        <div class="flex justify-between gap-3 pt-2 border-t border-gray-100">
+            <a href="{% url 'warehouse:worker_list' %}" class="btn btn-ghost">Cancelar</a>
+            <button type="submit" id="btn-submit" class="btn btn-primary btn-lg" disabled>
+                <span class="loading loading-spinner loading-sm hidden" id="submit-spinner" aria-hidden="true"></span>
+                <span id="submit-label">Guardar foto</span>
+            </button>
+        </div>
+        <p id="submit-status" class="text-center text-sm text-gray-500 hidden">Guardando foto y actualizando reconocimiento…</p>
+    </div>
+</section>
+</form>
+</div>
+</div>
+
+<script>
+(function () {
+  const photoInput = document.getElementById('id_photo_data');
+  const video = document.getElementById('video');
+  const preview = document.getElementById('photo-preview');
+  const canvas = document.getElementById('photo-canvas');
+  const feedback = document.getElementById('face-feedback');
+  const btnCapture = document.getElementById('btn-capture');
+  const btnRetake = document.getElementById('btn-retake');
+  const btnSubmit = document.getElementById('btn-submit');
+  const faceMask = document.getElementById('face-mask');
+  const faceOval = document.getElementById('face-oval');
+  const faceHint = document.getElementById('face-hint');
+  let photoOk = false;
+  let cameraStarted = false;
+
+  function setGuideVisible(on) {
+    [faceMask, faceOval, faceHint].forEach((el) => {
+      if (!el) return;
+      el.classList.toggle('hidden', !on);
+    });
+  }
+
+  async function startCamera() {
+    if (cameraStarted) return;
+    cameraStarted = true;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 720 }, height: { ideal: 960 } },
+        audio: false,
+      });
+      video.srcObject = stream;
+      await video.play();
+    } catch (err) {
+      feedback.innerHTML = '<span class="text-error">No se pudo abrir la cámara. Revisa permisos del navegador.</span>';
+      cameraStarted = false;
+    }
+  }
+
+  startCamera();
+
+  btnCapture.addEventListener('click', async () => {
+    const w = video.videoWidth || 720;
+    const h = video.videoHeight || 960;
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.translate(w, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(video, 0, 0, w, h);
+
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+    photoInput.value = dataUrl;
+    preview.src = dataUrl;
+    preview.classList.remove('hidden');
+    video.classList.add('opacity-0');
+    setGuideVisible(false);
+    btnCapture.classList.add('hidden');
+    btnRetake.classList.remove('hidden');
+    feedback.textContent = 'Revisando la foto…';
+    btnSubmit.disabled = true;
+    photoOk = false;
+
+    const body = new FormData();
+    body.append('photo_data', dataUrl);
+    body.append('mode', 'enroll');
+    body.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+    const res = await fetch('{% url "warehouse:face_validate" %}', { method: 'POST', body });
+    const data = await res.json();
+    if (data.ok) {
+      photoOk = true;
+      feedback.innerHTML = '<span class="text-success font-medium">Foto válida</span>';
+      btnSubmit.disabled = false;
+    } else {
+      photoOk = false;
+      window.renderFaceIssues(feedback, data.issues);
+      btnSubmit.disabled = true;
+    }
+  });
+
+  btnRetake.addEventListener('click', () => {
+    photoOk = false;
+    photoInput.value = '';
+    preview.classList.add('hidden');
+    preview.removeAttribute('src');
+    video.classList.remove('opacity-0');
+    setGuideVisible(true);
+    btnCapture.classList.remove('hidden');
+    btnRetake.classList.add('hidden');
+    feedback.textContent = '';
+    btnSubmit.disabled = true;
+    if (!video.srcObject) {
+      cameraStarted = false;
+      startCamera();
+    }
+  });
+
+  const form = document.getElementById('reenroll-form');
+  const submitSpinner = document.getElementById('submit-spinner');
+  const submitLabel = document.getElementById('submit-label');
+  const submitStatus = document.getElementById('submit-status');
+  let submitting = false;
+
+  form.addEventListener('submit', (e) => {
+    if (submitting) {
+      e.preventDefault();
+      return;
+    }
+    if (!photoOk || !photoInput.value) {
+      e.preventDefault();
+      feedback.innerHTML = '<span class="text-error">Captura una foto válida antes de guardar.</span>';
+      return;
+    }
+    submitting = true;
+    btnSubmit.disabled = true;
+    btnCapture.disabled = true;
+    btnRetake.disabled = true;
+    submitSpinner.classList.remove('hidden');
+    submitLabel.textContent = 'Guardando…';
+    submitStatus.classList.remove('hidden');
+    feedback.innerHTML = '<span class="text-gray-600">Procesando foto con el servicio facial…</span>';
+  });
+})();
+</script>
+{% endblock %}

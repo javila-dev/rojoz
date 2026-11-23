@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Hoja de entrega #{{ voucher.pk }}</title>
+    <style>
+        @page { size: A4; margin: 14mm 12mm 16mm 12mm; }
+        :root {
+            --accent: #A0372A;
+            --accent-light: #F3E8E6;
+            --dark: #111827;
+            --muted: #6b7280;
+            --border: #e5e7eb;
+            --bg: #f9fafb;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: "Helvetica Neue", Arial, sans-serif;
+            color: var(--dark);
+            font-size: 10px;
+            line-height: 1.45;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 2.5px solid var(--accent);
+            padding-bottom: 12px;
+            margin-bottom: 14px;
+        }
+        .brand { font-size: 17px; font-weight: 700; color: var(--accent); }
+        .brand-sub { color: var(--muted); font-size: 8.5px; margin-top: 2px; }
+        .doc-right { text-align: right; }
+        .doc-label {
+            font-size: 8px; text-transform: uppercase; letter-spacing: 1.2px;
+            color: var(--muted); font-weight: 600;
+        }
+        .doc-title { font-size: 14px; font-weight: 800; margin-top: 2px; }
+        .doc-meta { color: var(--muted); font-size: 8.5px; margin-top: 3px; }
+        .grid-2 { display: flex; gap: 12px; margin-bottom: 12px; }
+        .card {
+            flex: 1;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 12px;
+            background: #fff;
+        }
+        .card-title {
+            font-size: 8px; text-transform: uppercase; letter-spacing: 0.8px;
+            color: var(--muted); font-weight: 700; margin-bottom: 6px;
+        }
+        .row { display: flex; justify-content: space-between; gap: 8px; padding: 3px 0; border-bottom: 1px solid #f3f4f6; }
+        .row:last-child { border-bottom: none; }
+        .label { color: var(--muted); }
+        .value { font-weight: 600; text-align: right; }
+        .section { margin-bottom: 12px; page-break-inside: avoid; }
+        .section-title {
+            font-size: 10.5px; font-weight: 700; color: var(--accent);
+            margin-bottom: 6px; padding-bottom: 3px; border-bottom: 1px solid var(--accent-light);
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 9px; }
+        th {
+            text-align: left; background: var(--bg); border-bottom: 1px solid var(--border);
+            padding: 5px 6px; font-size: 8px; text-transform: uppercase; color: var(--muted);
+        }
+        td { border-bottom: 1px solid #f3f4f6; padding: 5px 6px; vertical-align: top; }
+        .num { text-align: right; font-variant-numeric: tabular-nums; }
+        .evidence { display: flex; gap: 10px; margin-top: 8px; }
+        .ev-card {
+            flex: 1; border: 1px solid var(--border); border-radius: 6px;
+            padding: 8px; background: var(--bg); min-height: 100px;
+        }
+        .ev-title {
+            font-size: 8px; text-transform: uppercase; letter-spacing: 0.8px;
+            color: var(--muted); font-weight: 700; margin-bottom: 6px;
+        }
+        .ev-card img {
+            max-width: 100%; max-height: 120px; object-fit: contain;
+            display: block; margin: 0 auto; background: #fff; border-radius: 4px;
+        }
+        .ev-missing { color: var(--muted); text-align: center; padding: 24px 6px; font-size: 8.5px; }
+        .vision-note {
+            margin-top: 6px; padding: 6px 7px; border-radius: 4px;
+            font-size: 8px; line-height: 1.35; border: 1px solid var(--border);
+            background: #fff;
+        }
+        .vision-note.warn {
+            border-color: #fcd34d; background: #fffbeb; color: #92400e;
+        }
+        .vision-note.bad {
+            border-color: #fecaca; background: #fef2f2; color: #991b1b;
+        }
+        .vision-note.ok {
+            border-color: #bbf7d0; background: #f0fdf4; color: #166534;
+        }
+        .footer {
+            margin-top: 16px; padding-top: 8px; border-top: 1px solid var(--border);
+            font-size: 8px; color: var(--muted); display: flex; justify-content: space-between;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <div class="brand">Constructora Rojoz</div>
+            <div class="brand-sub">Bodega · Hoja de entrega</div>
+        </div>
+        <div class="doc-right">
+            <div class="doc-label">Documento</div>
+            <div class="doc-title">Entrega #{{ voucher.pk }}</div>
+            <div class="doc-meta">{{ when|date:"d/m/Y H:i" }} · {{ voucher.get_issue_type_display }}</div>
+        </div>
+    </div>
+
+    <div class="grid-2">
+        <div class="card">
+            <div class="card-title">Receptor</div>
+            <div class="row"><span class="label">Nombre</span><span class="value">{{ voucher.worker.full_name }}</span></div>
+            <div class="row"><span class="label">Cédula</span><span class="value">{{ voucher.worker.document_id }}</span></div>
+            {% if voucher.worker.blood_type %}
+            <div class="row"><span class="label">Sangre</span><span class="value">{{ voucher.worker.blood_type }}</span></div>
+            {% endif %}
+        </div>
+        <div class="card">
+            <div class="card-title">Entrega</div>
+            <div class="row"><span class="label">Bodega</span><span class="value">{{ voucher.warehouse }}</span></div>
+            <div class="row"><span class="label">Entregó</span><span class="value">{{ delivered_by }}</span></div>
+            {% if voucher.cost_center %}
+            <div class="row"><span class="label">Centro de costo</span><span class="value">{{ voucher.cost_center }}</span></div>
+            {% endif %}
+            {% if voucher.notes %}
+            <div class="row"><span class="label">Notas</span><span class="value">{{ voucher.notes }}</span></div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Ítems entregados</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Ítem</th>
+                    <th class="num">Cant.</th>
+                    <th>Exige reintegro</th>
+                    <th class="num">Devuelto</th>
+                    <th class="num">Pendiente</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for line in lines %}
+                <tr>
+                    <td>
+                        <strong>{{ line.item.name }}</strong><br>
+                        <span style="color:var(--muted)">{{ line.item.sku }} · {{ line.item.unit }}</span>
+                    </td>
+                    <td class="num">{{ line.quantity }}</td>
+                    <td>{% if line.requires_return %}Sí (custodia){% else %}No{% endif %}</td>
+                    <td class="num">{{ line.quantity_returned }}</td>
+                    <td class="num">{% if line.requires_return %}{{ line.quantity_pending }}{% else %}—{% endif %}</td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:12px">Sin ítems</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if returns %}
+    <div class="section">
+        <div class="section-title">Devoluciones registradas</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Ítem</th>
+                    <th class="num">Cant.</th>
+                    <th>Condición</th>
+                    <th>Fecha</th>
+                    <th>Registró</th>
+                    <th>Nº reintegro</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for ret in returns %}
+                <tr>
+                    <td>{{ ret.item.name }}</td>
+                    <td class="num">{{ ret.quantity }}</td>
+                    <td>{{ ret.condition }}</td>
+                    <td>{{ ret.when|date:"d/m/Y H:i" }}</td>
+                    <td>{{ ret.by }}</td>
+                    <td>#{{ ret.return_id }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <div class="section">
+        <div class="section-title">Soportes</div>
+        <div class="evidence">
+            <div class="ev-card">
+                <div class="ev-title">Foto de entrega</div>
+                {% if photo_data_uri %}
+                <img src="{{ photo_data_uri }}" alt="Foto">
+                {% else %}
+                <div class="ev-missing">Sin foto</div>
+                {% endif %}
+            </div>
+            <div class="ev-card">
+                <div class="ev-title">Firma del receptor</div>
+                {% if signature_data_uri %}
+                <img src="{{ signature_data_uri }}" alt="Firma">
+                {% else %}
+                <div class="ev-missing">Sin firma</div>
+                {% endif %}
+            </div>
+        </div>
+        {% if line_photos %}
+        <div class="evidence" style="margin-top:10px;flex-wrap:wrap;">
+            {% for lp in line_photos %}
+            <div class="ev-card" style="flex:1 1 45%;">
+                <div class="ev-title">Evidencia · {{ lp.item.name }}</div>
+                {% if lp.data_uri %}
+                <img src="{{ lp.data_uri }}" alt="Evidencia">
+                {% else %}
+                <div class="ev-missing">Sin imagen</div>
+                {% endif %}
+                {% if lp.vision_verdict %}
+                <div class="vision-note {% if lp.vision_override %}warn{% elif lp.vision_verdict == 'yes' %}ok{% elif lp.vision_verdict == 'no' %}bad{% else %}warn{% endif %}">
+                    <strong>Verificación IA:</strong>
+                    {% if lp.vision_verdict == 'yes' %}coincide
+                    {% elif lp.vision_verdict == 'no' %}no coincide
+                    {% elif lp.vision_verdict == 'uncertain' %}dudoso
+                    {% else %}{{ lp.vision_verdict }}{% endif %}
+                    {% if lp.vision_confidence != None %} ({{ lp.vision_confidence|floatformat:0 }}%){% endif %}
+                    {% if lp.vision_label %} · como «{{ lp.vision_label }}»{% endif %}
+                    {% if lp.vision_reason %}<br>{{ lp.vision_reason }}{% endif %}
+                    {% if lp.vision_override %}
+                    <br><strong>Aceptado bajo responsabilidad del almacenista</strong>
+                    {% if lp.vision_override_by %} · {{ lp.vision_override_by }}{% endif %}
+                    {% if lp.vision_checked_at %} · {{ lp.vision_checked_at|date:"d/m/Y H:i" }}{% endif %}
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="footer">
+        <div>Constructora Rojoz · Uso interno · Generado por {{ generated_by }}</div>
+        <div>Entrega #{{ voucher.pk }} · {{ generated_at|date:"d/m/Y H:i" }}</div>
+    </div>
+</body>
+</html>

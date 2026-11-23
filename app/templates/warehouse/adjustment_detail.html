@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Ajuste #{{ adjustment.pk }}{% endblock %}
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6">
+{% include "warehouse/_nav.html" %}
+<div class="flex justify-between items-start gap-4">
+    <div>
+        <h1 class="text-3xl font-bold">Ajuste #{{ adjustment.pk }}</h1>
+        <p class="text-gray-600">{{ adjustment.warehouse }} · {{ adjustment.get_reason_display }} · {{ adjustment.get_status_display }}</p>
+        <p class="mt-2 text-sm bg-gray-50 p-3 rounded-lg">{{ adjustment.notes }}</p>
+    </div>
+    {% if adjustment.status == 'DRAFT' %}
+    <form method="post" action="{% url 'warehouse:adjustment_post' adjustment.pk %}">
+        {% csrf_token %}
+        <button class="btn btn-primary" onclick="return confirm('¿Confirmar baja de stock?')">Confirmar ajuste</button>
+    </form>
+    {% endif %}
+</div>
+
+<div class="card bg-white border shadow-sm"><div class="card-body overflow-x-auto">
+<table class="table table-sm w-full">
+<thead><tr><th>Ítem</th><th>Cantidad</th></tr></thead>
+<tbody>
+{% for line in lines %}
+<tr><td>{{ line.item.sku }} — {{ line.item.name }}</td><td>{{ line.quantity }}</td></tr>
+{% empty %}<tr><td colspan="2" class="text-gray-500">Sin líneas</td></tr>{% endfor %}
+</tbody></table>
+</div></div>
+
+{% if adjustment.status == 'DRAFT' %}
+<div class="card bg-white border shadow-sm"><div class="card-body">
+<h2 class="font-bold mb-3">Agregar línea</h2>
+<form method="post" action="{% url 'warehouse:adjustment_add_line' adjustment.pk %}" class="grid md:grid-cols-3 gap-3 items-end">
+{% csrf_token %}
+{% for field in line_form %}
+<div class="form-control"><label class="label py-0"><span class="label-text text-xs">{{ field.label }}</span></label>{{ field }}</div>
+{% endfor %}
+<button class="btn">Agregar</button>
+</form>
+</div></div>
+{{ item_units|json_script:"adj-item-units" }}
+<script>
+(function () {
+  const DECIMAL_UNITS = new Set(['KG', 'M', 'M2', 'L']);
+  const itemUnits = JSON.parse(document.getElementById('adj-item-units').textContent || '{}');
+  const itemSel = document.getElementById('id_adj_item');
+  const qtyInput = document.getElementById('id_adj_quantity');
+  function syncQtyStep() {
+    if (!qtyInput) return;
+    const unit = itemUnits[String(itemSel?.value || '')] || 'UND';
+    const dec = DECIMAL_UNITS.has(String(unit).toUpperCase());
+    qtyInput.step = dec ? '0.01' : '1';
+  }
+  itemSel?.addEventListener('change', syncQtyStep);
+  syncQtyStep();
+})();
+</script>
+{% endif %}
+</div>
+{% endblock %}

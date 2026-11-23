@@ -1,0 +1,136 @@
+{% extends "warehouse/_form_shell.html" %}
+
+{% block form_body %}
+<style>
+  .wh-face-range {
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+  }
+  .wh-face-range:focus {
+    outline: none;
+  }
+  .wh-face-range::-webkit-slider-runnable-track {
+    height: 6px;
+    border-radius: 999px;
+    background: #e5e7eb;
+  }
+  .wh-face-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    margin-top: -6px;
+    border-radius: 999px;
+    background: #A0372A;
+    border: 2px solid #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+    cursor: pointer;
+  }
+  .wh-face-range::-moz-range-track {
+    height: 6px;
+    border-radius: 999px;
+    background: #e5e7eb;
+  }
+  .wh-face-range::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    background: #A0372A;
+    border: 2px solid #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+    cursor: pointer;
+  }
+</style>
+
+<div class="space-y-6">
+    <section class="rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-3 text-sm">
+        <p class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Servicio facial</p>
+        {% if face_backend == "remote" %}
+        <p class="text-gray-800">
+            Remoto
+            {% if face_url %}<span class="text-gray-500">· {{ face_url }}</span>{% endif %}
+            {% if face_health.status == "ok" %}
+            <span class="text-success font-medium">· online ({{ face_health.model|default:"modelo ok" }})</span>
+            {% elif face_health.status == "not_ready" %}
+            <span class="text-warning font-medium">· cargando modelo</span>
+            {% else %}
+            <span class="text-error font-medium">· {{ face_health.status }}{% if face_health.detail %}: {{ face_health.detail }}{% endif %}</span>
+            {% endif %}
+        </p>
+        <p class="text-xs text-gray-500 mt-1">Tras cambiar a este servicio, re-enrola trabajadores (embeddings anteriores del stub no sirven).</p>
+        {% else %}
+        <p class="text-amber-800 font-medium">Modo stub local (sin WAREHOUSE_FACE_URL). No usar en producción.</p>
+        <p class="text-xs text-gray-500 mt-1">Configura <code>WAREHOUSE_FACE_URL</code> y <code>WAREHOUSE_FACE_API_KEY</code> (ver README_faceapi.md).</p>
+        {% endif %}
+    </section>
+
+    <section>
+        <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Detección y calidad de imagen</h2>
+        <p class="text-xs text-gray-500 mb-3">Con servicio remoto, la calidad la decide el face-api; estos valores aplican sobre todo al stub local. El umbral de match sí se envía al servicio.</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
+            {% include "warehouse/_range_field.html" with field=form.min_det_score %}
+            {% include "warehouse/_range_field.html" with field=form.min_face_ratio %}
+            {% include "warehouse/_range_field.html" with field=form.min_laplacian_var %}
+            {% include "warehouse/_range_field.html" with field=form.min_brightness %}
+            {% include "warehouse/_range_field.html" with field=form.max_brightness %}
+            {% include "warehouse/_range_field.html" with field=form.max_yaw_deg %}
+            {% include "warehouse/_range_field.html" with field=form.max_pitch_deg %}
+            <label class="flex items-start gap-3 md:col-span-2 rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-3 cursor-pointer">
+                {{ form.require_single_face }}
+                <span>
+                    <span class="block text-sm font-medium text-gray-800">{{ form.require_single_face.label }}</span>
+                    {% if form.require_single_face.help_text %}
+                    <span class="block text-xs text-gray-500 mt-0.5">{{ form.require_single_face.help_text }}</span>
+                    {% endif %}
+                </span>
+            </label>
+        </div>
+    </section>
+
+    <section>
+        <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Reconocimiento en entregas</h2>
+        <div class="grid grid-cols-1 gap-x-6 gap-y-5">
+            {% include "warehouse/_range_field.html" with field=form.match_threshold %}
+        </div>
+        <label class="mt-4 flex items-start gap-3 rounded-xl border border-rojoz-100 bg-warm px-4 py-3 cursor-pointer">
+            {{ form.block_on_fail }}
+            <span>
+                <span class="block text-sm font-medium text-gray-800">{{ form.block_on_fail.label }}</span>
+                {% if form.block_on_fail.help_text %}
+                <span class="block text-xs text-gray-500 mt-0.5">{{ form.block_on_fail.help_text }}</span>
+                {% endif %}
+            </span>
+        </label>
+    </section>
+</div>
+
+<script>
+(function () {
+  function formatValue(input) {
+    const step = input.step || '1';
+    const n = Number(input.value);
+    if (!Number.isFinite(n)) return input.value;
+    if (String(step).includes('.')) {
+      const decimals = (String(step).split('.')[1] || '').length;
+      return n.toFixed(decimals);
+    }
+    return String(Math.round(n));
+  }
+
+  document.querySelectorAll('[data-range-wrap]').forEach((wrap) => {
+    const input = wrap.querySelector('input[type="range"]');
+    const label = wrap.querySelector('[data-range-value]');
+    if (!input || !label) return;
+    const sync = () => { label.textContent = formatValue(input); };
+    input.addEventListener('input', sync);
+    sync();
+  });
+})();
+</script>
+{% endblock %}
+
+{% block form_extra_actions %}
+<button type="submit" name="restore_defaults" value="1" class="btn btn-outline btn-sm"
+        onclick="return confirm('¿Restaurar valores por defecto?')">Restaurar defaults</button>
+{% endblock %}

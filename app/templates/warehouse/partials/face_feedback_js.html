@@ -1,0 +1,35 @@
+{# Helper JS: renderFaceIssues(container, issues, {warningHtml}) #}
+<script>
+window.renderFaceIssues = function (container, issues, opts) {
+  if (!container) return;
+  opts = opts || {};
+  const list = Array.isArray(issues) ? issues : [];
+  if (!list.length) {
+    container.innerHTML =
+      '<div class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-left">' +
+        '<p class="text-sm font-medium text-red-800">No se pudo confirmar la identidad.</p>' +
+        '<p class="text-xs text-red-700/90 mt-1">Vuelve a capturar mirando de frente, con buena luz.</p>' +
+      '</div>';
+    return;
+  }
+  const blocks = list.map(function (i) {
+    const msg = (i && i.message) || 'No se pudo validar la foto.';
+    const tip = (i && i.tip) || '';
+    return (
+      '<div class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-left">' +
+        '<p class="text-sm font-medium text-red-800">' + msg + '</p>' +
+        (tip
+          ? '<p class="text-xs text-red-700/90 mt-1"><span class="font-semibold">Qué hacer:</span> ' + tip + '</p>'
+          : '') +
+      '</div>'
+    );
+  });
+  container.innerHTML = blocks.join('<div class="h-1.5"></div>');
+  if (opts.warningHtml) {
+    container.innerHTML +=
+      '<div class="mt-1.5 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 text-left">' +
+      opts.warningHtml +
+      '</div>';
+  }
+};
+</script>

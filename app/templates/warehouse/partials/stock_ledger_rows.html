@@ -1,0 +1,47 @@
+{% for m in movements %}
+<tr class="ledger-row text-sm">
+    <td class="whitespace-nowrap text-xs text-gray-600">
+        {{ m.created_at|date:"d/m/Y" }} {{ m.created_at|time:"H:i" }}
+    </td>
+    <td class="text-sm">{{ m.get_move_type_display }}</td>
+    <td class="tabular-nums text-right {% if m.quantity < 0 %}text-red-700{% elif m.quantity > 0 %}text-green-700{% endif %}">
+        {% if m.quantity > 0 %}+{% endif %}{{ m.quantity }}
+    </td>
+    <td class="tabular-nums text-right font-medium">{{ m.balance_after }}</td>
+    <td class="text-xs">
+        {% if m.ref_url %}
+        <a class="link link-hover text-rojoz-600" href="{{ m.ref_url }}">
+            {{ m.ref_label }} #{{ m.reference_id }}
+        </a>
+        {% elif m.reference_model and m.reference_id %}
+        <span class="text-gray-500">{{ m.ref_label }} #{{ m.reference_id }}</span>
+        {% else %}
+        <span class="text-gray-400">—</span>
+        {% endif %}
+        {% if m.notes %}<div class="text-gray-400 mt-0.5 line-clamp-1">{{ m.notes }}</div>{% endif %}
+    </td>
+    <td class="text-xs text-gray-500 whitespace-nowrap">
+        {% if m.created_by %}{{ m.created_by.get_full_name|default:m.created_by.username }}{% else %}—{% endif %}
+    </td>
+</tr>
+{% empty %}
+{% if movements_offset == 0 %}
+<tr>
+    <td colspan="6" class="text-center text-gray-500 py-10">Sin movimientos en esta bodega.</td>
+</tr>
+{% endif %}
+{% endfor %}
+
+{% if has_more_movements %}
+<tr id="ledger-more-row">
+    <td colspan="6" class="text-center py-3 bg-gray-50/80">
+        <button type="button"
+                class="btn btn-ghost btn-sm"
+                id="btn-ledger-more"
+                data-url="{% url 'warehouse:stock_item_movements' item.pk %}?warehouse={{ warehouse.pk }}"
+                data-offset="{{ movements_offset }}">
+            Ver más
+        </button>
+    </td>
+</tr>
+{% endif %}

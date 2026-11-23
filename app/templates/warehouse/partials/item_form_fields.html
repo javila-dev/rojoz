@@ -1,0 +1,86 @@
+<div class="space-y-6">
+    <section>
+        <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Identificación</h2>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-x-4 gap-y-3">
+            <div class="md:col-span-1">
+                <label class="label py-1"><span class="label-text text-sm font-medium text-gray-700">SKU</span></label>
+                {% if obj %}
+                <div class="input input-bordered w-full bg-gray-50 font-mono text-sm flex items-center">{{ obj.sku }}</div>
+                {% else %}
+                <div class="input input-bordered w-full bg-gray-50 text-sm text-gray-500 flex items-center">Auto (tipo + consecutivo)</div>
+                {% endif %}
+            </div>
+            <div class="md:col-span-3">{% include "warehouse/_field.html" with field=form.name %}</div>
+        </div>
+    </section>
+
+    <section>
+        <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Clasificación</h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-3">
+            {% include "warehouse/_field.html" with field=form.kind %}
+            {% include "warehouse/_field.html" with field=form.unit %}
+            <div>
+                <label class="label py-1"><span class="label-text text-sm font-medium text-gray-700">Modo de rastreo</span></label>
+                <div class="input input-bordered w-full bg-gray-50 text-sm text-gray-600 flex items-center">Por cantidad</div>
+            </div>
+            {% include "warehouse/_field.html" with field=form.min_stock %}
+        </div>
+    </section>
+
+    <section>
+        <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Especificaciones por tipo</h2>
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-3">
+            {% include "warehouse/_field.html" with field=form.brand %}
+            {% include "warehouse/_field.html" with field=form.model_name %}
+            {% include "warehouse/_field.html" with field=form.presentation %}
+            {% include "warehouse/_field.html" with field=form.size %}
+            {% include "warehouse/_field.html" with field=form.norm %}
+        </div>
+        <p class="mt-2 text-xs text-gray-500">Usa talla/norma para EPP; marca/modelo para herramientas y equipos; presentación para materiales.</p>
+    </section>
+
+    <section>
+        <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Control y media</h2>
+        <div class="space-y-3">
+            {% include "warehouse/_field.html" with field=form.photo %}
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <label class="flex items-start gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 cursor-pointer">
+                    {{ form.requires_return }}
+                    <span>
+                        <span class="block text-sm font-medium text-gray-800">{{ form.requires_return.label }}</span>
+                        <span class="block text-xs text-gray-500">Actívalo en herramientas y EPP de uso personal.</span>
+                    </span>
+                </label>
+                <label class="flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 cursor-pointer">
+                    {{ form.is_active }}
+                    <span class="text-sm font-medium text-gray-800">{{ form.is_active.label }}</span>
+                </label>
+                <label id="wrap-allows-multiple-custody"
+                       class="flex items-start gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 cursor-pointer sm:col-span-2 hidden">
+                    {{ form.allows_multiple_custody }}
+                    <span>
+                        <span class="block text-sm font-medium text-gray-800">{{ form.allows_multiple_custody.label }}</span>
+                        <span class="block text-xs text-gray-500">
+                            Desmarcado: máximo 1 en poder del trabajador (bloquea nuevas entregas hasta reintegrar).
+                            Marcado: puede tener varios; si ya tiene, se pregunta si es reemplazo o adicional.
+                        </span>
+                    </span>
+                </label>
+            </div>
+        </div>
+    </section>
+</div>
+<script>
+(function () {
+  const req = document.getElementById('id_requires_return');
+  const wrap = document.getElementById('wrap-allows-multiple-custody');
+  const multi = document.getElementById('id_allows_multiple_custody');
+  function sync() {
+    const on = !!(req && req.checked);
+    if (wrap) wrap.classList.toggle('hidden', !on);
+    if (!on && multi) multi.checked = false;
+  }
+  req?.addEventListener('change', sync);
+  sync();
+})();
+</script>

@@ -1,0 +1,26 @@
+{% extends "warehouse/_form_shell.html" %}
+
+{% block form_body %}
+<div class="space-y-6">
+    <section>
+        <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Cabecera</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
+            {% include "warehouse/_field.html" with field=form.warehouse %}
+            {% include "warehouse/_field.html" with field=form.document_type %}
+            {% include "warehouse/_field.html" with field=form.supplier %}
+            {% include "warehouse/_field.html" with field=form.invoice_number %}
+            <div class="grid grid-cols-2 gap-3">
+                {% include "warehouse/_field.html" with field=form.invoice_date %}
+                {% include "warehouse/_field.html" with field=form.received_date %}
+            </div>
+        </div>
+    </section>
+    <section>
+        <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Soporte</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
+            {% include "warehouse/_field.html" with field=form.attachment %}
+            <div class="md:col-span-1">{% include "warehouse/_field.html" with field=form.notes %}</div>
+        </div>
+    </section>
+</div>
+{% endblock %}

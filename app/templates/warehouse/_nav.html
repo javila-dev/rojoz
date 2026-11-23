@@ -1,0 +1,112 @@
+{% load permission_tags %}
+{% with name=request.resolver_match.url_name %}
+<nav id="warehouse-subnav" class="relative z-50 mb-8 rounded-2xl border border-rojoz-100/80 bg-white/90 shadow-sm backdrop-blur">
+    <div class="flex flex-col gap-3 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
+        <div class="flex items-center gap-3 min-w-0">
+            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-gradient text-white shadow-sm">
+                <i class="ri-store-2-line text-lg"></i>
+            </div>
+            <div class="min-w-0">
+                <p class="text-sm font-semibold text-gray-900 tracking-tight">Bodega</p>
+                <p class="text-xs text-gray-500 truncate">Inventario operativo · entregas · control</p>
+            </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-1.5">
+            <a href="{% url 'warehouse:dashboard' %}"
+               class="px-3 py-1.5 rounded-lg text-sm font-medium transition
+                      {% if name == 'dashboard' %}bg-rojoz-50 text-rojoz-700{% else %}text-gray-600 hover:bg-gray-50{% endif %}">
+                Panel
+            </a>
+            <a href="{% url 'warehouse:issue_list' %}"
+               class="px-3 py-1.5 rounded-lg text-sm font-medium transition
+                      {% if name == 'issue_create' or name == 'issue_detail' or name == 'issue_list' %}bg-rojoz-600 text-white{% else %}bg-rojoz-50 text-rojoz-700 hover:bg-rojoz-100{% endif %}">
+                Entregas
+            </a>
+            <a href="{% url 'warehouse:worker_list' %}"
+               class="px-3 py-1.5 rounded-lg text-sm font-medium transition
+                      {% if name == 'worker_enroll' or name == 'worker_list' or name == 'worker_detail' or name == 'worker_historial' or name == 'worker_audit_pdf' %}bg-rojoz-50 text-rojoz-700{% else %}text-gray-600 hover:bg-gray-50{% endif %}">
+                Trabajadores
+            </a>
+            <a href="{% url 'warehouse:purchase_list' %}"
+               class="px-3 py-1.5 rounded-lg text-sm font-medium transition
+                      {% if 'purchase' in name %}bg-rojoz-50 text-rojoz-700{% else %}text-gray-600 hover:bg-gray-50{% endif %}">
+                Compras
+            </a>
+            <a href="{% url 'warehouse:stock_list' %}"
+               class="px-3 py-1.5 rounded-lg text-sm font-medium transition
+                      {% if name == 'stock_list' or name == 'stock_item_detail' or name == 'stock_item_movements' or name == 'stock_item_detail_legacy' %}bg-rojoz-50 text-rojoz-700{% else %}text-gray-600 hover:bg-gray-50{% endif %}">
+                Stock
+            </a>
+            <a href="{% url 'warehouse:return_list' %}"
+               class="px-3 py-1.5 rounded-lg text-sm font-medium transition
+                      {% if 'return' in name %}bg-rojoz-50 text-rojoz-700{% else %}text-gray-600 hover:bg-gray-50{% endif %}">
+                Reintegros
+            </a>
+
+            <div class="hidden sm:block w-px h-5 bg-gray-200 mx-1"></div>
+
+            <details class="wh-dd relative">
+                <summary class="list-none cursor-pointer px-3 py-1.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 flex items-center gap-1 marker:content-none [&::-webkit-details-marker]:hidden
+                    {% if name == 'item_list' or name == 'item_create' or name == 'item_edit' or name == 'supplier_list' or name == 'supplier_create' or name == 'supplier_edit' %}bg-rojoz-50 text-rojoz-700{% endif %}">
+                    Catálogo <i class="ri-arrow-down-s-line text-base"></i>
+                </summary>
+                <div class="absolute right-0 z-[100] mt-2 w-52 rounded-xl border border-gray-100 bg-white py-2 shadow-xl">
+                    <a href="{% url 'warehouse:item_list' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-rojoz-50 hover:text-rojoz-700">Ítems</a>
+                    <a href="{% url 'warehouse:supplier_list' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-rojoz-50 hover:text-rojoz-700">Proveedores</a>
+                    <a href="{% url 'warehouse:worker_list' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-rojoz-50 hover:text-rojoz-700">Trabajadores</a>
+                    <a href="{% url 'warehouse:worker_enroll' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-rojoz-50 hover:text-rojoz-700">Nuevo trabajador</a>
+                </div>
+            </details>
+
+            <details class="wh-dd relative">
+                <summary class="list-none cursor-pointer px-3 py-1.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 flex items-center gap-1 marker:content-none [&::-webkit-details-marker]:hidden
+                    {% if name == 'warehouse_list' or name == 'warehouse_create' or name == 'warehouse_edit' or name == 'cost_center_list' or name == 'keeper_list' or name == 'face_settings' or 'adjustment' in name %}bg-rojoz-50 text-rojoz-700{% endif %}">
+                    Configuración <i class="ri-arrow-down-s-line text-base"></i>
+                </summary>
+                <div class="absolute right-0 z-[100] mt-2 w-56 rounded-xl border border-gray-100 bg-white py-2 shadow-xl">
+                    <a href="{% url 'warehouse:warehouse_list' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-rojoz-50 hover:text-rojoz-700">Bodegas</a>
+                    <a href="{% url 'warehouse:keeper_list' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-rojoz-50 hover:text-rojoz-700">Responsables</a>
+                    <a href="{% url 'warehouse:cost_center_list' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-rojoz-50 hover:text-rojoz-700">Centros de costo</a>
+                    {% if request.user|can_access:"warehouse:face_settings" %}
+                    <a href="{% url 'warehouse:face_settings' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-rojoz-50 hover:text-rojoz-700">Umbrales faciales</a>
+                    {% endif %}
+                    {% if request.user|can_access:"warehouse:adjustment_list" %}
+                    <div class="my-1 border-t border-gray-100"></div>
+                    <a href="{% url 'warehouse:adjustment_list' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-rojoz-50 hover:text-rojoz-700">Ajustes / bajas</a>
+                    {% endif %}
+                </div>
+            </details>
+        </div>
+    </div>
+</nav>
+<script>
+(function () {
+  const nav = document.getElementById('warehouse-subnav');
+  if (!nav) return;
+  const menus = () => nav.querySelectorAll('details.wh-dd');
+
+  // Cerrar los demás al abrir uno
+  menus().forEach((d) => {
+    d.addEventListener('toggle', () => {
+      if (!d.open) return;
+      menus().forEach((other) => {
+        if (other !== d) other.open = false;
+      });
+    });
+  });
+
+  // Click fuera cierra
+  document.addEventListener('click', (e) => {
+    if (nav.contains(e.target)) return;
+    menus().forEach((d) => { d.open = false; });
+  });
+
+  // Escape cierra
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    menus().forEach((d) => { d.open = false; });
+  });
+})();
+</script>
+{% endwith %}

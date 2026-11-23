@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Catálogo{% endblock %}
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6">
+{% include "warehouse/_nav.html" %}
+<div class="flex flex-wrap justify-between items-center gap-3">
+    <h1 class="text-3xl font-bold">Catálogo</h1>
+    <a href="{% url 'warehouse:item_create' %}" class="btn btn-primary btn-sm">Nuevo ítem</a>
+</div>
+
+<form method="get" role="search" class="flex flex-col md:flex-row gap-2 md:items-center">
+    <label class="sr-only" for="filter-tipo">Tipo</label>
+    <select id="filter-tipo" name="tipo" class="select select-bordered select-sm md:w-44" onchange="this.form.submit()">
+        <option value="">Todos los tipos</option>
+        {% for value, label in kinds %}
+        <option value="{{ value }}"{% if tipo == value %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+    <label class="sr-only" for="filter-activo">Estado</label>
+    <select id="filter-activo" name="activo" class="select select-bordered select-sm md:w-40" onchange="this.form.submit()">
+        <option value="">Activos e inactivos</option>
+        <option value="si"{% if activo == "si" %} selected{% endif %}>Solo activos</option>
+        <option value="no"{% if activo == "no" %} selected{% endif %}>Solo inactivos</option>
+    </select>
+    <div class="relative flex-1">
+        <label class="sr-only" for="filter-q">Buscar</label>
+        <i class="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true"></i>
+        <input id="filter-q" type="search" name="q" value="{{ q }}" placeholder="SKU o nombre"
+               class="input input-bordered input-sm w-full pl-9">
+    </div>
+    <button type="submit" class="btn btn-sm btn-neutral-elegant">Buscar</button>
+    {% if filters_active %}
+    <a href="{{ request.path }}" class="btn btn-sm btn-ghost text-gray-600">Limpiar</a>
+    {% endif %}
+</form>
+
+<div class="card bg-white border shadow-sm overflow-hidden"><div class="card-body overflow-x-auto">
+<table class="table w-full text-sm">
+<thead><tr><th>SKU</th><th>Nombre</th><th>Tipo</th><th>Unidad</th><th title="Si el ítem debe devolverse a bodega">Exige reintegro</th><th>Custodia &gt;1</th><th></th></tr></thead>
+<tbody>
+{% for o in items %}
+<tr>
+    <td class="font-semibold">{{ o.sku }}</td>
+    <td>
+        {{ o.name }}
+        {% if not o.is_active %}<span class="badge badge-ghost badge-sm text-gray-500 ml-1">Inactivo</span>{% endif %}
+    </td>
+    <td>{{ o.get_kind_display }}</td>
+    <td>{{ o.unit }}</td>
+    <td>{% if o.requires_return %}Sí{% else %}No{% endif %}</td>
+    <td>{% if o.requires_return %}{% if o.allows_multiple_custody %}Sí{% else %}No{% endif %}{% else %}—{% endif %}</td>
+    <td class="text-right"><a class="btn btn-xs" href="{% url 'warehouse:item_edit' o.pk %}">Editar</a></td>
+</tr>
+{% empty %}
+<tr><td colspan="7" class="py-10 text-center">
+    {% if filters_active %}
+    <p class="text-gray-700 font-medium">Ningún ítem coincide con los filtros.</p>
+    <p class="text-sm text-gray-500 mt-1">Ajusta la búsqueda o <a href="{{ request.path }}" class="link">limpia los filtros</a>.</p>
+    {% else %}
+    <p class="text-gray-700 font-medium">Aún no hay ítems en el catálogo.</p>
+    <p class="text-sm text-gray-500 mt-1">Crea el primero con «Nuevo ítem».</p>
+    {% endif %}
+</td></tr>
+{% endfor %}
+</tbody></table>
+</div>
+{% include "partials/pagination.html" with page_obj=page_obj label="ítems" %}
+</div>
+</div>
+{% endblock %}
