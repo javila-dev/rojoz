@@ -1,4 +1,5 @@
 from django.contrib import admin
+from unfold.admin import ModelAdmin, TabularInline
 from .models import (
     AssetCategory,
     TemplateAsset,
@@ -9,14 +10,14 @@ from .models import (
 
 
 @admin.register(AssetCategory)
-class AssetCategoryAdmin(admin.ModelAdmin):
+class AssetCategoryAdmin(ModelAdmin):
     list_display = ("name", "type", "created_at")
     list_filter = ("type",)
     search_fields = ("name",)
     ordering = ("type", "name")
 
 
-class TemplateAssetInline(admin.TabularInline):
+class TemplateAssetInline(TabularInline):
     model = TemplateAsset
     extra = 0
     fields = ("name", "file", "width", "height")
@@ -24,7 +25,7 @@ class TemplateAssetInline(admin.TabularInline):
 
 
 @admin.register(TemplateAsset)
-class TemplateAssetAdmin(admin.ModelAdmin):
+class TemplateAssetAdmin(ModelAdmin):
     list_display = ("name", "category", "width", "height", "created_at")
     list_filter = ("category__type", "category")
     search_fields = ("name", "description")
@@ -36,13 +37,13 @@ class TemplateAssetAdmin(admin.ModelAdmin):
     )
 
 
-class CustomVariableInline(admin.TabularInline):
+class CustomVariableInline(TabularInline):
     model = CustomVariable
     extra = 1
     fields = ("name", "label", "data_type", "default_value", "is_required")
 
 
-class TemplateVersionInline(admin.TabularInline):
+class TemplateVersionInline(TabularInline):
     model = TemplateVersion
     extra = 0
     fields = ("version_number", "change_description", "created_by", "created_at")
@@ -53,7 +54,7 @@ class TemplateVersionInline(admin.TabularInline):
 
 
 @admin.register(PDFTemplate)
-class PDFTemplateAdmin(admin.ModelAdmin):
+class PDFTemplateAdmin(ModelAdmin):
     list_display = ("name", "slug", "target_path", "status", "page_size", "orientation", "is_active", "updated_at")
     list_filter = ("status", "is_active", "page_size", "orientation")
     search_fields = ("name", "description")
@@ -92,7 +93,7 @@ class PDFTemplateAdmin(admin.ModelAdmin):
 
 
 @admin.register(TemplateVersion)
-class TemplateVersionAdmin(admin.ModelAdmin):
+class TemplateVersionAdmin(ModelAdmin):
     list_display = ("template", "version_number", "change_description", "created_by", "created_at")
     list_filter = ("created_by",)
     search_fields = ("template__name", "change_description")
@@ -101,7 +102,7 @@ class TemplateVersionAdmin(admin.ModelAdmin):
 
 
 @admin.register(CustomVariable)
-class CustomVariableAdmin(admin.ModelAdmin):
+class CustomVariableAdmin(ModelAdmin):
     list_display = ("template", "name", "label", "data_type", "is_required")
     list_filter = ("data_type", "is_required")
     search_fields = ("name", "label", "template__name")
