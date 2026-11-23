@@ -6,13 +6,39 @@
 <div class="max-w-6xl mx-auto space-y-6">
     <div class="flex items-center justify-between">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900" style="font-family:'Playfair Display',serif;">Usuarios</h1>
+            <h1 class="text-2xl font-bold text-gray-900">Usuarios</h1>
             <p class="text-sm text-gray-500">Gestiona cuentas, roles y accesos.</p>
         </div>
         <a href="{% url 'users:user_create' %}" class="btn btn-primary">Nuevo usuario</a>
     </div>
 
-    <div class="card bg-white border border-gray-200 shadow-sm">
+    <form method="get" class="flex flex-col md:flex-row gap-2 md:items-center" role="search">
+        <label class="sr-only" for="filter-rol">Rol</label>
+        <select id="filter-rol" name="rol" class="select select-bordered select-sm md:w-52" onchange="this.form.submit()">
+            <option value="">Todos los roles</option>
+            {% for value, label in role_choices %}
+            <option value="{{ value }}"{% if rol == value %} selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+        <label class="sr-only" for="filter-estado">Estado</label>
+        <select id="filter-estado" name="estado" class="select select-bordered select-sm md:w-44" onchange="this.form.submit()">
+            <option value="">Todos los estados</option>
+            <option value="activo"{% if estado == "activo" %} selected{% endif %}>Activos</option>
+            <option value="inactivo"{% if estado == "inactivo" %} selected{% endif %}>Inactivos</option>
+        </select>
+        <div class="relative flex-1">
+            <label class="sr-only" for="filter-q">Buscar</label>
+            <i class="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true"></i>
+            <input id="filter-q" type="search" name="q" value="{{ query }}" placeholder="Buscar por nombre, usuario o email"
+                   class="input input-bordered input-sm w-full pl-9">
+        </div>
+        <button type="submit" class="btn btn-sm btn-neutral-elegant">Buscar</button>
+        {% if filters_active %}
+        <a href="{% url 'users:user_list' %}" class="btn btn-sm btn-ghost text-gray-600">Limpiar</a>
+        {% endif %}
+    </form>
+
+    <div class="card bg-white border border-gray-200 shadow-sm overflow-hidden">
         <div class="card-body p-0">
             <div class="overflow-x-auto">
                 <table class="table table-zebra w-full text-sm">
@@ -59,12 +85,21 @@
                             </tr>
                         {% empty %}
                             <tr>
-                                <td colspan="5" class="text-center text-gray-500">No hay usuarios.</td>
+                                <td colspan="5" class="py-12 text-center">
+                                    {% if filters_active %}
+                                    <p class="text-gray-700 font-medium">Ningún usuario coincide con los filtros.</p>
+                                    <p class="text-sm text-gray-500 mt-1">Revisa la búsqueda o <a href="{% url 'users:user_list' %}" class="link">limpia los filtros</a>.</p>
+                                    {% else %}
+                                    <p class="text-gray-700 font-medium">No hay usuarios.</p>
+                                    <p class="text-sm text-gray-500 mt-1">Crea el primero con “Nuevo usuario”.</p>
+                                    {% endif %}
+                                </td>
                             </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
+            {% include "partials/pagination.html" with page_obj=page_obj label="usuarios" %}
         </div>
     </div>
 </div>

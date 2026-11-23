@@ -7,7 +7,7 @@
     <div class="flex items-start justify-between gap-6">
         <div>
             <h1 class="text-3xl font-bold text-gray-900">Integraciones</h1>
-            <p class="text-gray-600 mt-2">Configura la API externa para consultar proyectos.</p>
+            <p class="text-gray-600 mt-2">API de proyectos, OpenAI (facturas) y Gemini (evidencia de custodia).</p>
         </div>
         <div class="badge badge-neutral-elegant">Configuración</div>
     </div>
@@ -19,29 +19,116 @@
                 <span>Configuración guardada correctamente.</span>
             </div>
             {% endif %}
+            {% if form.errors %}
+            <div class="alert alert-error text-sm">
+                <span>No se pudo guardar. Revisa los campos marcados abajo.</span>
+            </div>
+            {% endif %}
 
-            <form method="post" class="space-y-4">
+            <form method="post" class="space-y-8">
                 {% csrf_token %}
 
-                <div>
-                    <label class="label">
-                        <span class="label-text font-medium">URL API Proyectos</span>
-                    </label>
-                    {{ form.projects_api_url }}
-                    {% if form.projects_api_url.errors %}
-                    <p class="text-sm text-red-600 mt-1">{{ form.projects_api_url.errors|striptags }}</p>
-                    {% endif %}
-                </div>
+                <section class="space-y-4">
+                    <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-400">API Proyectos</h2>
+                    <div>
+                        <label class="label">
+                            <span class="label-text font-medium">URL API Proyectos</span>
+                        </label>
+                        {{ form.projects_api_url }}
+                        {% if form.projects_api_url.errors %}
+                        <p class="text-sm text-red-600 mt-1">{{ form.projects_api_url.errors|striptags }}</p>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <label class="label">
+                            <span class="label-text font-medium">API Key Proyectos</span>
+                        </label>
+                        {{ form.projects_api_key }}
+                        {% if form.projects_api_key.errors %}
+                        <p class="text-sm text-red-600 mt-1">{{ form.projects_api_key.errors|striptags }}</p>
+                        {% endif %}
+                    </div>
+                </section>
 
-                <div>
-                    <label class="label">
-                        <span class="label-text font-medium">API Key</span>
+                <section class="space-y-4 border-t border-gray-100 pt-6">
+                    <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-400">OpenAI · facturas bodega</h2>
+                    <label class="flex items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 cursor-pointer">
+                        {{ form.openai_enabled }}
+                        <span>
+                            <span class="block text-sm font-medium text-gray-800">Activar lectura con IA</span>
+                            <span class="block text-xs text-gray-500 mt-0.5">Habilita «Extraer con IA» en compras. Requiere API key válida abajo.</span>
+                        </span>
                     </label>
-                    {{ form.projects_api_key }}
-                    {% if form.projects_api_key.errors %}
-                    <p class="text-sm text-red-600 mt-1">{{ form.projects_api_key.errors|striptags }}</p>
-                    {% endif %}
-                </div>
+                    <div>
+                        <label class="label">
+                            <span class="label-text font-medium">Modelo</span>
+                        </label>
+                        {{ form.openai_model }}
+                        <p class="text-xs text-gray-500 mt-1">{{ form.openai_model.help_text }}</p>
+                        {% if form.openai_model.errors %}
+                        <p class="text-sm text-red-600 mt-1">{{ form.openai_model.errors|striptags }}</p>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <label class="label">
+                            <span class="label-text font-medium">API Key</span>
+                        </label>
+                        {{ form.openai_api_key }}
+                        <p class="text-xs text-gray-500 mt-1">{{ form.openai_api_key.help_text }}</p>
+                        {% if form.openai_api_key.errors %}
+                        <p class="text-sm text-red-600 mt-1">{{ form.openai_api_key.errors|striptags }}</p>
+                        {% endif %}
+                        {% if form.instance.openai_enabled and not form.instance.openai_api_key %}
+                        <p class="text-sm text-amber-700 mt-1">OpenAI está marcado activo pero sin key; al guardar se desactivará hasta que pegues una clave.</p>
+                        {% endif %}
+                    </div>
+                </section>
+
+                <section class="space-y-4 border-t border-gray-100 pt-6">
+                    <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-400">Gemini · evidencia de custodia</h2>
+                    <p class="text-sm text-gray-600">
+                        Al reintegrar o marcar reemplazo, Gemini normaliza el nombre del ítem a algo genérico
+                        (sin marca ni medidas) y revisa si la foto parece ese objeto. Si dice que no, duda o falla la API,
+                        el almacenista puede aceptar bajo su responsabilidad.
+                    </p>
+                    <label class="flex items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 cursor-pointer">
+                        {{ form.gemini_enabled }}
+                        <span>
+                            <span class="block text-sm font-medium text-gray-800">Activar verificación visual</span>
+                            <span class="block text-xs text-gray-500 mt-0.5">Se usa en fotos de evidencia de reintegro / reemplazo.</span>
+                        </span>
+                    </label>
+                    <div>
+                        <label class="label">
+                            <span class="label-text font-medium">Modelo</span>
+                        </label>
+                        {{ form.gemini_model }}
+                        <p class="text-xs text-gray-500 mt-1">{{ form.gemini_model.help_text }}</p>
+                        {% if form.gemini_model.errors %}
+                        <p class="text-sm text-red-600 mt-1">{{ form.gemini_model.errors|striptags }}</p>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <label class="label">
+                            <span class="label-text font-medium">Certeza mínima (%)</span>
+                        </label>
+                        {{ form.gemini_min_confidence }}
+                        <p class="text-xs text-gray-500 mt-1">{{ form.gemini_min_confidence.help_text }}</p>
+                        {% if form.gemini_min_confidence.errors %}
+                        <p class="text-sm text-red-600 mt-1">{{ form.gemini_min_confidence.errors|striptags }}</p>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <label class="label">
+                            <span class="label-text font-medium">API Key</span>
+                        </label>
+                        {{ form.gemini_api_key }}
+                        <p class="text-xs text-gray-500 mt-1">{{ form.gemini_api_key.help_text }}</p>
+                        {% if form.gemini_api_key.errors %}
+                        <p class="text-sm text-red-600 mt-1">{{ form.gemini_api_key.errors|striptags }}</p>
+                        {% endif %}
+                    </div>
+                </section>
 
                 <div class="flex items-center justify-end gap-2">
                     <button type="submit" class="btn btn-neutral-elegant">Guardar</button>

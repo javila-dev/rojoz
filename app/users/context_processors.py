@@ -1,4 +1,14 @@
+from django.utils.functional import SimpleLazyObject
+
 from .models import User, RoleCode
+from .navigation import build_navigation
+
+
+def navigation(request):
+    """Menú lateral filtrado por permisos; se calcula solo si la plantilla lo usa."""
+    if not request.user.is_authenticated:
+        return {"nav_sections": []}
+    return {"nav_sections": SimpleLazyObject(lambda: build_navigation(request))}
 
 
 def pending_advisors_count(request):

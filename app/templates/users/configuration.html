@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% load permission_tags %}
+
+{% block title %}Configuración{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6">
+    <div>
+        <h1 class="text-3xl font-bold text-gray-900">Configuración</h1>
+        <p class="text-gray-600 mt-2">Proyectos, usuarios, roles e integraciones del sistema.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {% if request.user|can_access:"inventory:project_list" %}
+        <a href="{% url 'inventory:project_list' %}" class="card bg-white border border-gray-200 shadow-sm hover:border-rojoz-300 transition">
+            <div class="card-body space-y-2">
+                <h3 class="text-xl font-semibold text-gray-900">Proyectos</h3>
+                <p class="text-sm text-gray-600">Proyectos inmobiliarios, tipos de casa y acabados.</p>
+            </div>
+        </a>
+        {% endif %}
+
+        {% if request.user|can_access:"users:user_list" %}
+        <a href="{% url 'users:user_list' %}" class="card bg-white border border-gray-200 shadow-sm hover:border-rojoz-300 transition">
+            <div class="card-body space-y-2">
+                <h3 class="text-xl font-semibold text-gray-900">Usuarios</h3>
+                <p class="text-sm text-gray-600">Altas, ediciones y activación de cuentas del personal.</p>
+            </div>
+        </a>
+        {% endif %}
+
+        {% if request.user|can_access:"users:role_permissions" %}
+        <a href="{% url 'users:role_permissions' %}" class="card bg-white border border-gray-200 shadow-sm hover:border-rojoz-300 transition">
+            <div class="card-body space-y-2">
+                <h3 class="text-xl font-semibold text-gray-900">Roles y permisos</h3>
+                <p class="text-sm text-gray-600">Define qué puede ver y hacer cada rol en el sistema.</p>
+            </div>
+        </a>
+        {% endif %}
+
+        {% if request.user|can_access:"users:integrations" %}
+        <a href="{% url 'users:integrations' %}" class="card bg-white border border-gray-200 shadow-sm hover:border-rojoz-300 transition">
+            <div class="card-body space-y-2">
+                <h3 class="text-xl font-semibold text-gray-900">Integraciones</h3>
+                <p class="text-sm text-gray-600">OpenAI, Gemini y demás servicios externos.</p>
+            </div>
+        </a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

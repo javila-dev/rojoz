@@ -16,6 +16,7 @@ urlpatterns = [
     # Perfil
     path('perfil/', views.profile_view, name='profile'),
     # path('perfil/editar/', views.profile_edit, name='profile_edit'),
+    path('configuracion/', views.configuration_view, name='configuration'),
     path('integraciones/', views.integrations_view, name='integrations'),
     path('roles-permisos/', views.role_permissions_view, name='role_permissions'),
     path('usuarios/', views.user_list_view, name='user_list'),

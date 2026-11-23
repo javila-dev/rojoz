@@ -6,32 +6,173 @@ from .models import IntegrationSettings, User, UserRole, RoleCode
 
 
 class IntegrationSettingsForm(forms.ModelForm):
+    openai_api_key = forms.CharField(
+        label="OpenAI API Key",
+        required=False,
+        widget=forms.TextInput(
+            attrs={
+                "class": "input input-bordered w-full font-mono text-sm",
+                "placeholder": "sk-…",
+                "autocomplete": "off",
+                "spellcheck": "false",
+            }
+        ),
+        help_text="Clave secreta de OpenAI para leer facturas.",
+    )
+    gemini_api_key = forms.CharField(
+        label="Gemini API Key",
+        required=False,
+        widget=forms.TextInput(
+            attrs={
+                "class": "input input-bordered w-full font-mono text-sm",
+                "placeholder": "AIza…",
+                "autocomplete": "off",
+                "spellcheck": "false",
+            }
+        ),
+        help_text="Clave de Google AI Studio / Gemini API.",
+    )
+
     class Meta:
         model = IntegrationSettings
-        fields = ["projects_api_url", "projects_api_key"]
+        fields = [
+            "projects_api_url",
+            "projects_api_key",
+            "openai_enabled",
+            "openai_model",
+            "openai_api_key",
+            "gemini_enabled",
+            "gemini_model",
+            "gemini_min_confidence",
+            "gemini_api_key",
+        ]
         widgets = {
-            "projects_api_url": forms.URLInput(attrs={"class": "input input-bordered w-full"}),
-            "projects_api_key": forms.TextInput(attrs={"class": "input input-bordered w-full"}),
+            "projects_api_url": forms.URLInput(
+                attrs={"class": "input input-bordered w-full"}
+            ),
+            "projects_api_key": forms.TextInput(
+                attrs={"class": "input input-bordered w-full"}
+            ),
+            "openai_enabled": forms.CheckboxInput(attrs={"class": "checkbox"}),
+            "openai_model": forms.Select(
+                attrs={"class": "select select-bordered w-full"}
+            ),
+            "gemini_enabled": forms.CheckboxInput(attrs={"class": "checkbox"}),
+            "gemini_model": forms.Select(
+                attrs={"class": "select select-bordered w-full"}
+            ),
+            "gemini_min_confidence": forms.NumberInput(
+                attrs={
+                    "class": "input input-bordered w-full",
+                    "min": 0,
+                    "max": 100,
+                    "step": 1,
+                }
+            ),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["openai_model"].choices = IntegrationSettings.OpenAIModel.choices
+        self.fields["gemini_model"].choices = IntegrationSettings.GeminiModel.choices
+        # Si había un valor legacy (ej. gpt-4o), mostrarlo hasta que elijan otro.
+        current = ""
+        if self.instance and self.instance.pk:
+            current = (self.instance.openai_model or "").strip()
+        valid = {c[0] for c in IntegrationSettings.OpenAIModel.choices}
+        if current and current not in valid:
+            self.fields["openai_model"].choices = [
+                (current, f"{current} (legado)"),
+                *IntegrationSettings.OpenAIModel.choices,
+            ]
+        g_current = ""
+        if self.instance and self.instance.pk:
+            g_current = (self.instance.gemini_model or "").strip()
+        g_valid = {c[0] for c in IntegrationSettings.GeminiModel.choices}
+        if g_current and g_current not in g_valid:
+            self.fields["gemini_model"].choices = [
+                (g_current, f"{g_current} (legado)"),
+                *IntegrationSettings.GeminiModel.choices,
+            ]
+        if self.instance and self.instance.pk and self.instance.openai_api_key:
+            self.fields["openai_api_key"].help_text = (
+                "Key guardada (visible). Puedes editarla o dejarla igual."
+            )
+        else:
+            self.fields["openai_api_key"].help_text = (
+                "Obligatoria si activas la lectura con IA. Consíguela en platform.openai.com."
+            )
+            self.fields["openai_api_key"].widget.attrs["placeholder"] = "sk-…"
+        if self.instance and self.instance.pk and self.instance.gemini_api_key:
+            self.fields["gemini_api_key"].help_text = (
+                "Key guardada (visible). Puedes editarla o dejarla igual."
+            )
+        else:
+            self.fields["gemini_api_key"].help_text = (
+                "Obligatoria si activas la verificación visual. Consíguela en aistudio.google.com."
+            )
+            self.fields["gemini_api_key"].widget.attrs["placeholder"] = "AIza…"
+
+        # Mostrar el valor guardado en el input (texto visible).
+        if self.instance and self.instance.pk and not self.is_bound:
+            if self.instance.openai_api_key:
+                self.fields["openai_api_key"].initial = self.instance.openai_api_key
+            if self.instance.gemini_api_key:
+                self.fields["gemini_api_key"].initial = self.instance.gemini_api_key
+
+    def clean_openai_api_key(self):
+        return (self.cleaned_data.get("openai_api_key") or "").strip()
+
+    def clean_gemini_api_key(self):
+        return (self.cleaned_data.get("gemini_api_key") or "").strip()
+
+    def clean(self):
+        cleaned = super().clean()
+        # OpenAI: si marcan activo sin key, desactivar en vez de tumbar todo el form.
+        enabled = cleaned.get("openai_enabled")
+        key = (cleaned.get("openai_api_key") or "").strip()
+        if enabled and not key:
+            cleaned["openai_enabled"] = False
+
+        g_enabled = cleaned.get("gemini_enabled")
+        g_key = (cleaned.get("gemini_api_key") or "").strip()
+        if g_enabled and not g_key:
+            self.add_error(
+                "gemini_api_key",
+                "Ingresa una API key de Gemini para activar la verificación visual.",
+            )
+        conf = cleaned.get("gemini_min_confidence")
+        if conf is not None and (conf < 0 or conf > 100):
+            self.add_error("gemini_min_confidence", "Debe estar entre 0 y 100.")
+        return cleaned
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        # Texto visible: lo que está en el formulario es la fuente de verdad.
+        obj.openai_api_key = (self.cleaned_data.get("openai_api_key") or "").strip()
+        obj.gemini_api_key = (self.cleaned_data.get("gemini_api_key") or "").strip()
+        if not (obj.openai_model or "").strip():
+            obj.openai_model = IntegrationSettings.OpenAIModel.GPT_56_TERRA
+        if not (obj.gemini_model or "").strip():
+            obj.gemini_model = IntegrationSettings.GeminiModel.GEMINI_25_FLASH
+        if commit:
+            obj.save()
+        return obj
 
 
 class PublicAdvisorRegisterForm(forms.ModelForm):
     password1 = forms.CharField(
-        label="Contrasena",
-        widget=forms.PasswordInput(attrs={
-            "class": "input input-bordered w-full",
-            "placeholder": "Minimo 8 caracteres",
-            "id": "id_password1",
-        }),
+        label="Contraseña",
+        widget=forms.PasswordInput(
+            attrs={"class": "input input-bordered w-full"}
+        ),
         required=True,
     )
     password2 = forms.CharField(
-        label="Confirmar contrasena",
-        widget=forms.PasswordInput(attrs={
-            "class": "input input-bordered w-full",
-            "placeholder": "Repite tu contrasena",
-            "id": "id_password2",
-        }),
+        label="Confirmar contraseña",
+        widget=forms.PasswordInput(
+            attrs={"class": "input input-bordered w-full"}
+        ),
         required=True,
     )
 
@@ -48,31 +189,27 @@ class PublicAdvisorRegisterForm(forms.ModelForm):
             "account_number",
         ]
         widgets = {
-            "first_name": forms.TextInput(attrs={"class": "input input-bordered w-full", "placeholder": "ej. Juan Carlos"}),
-            "last_name": forms.TextInput(attrs={"class": "input input-bordered w-full", "placeholder": "ej. Perez Lopez"}),
-            "email": forms.EmailInput(attrs={"class": "input input-bordered w-full", "placeholder": "ej. juan@email.com"}),
-            "phone": forms.TextInput(attrs={"class": "input input-bordered w-full", "placeholder": "ej. 3001234567"}),
-            "nit": forms.TextInput(attrs={"class": "input input-bordered w-full", "placeholder": "ej. 900123456-7"}),
+            "first_name": forms.TextInput(attrs={"class": "input input-bordered w-full"}),
+            "last_name": forms.TextInput(attrs={"class": "input input-bordered w-full"}),
+            "email": forms.EmailInput(attrs={"class": "input input-bordered w-full"}),
+            "phone": forms.TextInput(attrs={"class": "input input-bordered w-full"}),
+            "nit": forms.TextInput(attrs={"class": "input input-bordered w-full"}),
             "bank_code": forms.Select(attrs={"class": "select select-bordered w-full"}),
             "account_type": forms.Select(attrs={"class": "select select-bordered w-full"}),
-            "account_number": forms.TextInput(attrs={"class": "input input-bordered w-full", "placeholder": "Sin guiones ni espacios"}),
+            "account_number": forms.TextInput(attrs={"class": "input input-bordered w-full"}),
         }
 
     def _generate_username(self, email, first_name, last_name):
-        """Genera un username unico a partir del email."""
-        # Usar la parte antes del @ del email
-        base = email.split("@")[0] if email else ""
-        if not base and first_name and last_name:
-            # Fallback: primera letra del nombre + apellido
-            base = (first_name[0] + last_name).lower()
-        base = re.sub(r"[^a-zA-Z0-9._-]", "", base)[:30] or "usuario"
-
-        username = base
-        counter = 1
-        while User.objects.filter(username=username).exists():
-            username = f"{base}{counter}"
-            counter += 1
-        return username
+        local = (email or "").split("@")[0]
+        if not local:
+            local = f"{first_name or ''}{last_name or ''}"
+        base = re.sub(r"[^a-z0-9._-]", "", local.lower()) or "asesor"
+        candidate = base
+        suffix = 1
+        while User.objects.filter(username=candidate).exists():
+            candidate = f"{base}{suffix}"
+            suffix += 1
+        return candidate
 
     def clean(self):
         cleaned = super().clean()
@@ -85,10 +222,12 @@ class PublicAdvisorRegisterForm(forms.ModelForm):
     def save(self, commit=True):
         user = super().save(commit=False)
         user.username = self._generate_username(
-            user.email, user.first_name, user.last_name,
+            self.cleaned_data.get("email"),
+            self.cleaned_data.get("first_name"),
+            self.cleaned_data.get("last_name"),
         )
         user.role = RoleCode.ASESOR
-        user.is_active = False  # Requiere aprobacion de un admin
+        user.is_active = False
         user.set_password(self.cleaned_data["password1"])
         if commit:
             user.save()
@@ -98,8 +237,6 @@ class PublicAdvisorRegisterForm(forms.ModelForm):
 
 
 class ProfileForm(forms.ModelForm):
-    """Formulario para que el usuario edite su propio perfil."""
-
     class Meta:
         model = User
         fields = [
@@ -117,38 +254,33 @@ class ProfileForm(forms.ModelForm):
             "first_name": forms.TextInput(attrs={"class": "input input-bordered w-full"}),
             "last_name": forms.TextInput(attrs={"class": "input input-bordered w-full"}),
             "email": forms.EmailInput(attrs={"class": "input input-bordered w-full"}),
-            "phone": forms.TextInput(attrs={"class": "input input-bordered w-full", "placeholder": "ej. 3001234567"}),
-            "nit": forms.TextInput(attrs={"class": "input input-bordered w-full", "placeholder": "ej. 900123456-7"}),
+            "phone": forms.TextInput(attrs={"class": "input input-bordered w-full"}),
+            "nit": forms.TextInput(attrs={"class": "input input-bordered w-full"}),
             "photo": forms.ClearableFileInput(attrs={"class": "file-input file-input-bordered w-full"}),
             "bank_code": forms.Select(attrs={"class": "select select-bordered w-full"}),
             "account_type": forms.Select(attrs={"class": "select select-bordered w-full"}),
-            "account_number": forms.TextInput(attrs={"class": "input input-bordered w-full", "placeholder": "Sin guiones ni espacios"}),
+            "account_number": forms.TextInput(attrs={"class": "input input-bordered w-full"}),
         }
 
 
 class ChangePasswordForm(forms.Form):
-    """Formulario para cambio de contrasena desde el perfil."""
     current_password = forms.CharField(
-        label="Contrasena actual",
-        widget=forms.PasswordInput(attrs={
-            "class": "input input-bordered w-full",
-            "autocomplete": "current-password",
-        }),
+        label="Contraseña actual",
+        widget=forms.PasswordInput(
+            attrs={"class": "input input-bordered w-full"}
+        ),
     )
     new_password1 = forms.CharField(
-        label="Nueva contrasena",
-        widget=forms.PasswordInput(attrs={
-            "class": "input input-bordered w-full",
-            "placeholder": "Minimo 8 caracteres",
-            "autocomplete": "new-password",
-        }),
+        label="Nueva contraseña",
+        widget=forms.PasswordInput(
+            attrs={"class": "input input-bordered w-full"}
+        ),
     )
     new_password2 = forms.CharField(
-        label="Confirmar nueva contrasena",
-        widget=forms.PasswordInput(attrs={
-            "class": "input input-bordered w-full",
-            "autocomplete": "new-password",
-        }),
+        label="Confirmar nueva contraseña",
+        widget=forms.PasswordInput(
+            attrs={"class": "input input-bordered w-full"}
+        ),
     )
 
     def __init__(self, user, *args, **kwargs):
@@ -156,58 +288,58 @@ class ChangePasswordForm(forms.Form):
         super().__init__(*args, **kwargs)
 
     def clean_current_password(self):
-        current = self.cleaned_data.get("current_password")
-        if not self.user.check_password(current):
-            raise forms.ValidationError("La contrasena actual es incorrecta.")
-        return current
+        password = self.cleaned_data.get("current_password")
+        if not self.user.check_password(password):
+            raise forms.ValidationError("La contraseña actual no es correcta.")
+        return password
 
     def clean(self):
         cleaned = super().clean()
         p1 = cleaned.get("new_password1")
         p2 = cleaned.get("new_password2")
         if p1 and p2 and p1 != p2:
-            self.add_error("new_password2", "Las contrasenas no coinciden.")
+            self.add_error("new_password2", "Las contraseñas no coinciden.")
         if p1 and len(p1) < 8:
-            self.add_error("new_password1", "La contrasena debe tener al menos 8 caracteres.")
+            self.add_error("new_password1", "La contraseña debe tener al menos 8 caracteres.")
         return cleaned
 
 
 class LoginForm(forms.Form):
     identifier = forms.CharField(
         label="Usuario o correo",
-        widget=forms.TextInput(attrs={
-            "class": "input input-bordered w-full",
-            "placeholder": "tu_usuario o correo@email.com",
-            "autocomplete": "username",
-        }),
+        widget=forms.TextInput(
+            attrs={
+                "class": "input",
+                "placeholder": "usuario@correo.com",
+                "autocomplete": "username",
+            }
+        ),
     )
     password = forms.CharField(
-        label="Contrasena",
-        widget=forms.PasswordInput(attrs={
-            "class": "input input-bordered w-full",
-            "placeholder": "Tu contrasena",
-            "autocomplete": "current-password",
-        }),
+        label="Contraseña",
+        widget=forms.PasswordInput(
+            attrs={
+                "class": "input",
+                "placeholder": "••••••••",
+                "autocomplete": "current-password",
+            }
+        ),
     )
 
 
 class UserCreateForm(forms.ModelForm):
     password1 = forms.CharField(
-        label="Contrasena",
-        widget=forms.PasswordInput(attrs={
-            "class": "input input-bordered w-full",
-            "placeholder": "Minimo 8 caracteres",
-            "autocomplete": "new-password",
-        }),
+        label="Contraseña",
+        widget=forms.PasswordInput(
+            attrs={"class": "input input-bordered w-full"}
+        ),
         required=True,
     )
     password2 = forms.CharField(
-        label="Confirmar contrasena",
-        widget=forms.PasswordInput(attrs={
-            "class": "input input-bordered w-full",
-            "placeholder": "Repite la contrasena",
-            "autocomplete": "new-password",
-        }),
+        label="Confirmar contraseña",
+        widget=forms.PasswordInput(
+            attrs={"class": "input input-bordered w-full"}
+        ),
         required=True,
     )
 
@@ -239,7 +371,7 @@ class UserCreateForm(forms.ModelForm):
         password1 = cleaned.get("password1")
         password2 = cleaned.get("password2")
         if password1 and password2 and password1 != password2:
-            self.add_error("password2", "Las contrasenas no coinciden.")
+            self.add_error("password2", "Las contraseñas no coinciden.")
         return cleaned
 
     def save(self, commit=True):
@@ -253,21 +385,17 @@ class UserCreateForm(forms.ModelForm):
 
 class UserEditForm(forms.ModelForm):
     password1 = forms.CharField(
-        label="Nueva contrasena",
-        widget=forms.PasswordInput(attrs={
-            "class": "input input-bordered w-full",
-            "placeholder": "Dejar en blanco para mantener",
-            "autocomplete": "new-password",
-        }),
+        label="Nueva contraseña",
+        widget=forms.PasswordInput(
+            attrs={"class": "input input-bordered w-full"}
+        ),
         required=False,
     )
     password2 = forms.CharField(
-        label="Confirmar contrasena",
-        widget=forms.PasswordInput(attrs={
-            "class": "input input-bordered w-full",
-            "placeholder": "Repite la contrasena",
-            "autocomplete": "new-password",
-        }),
+        label="Confirmar nueva contraseña",
+        widget=forms.PasswordInput(
+            attrs={"class": "input input-bordered w-full"}
+        ),
         required=False,
     )
 
@@ -298,8 +426,8 @@ class UserEditForm(forms.ModelForm):
         cleaned = super().clean()
         password1 = cleaned.get("password1")
         password2 = cleaned.get("password2")
-        if (password1 or password2) and password1 != password2:
-            self.add_error("password2", "Las contrasenas no coinciden.")
+        if password1 and password2 and password1 != password2:
+            self.add_error("password2", "Las contraseñas no coinciden.")
         return cleaned
 
     def save(self, commit=True):

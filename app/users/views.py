@@ -9,6 +9,8 @@ from django.utils import timezone
 from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
 
+from core.listing import paginate, search
+
 from .forms import (
     ChangePasswordForm,
     IntegrationSettingsForm,
@@ -32,6 +34,11 @@ def _is_manager_or_admin(user) -> bool:
     if user.is_superuser:
         return True
     return user.has_role(RoleCode.GERENTE) or user.has_role(RoleCode.ADMIN)
+
+
+def _can_manage_user(actor, target) -> bool:
+    """Solo un superusuario puede modificar a otro superusuario."""
+    return actor.is_superuser or not target.is_superuser
 
 
 def landing_view(request):
@@ -127,31 +134,30 @@ def dashboard_view(request):
     Vista principal del dashboard con estadísticas reales.
     El contenido visible depende del rol del usuario.
     """
-    from inventory.models import Project
-    from sales.models import Sale
-    from finance.models import PaymentReceipt
+    from sales.models import Sale, SaleLog
+    from finance.models import PaymentReceipt, TreasuryReceiptRequestState
+    from .navigation import allowed_permission_keys
 
     user = request.user
     now = timezone.now()
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
-    # ── Flags de visibilidad por rol ──────────────────────────────
-    is_admin = user.is_superuser or user.has_role(RoleCode.ADMIN)
-    is_gerente = user.has_role(RoleCode.GERENTE)
-    is_director = user.has_role(RoleCode.DIRECTOR)
-    is_supervisor = user.has_role(RoleCode.SUPERVISOR)
-    is_tesoreria = user.has_role(RoleCode.TESORERIA)
+    # ── Visibilidad por permisos reales (misma fuente que el sidebar) ──
+    allowed = allowed_permission_keys(user)
+
+    def can(key):
+        return allowed is None or key in allowed
+
     is_asesor = user.has_role(RoleCode.ASESOR)
     is_cliente = user.has_role(RoleCode.CLIENTE)
+    sees_all_sales = user.is_superuser or any(
+        user.has_role(r)
+        for r in (RoleCode.ADMIN, RoleCode.GERENTE, RoleCode.DIRECTOR, RoleCode.SUPERVISOR, RoleCode.TESORERIA)
+    )
+    only_own_sales = is_asesor and not sees_all_sales
 
-    can_see_all = is_admin or is_gerente
-    can_see_sales = can_see_all or is_director or is_supervisor or is_asesor
-    can_see_finance = can_see_all or is_tesoreria
-    can_see_commissions = can_see_all or is_director or is_tesoreria
-    can_see_projects = can_see_all or is_director or is_supervisor
-    can_see_documents = can_see_all or is_director or is_supervisor
-    can_see_users = can_see_all
-    can_see_roles = is_admin
+    can_see_sales = can("sales:contract_list")
+    can_see_finance = can("finance:receipt_project_select")
 
     missing_profile_fields = []
     if is_asesor:
@@ -169,45 +175,95 @@ def dashboard_view(request):
     ctx = {
         "can_see_sales": can_see_sales,
         "can_see_finance": can_see_finance,
-        "can_see_commissions": can_see_commissions,
-        "can_see_projects": can_see_projects,
-        "can_see_documents": can_see_documents,
-        "can_see_users": can_see_users,
-        "can_see_roles": can_see_roles,
-        "can_see_all": can_see_all,
-        "is_asesor": is_asesor,
+        "can_new_sale": can("sales:sale_flow_project"),
+        "can_new_issue": can("warehouse:issue_create"),
+        "only_own_sales": only_own_sales,
         "is_cliente": is_cliente,
         "show_advisor_profile_alert": bool(missing_profile_fields),
         "advisor_missing_profile_fields": missing_profile_fields,
     }
 
-    # ── Proyectos ─────────────────────────────────────────────────
-    if can_see_projects:
-        ctx["projects_count"] = Project.objects.count()
+    contract_list_url = reverse("sales:contract_list")
+    tasks = []  # Bandeja "Mis pendientes": solo lo que el usuario puede abrir
 
     # ── Ventas ────────────────────────────────────────────────────
     if can_see_sales:
         sales_qs = Sale.objects.all()
         # Asesor solo ve sus propias ventas (las que creó)
-        if is_asesor and not can_see_all:
+        if only_own_sales:
             sales_qs = sales_qs.filter(
-                logs__created_by=user, logs__action="CREATED"
+                logs__created_by=user, logs__action=SaleLog.Action.CREATED
             ).distinct()
 
-        ctx["sales_total"] = sales_qs.count()
         ctx["sales_pending"] = sales_qs.filter(status=Sale.State.PENDING).count()
         ctx["sales_approved"] = sales_qs.filter(status=Sale.State.APPROVED).count()
         ctx["sales_this_month"] = sales_qs.filter(date_created__gte=month_start).count()
+        # Mismas reglas que las pestañas de la lista de contratos
+        visible_states = []
+        if can("sales:contract_list_pending"):
+            visible_states.append(Sale.State.PENDING)
+        if can("sales:contract_list_approved"):
+            visible_states += [Sale.State.APPROVED, Sale.State.DESISTED, Sale.State.ANNULLED, Sale.State.CANCELLED]
         ctx["recent_sales"] = (
-            sales_qs.select_related("project", "house_type")
+            sales_qs.filter(status__in=visible_states)
+            .select_related("project", "house_type")
             .order_by("-date_created")[:5]
         )
+        if can("sales:contract_list_pending"):
+            tasks.append({
+                "label": "Mis contratos pendientes de aprobación" if only_own_sales else "Contratos por aprobar",
+                "count": ctx["sales_pending"],
+                "url": f"{contract_list_url}?proyecto=todos&estado=pendientes",
+                "icon": "ri-file-list-3-line",
+            })
+
+    # ── Solicitudes de recibo ─────────────────────────────────────
+    if can("finance:receipt_request_list"):
+        requests_qs = TreasuryReceiptRequestState.objects.exclude(
+            status=TreasuryReceiptRequestState.Status.RECEIPT_CREATED
+        )
+        if not sees_all_sales:
+            requests_qs = requests_qs.filter(created_by=user)
+        tasks.append({
+            "label": "Mis solicitudes de recibo en trámite" if not sees_all_sales else "Solicitudes de recibo por revisar",
+            "count": requests_qs.count(),
+            "url": reverse("finance:receipt_request_list"),
+            "icon": "ri-inbox-archive-line",
+        })
+
+    # ── Registros de asesores ─────────────────────────────────────
+    if can("users:advisor_pending_list"):
+        tasks.append({
+            "label": "Registros de asesores por aprobar",
+            "count": User.objects.filter(role=RoleCode.ASESOR, is_active=False).count(),
+            "url": reverse("users:advisor_pending_list"),
+            "icon": "ri-user-add-line",
+        })
+
+    # ── Bodega: documentos en borrador ────────────────────────────
+    if can("warehouse:dashboard"):
+        from warehouse.models import IssueVoucher, PurchaseInvoice
+
+        if can("warehouse:issue_list"):
+            tasks.append({
+                "label": "Entregas en borrador",
+                "count": IssueVoucher.objects.filter(status=IssueVoucher.Status.DRAFT).count(),
+                "url": reverse("warehouse:issue_list"),
+                "icon": "ri-hand-heart-line",
+            })
+        if can("warehouse:purchase_list"):
+            tasks.append({
+                "label": "Ingresos de compra sin confirmar",
+                "count": PurchaseInvoice.objects.filter(status=PurchaseInvoice.Status.DRAFT).count(),
+                "url": reverse("warehouse:purchase_list"),
+                "icon": "ri-shopping-cart-2-line",
+            })
+
+    ctx["tasks"] = tasks
+    ctx["tasks_open"] = sum(1 for t in tasks if t["count"])
 
     # ── Finanzas / Recaudos ───────────────────────────────────────
     if can_see_finance:
-        ctx["receipts_total"] = (
-            PaymentReceipt.objects.aggregate(total=Sum("amount"))["total"] or 0
-        )
         ctx["receipts_this_month"] = (
             PaymentReceipt.objects.filter(date_registered__gte=month_start)
             .aggregate(total=Sum("amount"))["total"] or 0
@@ -220,14 +276,13 @@ def dashboard_view(request):
             .order_by("-date_registered")[:5]
         )
 
-    # ── Usuarios / Admin ──────────────────────────────────────────
-    if can_see_users:
-        ctx["users_count"] = User.objects.filter(is_active=True).count()
-        ctx["advisors_pending"] = User.objects.filter(
-            role=RoleCode.ASESOR, is_active=False
-        ).count()
-
     return render(request, "users/dashboard.html", ctx)
+
+
+@login_required
+def configuration_view(request):
+    """Hub de configuración: proyectos, usuarios, roles e integraciones."""
+    return render(request, "users/configuration.html")
 
 
 @login_required
@@ -274,9 +329,18 @@ def advisor_pending_list(request):
         User.objects.filter(role=RoleCode.ASESOR, is_active=False)
         .order_by("-date_joined")
     )
+    pending_count = pending.count()
+    query = (request.GET.get("q") or "").strip()
+    pending = search(
+        pending, query, ["first_name", "last_name", "username", "email", "phone", "nit"]
+    )
+    page_obj = paginate(request, pending)
     return render(request, "users/advisor_pending_list.html", {
-        "pending": pending,
-        "pending_count": pending.count(),
+        "pending": page_obj.object_list,
+        "page_obj": page_obj,
+        "pending_count": pending_count,
+        "query": query,
+        "filters_active": bool(query),
     })
 
 
@@ -348,7 +412,37 @@ def user_list_view(request):
         return redirect("users:dashboard")
 
     users = User.objects.all().order_by("last_name", "first_name", "username")
-    return render(request, "users/user_list.html", {"users": users})
+    total_count = users.count()
+
+    query = (request.GET.get("q") or "").strip()
+    rol = (request.GET.get("rol") or "").strip()
+    if rol not in RoleCode.values:
+        rol = ""
+    estado = (request.GET.get("estado") or "").strip()
+    if estado not in ("activo", "inactivo"):
+        estado = ""
+
+    if rol:
+        users = users.filter(Q(role=rol) | Q(roles__code=rol)).distinct()
+    if estado:
+        users = users.filter(is_active=(estado == "activo"))
+    users = search(users, query, ["first_name", "last_name", "username", "email"])
+    page_obj = paginate(request, users)
+
+    return render(
+        request,
+        "users/user_list.html",
+        {
+            "users": page_obj.object_list,
+            "page_obj": page_obj,
+            "query": query,
+            "rol": rol,
+            "estado": estado,
+            "role_choices": RoleCode.choices,
+            "filters_active": bool(query or rol or estado),
+            "total_count": total_count,
+        },
+    )
 
 
 @login_required
@@ -373,6 +467,10 @@ def user_edit_view(request, pk):
         return redirect("users:dashboard")
 
     user_obj = get_object_or_404(User, pk=pk)
+    if not _can_manage_user(request.user, user_obj):
+        messages.error(request, "No tienes permiso para editar un superusuario.")
+        return redirect("users:user_list")
+
     if request.method == "POST":
         form = UserEditForm(request.POST, instance=user_obj)
         if form.is_valid():
@@ -392,6 +490,9 @@ def user_toggle_active(request, pk):
 
     user_obj = get_object_or_404(User, pk=pk)
     if user_obj.pk == request.user.pk:
+        return redirect("users:user_list")
+    if not _can_manage_user(request.user, user_obj):
+        messages.error(request, "No tienes permiso para modificar un superusuario.")
         return redirect("users:user_list")
 
     user_obj.is_active = not user_obj.is_active

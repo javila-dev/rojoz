@@ -14,7 +14,7 @@
     <!-- Tipografías -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Gudea:wght@400;700&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/remixicon@4.6.0/fonts/remixicon.css" rel="stylesheet" />
 
     <!-- HTMX -->
@@ -25,6 +25,10 @@
         tailwind.config = {
             theme: {
                 extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
+                        brand: ['"Playfair Display"', 'Georgia', 'serif'],
+                    },
                     colors: {
                         // Paleta corporativa Rojoz
                         'rojoz': {
@@ -54,223 +58,116 @@
         }
     </script>
 
+    <!-- Color primario de daisyUI = rojo Rojoz (en <head> para evitar el destello del morado por defecto) -->
+    <style>
+        :root, [data-theme="light"] {
+            --p: 48.62% 0.1419 30.05;   /* #A0372A */
+            --pc: 100% 0 0;
+            --pf: 39.48% 0.1207 31.45;  /* #7A2518 */
+        }
+    </style>
+
     {% block extra_head %}{% endblock %}
 </head>
 <body class="bg-soft-wash text-ink font-sans">
 
     <!-- ═══ Mobile top bar ═══ -->
-    <header class="lg:hidden sticky top-0 z-50 bg-gradient-to-r from-rojoz-600 to-rojoz-500 px-4 py-3 flex items-center justify-between shadow-lg">
-        <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-lg overflow-hidden">
-                <img src="https://s3.2asoft.tech/construccion-media-public/document_assets/logo rojoz.png"
-                     alt="Rojoz" class="w-full h-full object-contain brightness-0 invert">
-            </div>
-            <span class="text-lg font-bold text-white" style="font-family: 'Playfair Display', serif;">Rojoz</span>
-        </div>
-        <button onclick="toggleSidebar()" class="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors" aria-label="Menu">
-            <i class="ri-menu-3-line text-xl" id="menu-icon"></i>
+    <header class="lg:hidden sticky top-0 z-50 bg-rojoz-600 px-4 h-14 flex items-center justify-between">
+        <a href="{% url 'users:dashboard' %}" class="flex items-center gap-2.5">
+            <img src="https://s3.2asoft.tech/construccion-media-public/document_assets/logo rojoz.png"
+                 alt="" class="w-7 h-7 object-contain brightness-0 invert">
+            <span class="brand-wordmark text-lg text-white">Rojoz</span>
+        </a>
+        <button type="button" onclick="toggleSidebar()" class="w-10 h-10 rounded-lg flex items-center justify-center text-white hover:bg-white/10 transition-colors" aria-label="Abrir menú" aria-controls="sidebar" aria-expanded="false" id="menu-toggle">
+            <i class="ri-menu-3-line text-xl" id="menu-icon" aria-hidden="true"></i>
         </button>
     </header>
 
     <!-- ═══ Sidebar overlay (mobile) ═══ -->
-    <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-[60] hidden lg:hidden" onclick="toggleSidebar()"></div>
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black/40 z-[60] hidden lg:hidden" onclick="toggleSidebar()"></div>
 
     <!-- ═══ Sidebar ═══ -->
-    <aside id="sidebar" class="fixed inset-y-0 left-0 z-[70] w-72 lg:w-[18rem] bg-white border-r border-rojoz-200/40 h-screen h-[100dvh] overflow-hidden shadow-xl lg:shadow-none flex flex-col transform -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out">
+    <aside id="sidebar" class="fixed inset-y-0 left-0 z-[70] w-72 lg:w-[17rem] bg-white border-r border-gray-200 h-screen h-[100dvh] overflow-hidden shadow-xl lg:shadow-none flex flex-col transform -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-out">
 
-                <!-- Logo (desktop only) -->
-                <div class="hidden lg:block relative z-20 px-6 py-8 border-b border-rojoz-100/30 bg-gradient-to-br from-rojoz-600 via-rojoz-500 to-rojoz-400 overflow-hidden">
-                    <!-- Patrón decorativo de fondo -->
-                    <div class="absolute inset-0 opacity-10">
-                        <div class="absolute top-0 right-0 w-32 h-32 bg-white rounded-full -translate-y-1/2 translate-x-1/2"></div>
-                        <div class="absolute bottom-0 left-0 w-24 h-24 bg-white rounded-full translate-y-1/2 -translate-x-1/2"></div>
-                    </div>
+        <!-- Marca (desktop) -->
+        <a href="{% url 'users:dashboard' %}" class="hidden lg:flex items-center gap-3 px-5 h-16 border-b border-gray-100 shrink-0">
+            <span class="w-9 h-9 rounded-lg bg-rojoz-600 flex items-center justify-center">
+                <img src="https://s3.2asoft.tech/construccion-media-public/document_assets/logo rojoz.png" alt="" class="w-6 h-6 object-contain brightness-0 invert">
+            </span>
+            <span class="leading-tight">
+                <span class="brand-wordmark block text-xl text-rojoz-700">Rojoz</span>
+                <span class="block text-xs text-gray-500">Constructora &amp; Ventas</span>
+            </span>
+        </a>
 
-                    <!-- Contenido del logo -->
-                    <div class="relative z-10">
-                        <div class="flex items-center gap-3 mb-2">
-                            <!-- Icono corporativo -->
-                            <div class="w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden">
-                                <img src="https://s3.2asoft.tech/construccion-media-public/document_assets/logo rojoz.png" alt="Rojoz" class="w-full h-full object-contain brightness-0 invert">
-                            </div>
-                            <div>
-                                <h1 class="text-2xl font-bold text-white tracking-tight drop-shadow-sm" style="font-family: 'Playfair Display', serif;">Rojoz</h1>
-                            </div>
-                        </div>
-                        <p class="text-sm text-white/90 font-medium pl-1">Constructora & Ventas</p>
-                    </div>
-                </div>
-
-                <!-- Mobile: close button + user header -->
-                <div class="lg:hidden px-4 pt-4 pb-3 border-b border-gray-100 flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 rounded-full bg-gradient-to-br from-rojoz-600 to-rojoz-400 text-white flex items-center justify-center text-sm font-semibold">
-                            {{ request.user.first_name|default:request.user.username|slice:":1"|upper }}
-                        </div>
-                        <div class="min-w-0">
-                            <div class="text-sm font-semibold text-gray-800 truncate">
-                                {% if request.user.get_full_name %}
-                                    {{ request.user.get_full_name }}
-                                {% else %}
-                                    {{ request.user.username }}
-                                {% endif %}
-                            </div>
-                            <div class="text-xs text-gray-500">{{ request.user.get_role_display }}</div>
-                        </div>
-                    </div>
-                    <button onclick="toggleSidebar()" class="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors">
-                        <i class="ri-close-line text-lg"></i>
-                    </button>
-                </div>
-
-                <!-- Navegación -->
-                <nav class="p-4 space-y-2 flex-1 min-h-0 overflow-y-auto">
-
-                    <!-- Dashboard -->
-                    {% if request.user|can_access:"users:dashboard" %}
-                    <a href="{% url 'users:dashboard' %}" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gradient-to-r hover:from-rojoz-50 hover:to-rojoz-50/50 transition-all duration-200 group border-l-3 border-transparent hover:border-rojoz-500">
-                        <i class="ri-home-5-line text-lg leading-none text-gray-600 group-hover:text-rojoz-600 transition-colors"></i>
-                        <span class="text-gray-700 group-hover:text-rojoz-700 font-medium tracking-tight transition-colors">Dashboard</span>
-                    </a>
-                    {% endif %}
-
-                    <!-- Inventario -->
-                    {% if request.user|can_access:"inventory:project_list" %}
-                    <a href="{% url 'inventory:project_list' %}" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gradient-to-r hover:from-rojoz-50 hover:to-rojoz-50/50 transition-all duration-200 group border-l-3 border-transparent hover:border-rojoz-500">
-                        <i class="ri-building-2-line text-lg leading-none text-gray-600 group-hover:text-rojoz-600 transition-colors"></i>
-                        <span class="text-gray-700 group-hover:text-rojoz-700 font-medium tracking-tight transition-colors">Proyectos</span>
-                    </a>
-                    {% endif %}
-
-                    <!-- Ventas -->
-                    {% if request.user|can_access:"sales:contract_project_select" %}
-                    <a href="{% url 'sales:contract_project_select' %}" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gradient-to-r hover:from-rojoz-50 hover:to-rojoz-50/50 transition-all duration-200 group border-l-3 border-transparent hover:border-rojoz-500">
-                        <i class="ri-file-list-3-line text-lg leading-none text-gray-600 group-hover:text-rojoz-600 transition-colors"></i>
-                        <span class="text-gray-700 group-hover:text-rojoz-700 font-medium tracking-tight transition-colors">Ventas</span>
-                    </a>
-                    {% endif %}
-
-                    {% if request.user|can_access:"sales:contract_party_list" %}
-                    <a href="{% url 'sales:contract_party_list' %}" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gradient-to-r hover:from-rojoz-50 hover:to-rojoz-50/50 transition-all duration-200 group border-l-3 border-transparent hover:border-rojoz-500">
-                        <i class="ri-team-line text-lg leading-none text-gray-600 group-hover:text-rojoz-600 transition-colors"></i>
-                        <span class="text-gray-700 group-hover:text-rojoz-700 font-medium tracking-tight transition-colors">Terceros</span>
-                    </a>
-                    {% endif %}
-
-                    <!-- Finanzas -->
-                    {% if request.user|can_access:"finance:payment_list" %}
-                    <a href="{% url 'finance:payment_list' %}" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gradient-to-r hover:from-rojoz-50 hover:to-rojoz-50/50 transition-all duration-200 group border-l-3 border-transparent hover:border-rojoz-500">
-                        <i class="ri-wallet-3-line text-lg leading-none text-gray-600 group-hover:text-rojoz-600 transition-colors"></i>
-                        <span class="text-gray-700 group-hover:text-rojoz-700 font-medium tracking-tight transition-colors">Finanzas</span>
-                        {% if pending_advisors_count %}
-                        <span class="badge badge-sm text-white ml-auto" style="background:#C4574E;">{{ pending_advisors_count }}</span>
-                        {% endif %}
-                    </a>
-                    {% endif %}
-
-                    <!-- Documentos PDF -->
-                    {% if request.user|can_access:"documents:index" %}
-                    <a href="{% url 'documents:index' %}" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gradient-to-r hover:from-rojoz-50 hover:to-rojoz-50/50 transition-all duration-200 group border-l-3 border-transparent hover:border-rojoz-500">
-                        <i class="ri-file-text-line text-lg leading-none text-gray-600 group-hover:text-rojoz-600 transition-colors"></i>
-                        <span class="text-gray-700 group-hover:text-rojoz-700 font-medium tracking-tight transition-colors">Documentos</span>
-                    </a>
-                    {% endif %}
-
-                    <!-- Mis comisiones (visible para asesores) -->
-                    {% if request.user|can_access:"finance:my_commissions" %}
-                    <a href="{% url 'finance:my_commissions' %}" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gradient-to-r hover:from-rojoz-50 hover:to-rojoz-50/50 transition-all duration-200 group border-l-3 border-transparent hover:border-rojoz-500">
-                        <i class="ri-hand-coin-line text-lg leading-none text-gray-600 group-hover:text-rojoz-600 transition-colors"></i>
-                        <span class="text-gray-700 group-hover:text-rojoz-700 font-medium tracking-tight transition-colors">Mis comisiones</span>
-                    </a>
-                    {% endif %}
-
-                    <!-- Divider -->
-                    <div class="divider my-4 opacity-40"></div>
-
-                    <!-- Perfil -->
-                    {% if request.user|can_access:"users:profile" %}
-                    <a href="{% url 'users:profile' %}" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gradient-to-r hover:from-rojoz-50 hover:to-rojoz-50/50 transition-all duration-200 group border-l-3 border-transparent hover:border-rojoz-500">
-                        <i class="ri-user-3-line text-lg leading-none text-gray-600 group-hover:text-rojoz-600 transition-colors"></i>
-                        <span class="text-gray-700 group-hover:text-rojoz-700 font-medium tracking-tight transition-colors">Mi Perfil</span>
-                    </a>
-                    {% endif %}
-
-                    <!-- Integraciones -->
-                    {% if request.user|can_access:"users:integrations" %}
-                    <a href="{% url 'users:integrations' %}" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gradient-to-r hover:from-rojoz-50 hover:to-rojoz-50/50 transition-all duration-200 group border-l-3 border-transparent hover:border-rojoz-500">
-                        <i class="ri-plug-2-line text-lg leading-none text-gray-600 group-hover:text-rojoz-600 transition-colors"></i>
-                        <span class="text-gray-700 group-hover:text-rojoz-700 font-medium tracking-tight transition-colors">Integraciones</span>
-                    </a>
-                    {% endif %}
-
-                    <!-- Usuarios -->
-                    {% if request.user|can_access:"users:user_list" %}
-                    <a href="{% url 'users:user_list' %}" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gradient-to-r hover:from-rojoz-50 hover:to-rojoz-50/50 transition-all duration-200 group border-l-3 border-transparent hover:border-rojoz-500">
-                        <i class="ri-group-line text-lg leading-none text-gray-600 group-hover:text-rojoz-600 transition-colors"></i>
-                        <span class="text-gray-700 group-hover:text-rojoz-700 font-medium tracking-tight transition-colors">Usuarios</span>
-                    </a>
-                    {% endif %}
-
-                    <!-- Roles y permisos -->
-                    {% if request.user|can_access:"users:role_permissions" %}
-                    <a href="{% url 'users:role_permissions' %}" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gradient-to-r hover:from-rojoz-50 hover:to-rojoz-50/50 transition-all duration-200 group border-l-3 border-transparent hover:border-rojoz-500">
-                        <i class="ri-shield-check-line text-lg leading-none text-gray-600 group-hover:text-rojoz-600 transition-colors"></i>
-                        <span class="text-gray-700 group-hover:text-rojoz-700 font-medium tracking-tight transition-colors">Roles y permisos</span>
-                    </a>
-                    {% endif %}
-
-                </nav>
-
-                <!-- Usuario + Logout (desktop) -->
-                <div class="hidden lg:block px-4 pb-5 mt-auto bg-white/95 backdrop-blur">
-                    <div class="rounded-xl border border-rojoz-100 bg-white/80 backdrop-blur p-3 shadow-sm">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-rojoz-600 via-rojoz-500 to-rojoz-400 text-white flex items-center justify-center text-sm font-semibold">
-                                {% if request.user.is_authenticated %}
-                                    {{ request.user.first_name|default:request.user.username|slice:":1"|upper }}
-                                {% else %}
-                                    U
-                                {% endif %}
-                            </div>
-                            <div class="min-w-0">
-                                <div class="text-sm font-semibold text-gray-800 truncate">
-                                    {% if request.user.is_authenticated %}
-                                        {% if request.user.get_full_name %}
-                                            {{ request.user.get_full_name }}
-                                        {% else %}
-                                            {{ request.user.username }}
-                                        {% endif %}
-                                    {% else %}
-                                        Usuario
-                                    {% endif %}
-                                </div>
-                                <div class="text-xs text-gray-500 truncate">
-                                    {% if request.user.is_authenticated %}
-                                        {{ request.user.email|default:request.user.username }}
-                                    {% else %}
-                                        No autenticado
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-
-                        <a href="{% url 'users:logout' %}" class="mt-3 w-full btn btn-sm btn-outline border-rojoz-300 text-rojoz-700 hover:bg-rojoz-50 hover:border-rojoz-400">
-                            Cerrar sesion
+        <!-- Navegación -->
+        <nav class="flex-1 min-h-0 overflow-y-auto px-3 py-4 space-y-4" aria-label="Menú principal">
+            {% for section in nav_sections %}
+            {% if section.label %}
+            <details class="nav-section" data-nav-section="{{ section.key }}"{% if section.active %} open{% endif %}>
+                <summary class="nav-section-title flex items-center justify-between px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-gray-500 cursor-pointer select-none rounded hover:text-gray-700">
+                    {{ section.label }}
+                    <i class="ri-arrow-down-s-line nav-chevron text-base" aria-hidden="true"></i>
+                </summary>
+                <ul class="mt-1 space-y-0.5">
+            {% else %}
+            <div>
+                <ul class="space-y-0.5">
+            {% endif %}
+                    {% for item in section.items %}
+                    <li>
+                        {% if item.primary %}
+                        <a href="{{ item.url }}" class="nav-link nav-link-primary flex items-center gap-2.5 h-9 px-3 rounded-md text-sm font-semibold"{% if item.active %} aria-current="page"{% endif %}>
+                            <i class="{{ item.icon }} text-[18px] leading-none" aria-hidden="true"></i>
+                            <span>{{ item.label }}</span>
                         </a>
-                    </div>
-                </div>
+                        {% else %}
+                        <a href="{{ item.url }}" class="nav-link flex items-center gap-2.5 h-9 px-3 rounded-md text-sm font-medium{% if item.active %} is-active{% endif %}"{% if item.active %} aria-current="page"{% endif %}>
+                            <i class="{{ item.icon }} nav-icon text-[18px] leading-none" aria-hidden="true"></i>
+                            <span class="truncate">{{ item.label }}</span>
+                            {% if item.badge %}
+                            <span class="nav-badge ml-auto" aria-label="{{ item.badge }} pendientes">{{ item.badge }}</span>
+                            {% endif %}
+                        </a>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+            {% if section.label %}
+            </details>
+            {% else %}
+            </div>
+            {% endif %}
+            {% endfor %}
+        </nav>
 
-                <!-- Logout (mobile) -->
-                <div class="lg:hidden px-4 pb-5 mt-auto">
-                    <a href="{% url 'users:logout' %}" class="w-full btn btn-sm btn-outline border-rojoz-300 text-rojoz-700 hover:bg-rojoz-50 hover:border-rojoz-400 gap-1">
-                        <i class="ri-logout-box-r-line"></i> Cerrar sesion
-                    </a>
-                </div>
+        <!-- Usuario -->
+        <div class="shrink-0 border-t border-gray-100 p-3">
+            <div class="flex items-center gap-3 px-2 py-1.5">
+                <span class="w-9 h-9 shrink-0 rounded-full bg-rojoz-100 text-rojoz-700 flex items-center justify-center text-sm font-semibold" aria-hidden="true">
+                    {{ request.user.first_name|default:request.user.username|slice:":1"|upper }}
+                </span>
+                <span class="min-w-0 flex-1">
+                    <span class="block text-sm font-semibold text-gray-900 truncate">{{ request.user.get_full_name|default:request.user.username }}</span>
+                    <span class="block text-xs text-gray-500 truncate">{{ request.user.get_role_display }}</span>
+                </span>
+                <a href="{% url 'users:logout' %}" class="w-8 h-8 shrink-0 rounded-md flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-rojoz-700 transition-colors" aria-label="Cerrar sesión" title="Cerrar sesión">
+                    <i class="ri-logout-box-r-line text-lg" aria-hidden="true"></i>
+                </a>
+            </div>
+            {% if request.user|can_access:"users:profile" %}
+            {% url 'users:profile' as profile_url %}
+            <a href="{{ profile_url }}" class="nav-link mt-1 flex items-center gap-2.5 h-9 px-3 rounded-md text-sm font-medium{% if request.path == profile_url %} is-active{% endif %}"{% if request.path == profile_url %} aria-current="page"{% endif %}>
+                <i class="ri-user-3-line nav-icon text-[18px] leading-none" aria-hidden="true"></i>
+                <span>Mi perfil</span>
+            </a>
+            {% endif %}
+        </div>
 
     </aside>
 
     <!-- ═══ Main content ═══ -->
-    <div class="lg:ml-[18rem] flex flex-col min-w-0 h-[100dvh] lg:h-screen overflow-hidden">
+    <div class="lg:ml-[17rem] flex flex-col min-w-0 h-[100dvh] lg:h-screen overflow-hidden">
         <main class="flex-1 p-4 sm:p-6 overflow-y-auto">
             {% block content %}{% endblock %}
         </main>
@@ -281,20 +178,41 @@
         const sidebar = document.getElementById('sidebar');
         const overlay = document.getElementById('sidebar-overlay');
         const icon = document.getElementById('menu-icon');
+        const toggle = document.getElementById('menu-toggle');
         const isOpen = !sidebar.classList.contains('-translate-x-full');
 
         if (isOpen) {
             sidebar.classList.add('-translate-x-full');
             overlay.classList.add('hidden');
             icon.className = 'ri-menu-3-line text-xl';
+            toggle.setAttribute('aria-expanded', 'false');
+            toggle.setAttribute('aria-label', 'Abrir menú');
             document.body.style.overflow = '';
         } else {
             sidebar.classList.remove('-translate-x-full');
             overlay.classList.remove('hidden');
             icon.className = 'ri-close-line text-xl';
+            toggle.setAttribute('aria-expanded', 'true');
+            toggle.setAttribute('aria-label', 'Cerrar menú');
             document.body.style.overflow = 'hidden';
         }
     }
+
+    // Secciones del menú en acordeón: solo una abierta a la vez.
+    // Todas empiezan cerradas, salvo la que contiene la página actual.
+    (function () {
+        const sections = document.querySelectorAll('#sidebar details[data-nav-section]');
+        sections.forEach(section => {
+            section.addEventListener('toggle', () => {
+                if (!section.open) return;
+                sections.forEach(other => {
+                    if (other !== section && other.open) other.removeAttribute('open');
+                });
+            });
+        });
+        const current = document.querySelector('#sidebar [aria-current="page"]');
+        if (current) { current.scrollIntoView({ block: 'nearest' }); }
+    })();
 
     // Close sidebar on nav link click (mobile)
     document.querySelectorAll('#sidebar .nav-link').forEach(link => {
@@ -343,8 +261,27 @@
         }
 
         body {
-            font-family: "Gudea", system-ui, -apple-system, sans-serif;
+            font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+            font-feature-settings: "cv11", "ss03";
+            -webkit-font-smoothing: antialiased;
             position: relative;
+        }
+
+        /* Playfair solo para la marca */
+        .brand-wordmark {
+            font-family: "Playfair Display", Georgia, serif;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+        }
+
+        /* Cifras alineadas en tablas y montos */
+        .table td, .table th, .tabular-nums, .stat-value {
+            font-variant-numeric: tabular-nums;
+        }
+
+        ::selection {
+            background: rgba(196, 87, 78, 0.18);
+            color: #3d100a;
         }
 
         body > div, body > header {
@@ -359,70 +296,38 @@
 
         /* Botones con identidad Rojoz */
         .btn-primary {
-            background: linear-gradient(135deg, var(--brand-rojoz) 0%, var(--brand-rojoz-light) 100%);
-            border: none;
-            color: white;
-            box-shadow: 0 4px 14px rgba(160, 55, 42, 0.25), 0 2px 4px rgba(160, 55, 42, 0.15);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .btn-primary::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, transparent 0%, rgba(255, 255, 255, 0.2) 100%);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .btn-primary:hover::before {
-            opacity: 1;
+            background: var(--brand-rojoz);
+            border: 1px solid var(--brand-rojoz);
+            color: #ffffff;
+            box-shadow: 0 1px 2px rgba(122, 37, 24, 0.20);
+            transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
         }
 
         .btn-primary:hover {
-            box-shadow: 0 8px 20px rgba(160, 55, 42, 0.35), 0 4px 8px rgba(160, 55, 42, 0.2);
-            transform: translateY(-2px);
+            background: var(--brand-rojoz-dark);
+            border-color: var(--brand-rojoz-dark);
+            box-shadow: 0 2px 6px rgba(122, 37, 24, 0.25);
         }
 
         .btn-primary:active {
-            transform: translateY(0);
-            box-shadow: 0 2px 8px rgba(160, 55, 42, 0.25);
+            box-shadow: none;
         }
 
         .btn-neutral-elegant {
             background: #ffffff;
-            border: 1.5px solid #e5e7eb;
+            border: 1px solid #d1d5db;
             color: var(--brand-ink);
-            transition: all 0.2s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .btn-neutral-elegant::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(160, 55, 42, 0.05), transparent);
-            transition: left 0.5s ease;
-        }
-
-        .btn-neutral-elegant:hover::after {
-            left: 100%;
+            transition: background-color 0.15s ease, border-color 0.15s ease;
         }
 
         .btn-neutral-elegant:hover {
-            border-color: rgba(160, 55, 42, 0.4);
-            background: linear-gradient(135deg, #fef7f5 0%, #ffffff 100%);
-            box-shadow: 0 2px 8px rgba(160, 55, 42, 0.08);
-            transform: translateY(-1px);
+            border-color: #9ca3af;
+            background: #f9fafb;
+        }
+
+        .btn:focus-visible {
+            outline: 2px solid var(--brand-rojoz-light);
+            outline-offset: 2px;
         }
 
         /* Badges con toque corporativo */
@@ -439,28 +344,23 @@
             font-weight: 500;
         }
 
-        /* Tablas mejoradas */
-        .table {
-            position: relative;
-        }
-
+        /* Tablas */
         .table th {
             font-weight: 600;
-            color: var(--brand-rojoz-dark);
-            background: linear-gradient(to bottom, #fef7f5, #ffffff);
-            border-bottom: 2px solid rgba(160, 55, 42, 0.15);
+            color: #4b5563;
+            background: #f9fafb;
+            border-bottom: 1px solid #e5e7eb;
             text-transform: uppercase;
-            font-size: 0.75rem;
-            letter-spacing: 0.5px;
+            font-size: 0.6875rem;
+            letter-spacing: 0.04em;
         }
 
         .table tr {
-            transition: all 0.2s ease;
+            transition: background-color 0.15s ease;
         }
 
-        .table tr:hover {
-            background: linear-gradient(to right, rgba(160, 55, 42, 0.03), rgba(196, 87, 78, 0.02));
-            transform: translateX(2px);
+        .table tbody tr:hover {
+            background: #fafafa;
         }
 
         .card-title {
@@ -478,37 +378,56 @@
             background: white;
         }
 
-        /* Navegación con efectos mejorados */
+        /* Navegación lateral */
+        .nav-section > summary { list-style: none; }
+        .nav-section > summary::-webkit-details-marker { display: none; }
+        .nav-chevron { transition: transform 0.15s ease; }
+        .nav-section:not([open]) .nav-chevron { transform: rotate(-90deg); }
+
         .nav-link {
-            position: relative;
-            overflow: hidden;
+            color: #374151;
+            transition: background-color 0.15s ease, color 0.15s ease;
+        }
+        .nav-link .nav-icon { color: #6b7280; transition: color 0.15s ease; }
+        .nav-link:hover { background: #f3f4f6; color: #111827; }
+        .nav-link:hover .nav-icon { color: #374151; }
+
+        .nav-link.is-active {
+            background: #fef2f2;
+            color: var(--brand-rojoz-dark);
+            font-weight: 600;
+        }
+        .nav-link.is-active .nav-icon { color: var(--brand-rojoz); }
+
+        .nav-link-primary {
+            border: 1px solid rgba(160, 55, 42, 0.35);
+            color: var(--brand-rojoz-dark);
+            background: #ffffff;
+        }
+        .nav-link-primary:hover { background: #fef2f2; border-color: var(--brand-rojoz); }
+        .nav-link-primary[aria-current="page"] { background: #fef2f2; border-color: var(--brand-rojoz); }
+
+        .nav-badge {
+            min-width: 1.25rem;
+            height: 1.25rem;
+            padding: 0 0.375rem;
+            border-radius: 9999px;
+            background: var(--brand-rojoz);
+            color: #ffffff;
+            font-size: 0.6875rem;
+            font-weight: 600;
+            line-height: 1.25rem;
+            text-align: center;
+            font-variant-numeric: tabular-nums;
         }
 
-        .nav-link::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            width: 3px;
-            background: linear-gradient(180deg, var(--brand-rojoz) 0%, var(--brand-rojoz-light) 100%);
-            transform: scaleY(0);
-            transition: transform 0.3s ease;
-        }
-
-        .nav-link:hover::before {
-            transform: scaleY(1);
-        }
-
-        .nav-link.active {
-            background: linear-gradient(to right, rgba(160, 55, 42, 0.12), rgba(196, 87, 78, 0.06));
-            border-left: 3px solid var(--brand-rojoz);
-            box-shadow: inset 0 1px 2px rgba(160, 55, 42, 0.08);
+        .nav-link:focus-visible, .nav-section > summary:focus-visible {
+            outline: 2px solid var(--brand-rojoz-light);
+            outline-offset: 2px;
         }
 
         /* Flujo de ventas: steps con identidad Rojoz */
         .flow-steps {
-            font-family: "Gudea", system-ui, -apple-system, sans-serif;
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
         }
@@ -540,16 +459,6 @@
 
         .flow-steps .step.step-primary::after {
             background: #c4574e;
-        }
-
-        .nav-link.active svg {
-            color: var(--brand-rojoz);
-            filter: drop-shadow(0 1px 2px rgba(160, 55, 42, 0.2));
-        }
-
-        .nav-link.active span {
-            color: var(--brand-rojoz-dark);
-            font-weight: 600;
         }
 
         /* Inputs con foco corporativo */
@@ -595,10 +504,6 @@
             }
         }
 
-        .card {
-            animation: fadeInUp 0.6s ease-out;
-        }
-
         /* Mejora visual para inputs */
         input, textarea, select {
             transition: all 0.2s ease;
@@ -621,34 +526,21 @@
         }
 
         ::-webkit-scrollbar-thumb {
-            background: linear-gradient(180deg, var(--brand-rojoz-light) 0%, var(--brand-rojoz) 100%);
+            background: #d1d5db;
             border-radius: 4px;
         }
 
         ::-webkit-scrollbar-thumb:hover {
-            background: var(--brand-rojoz);
+            background: #9ca3af;
         }
 
-        /* Badge mejorado con efecto de brillo */
-        .badge {
-            position: relative;
-            overflow: hidden;
-        }
-
-        .badge::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, transparent 70%);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .badge:hover::before {
-            opacity: 1;
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
         }
 
         /* Mobile: account for top bar height */

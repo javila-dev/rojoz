@@ -16,7 +16,6 @@ def _is_users_read_action(key: str) -> bool:
     return key in {
         "users:dashboard",
         "users:profile",
-        "users:integrations",
     }
 
 
@@ -34,6 +33,11 @@ class Command(BaseCommand):
         if options["reset"]:
             RolePermission.objects.all().delete()
             self.stdout.write(self.style.WARNING("Permisos existentes eliminados."))
+
+        from users.models import UserRole
+
+        for code, _label in RoleCode.choices:
+            UserRole.objects.get_or_create(code=code)
 
         candidates = list_permission_candidates()
         by_key = {c.key: c for c in candidates}
@@ -74,6 +78,7 @@ class Command(BaseCommand):
                 "sales:contract_party_list",
                 "sales:contract_list_approved",
                 "sales:contract_status_select",
+                "sales:contract_list",
                 "sales:contract_project_select",
             }:
                 _grant(RoleCode.TESORERIA, key, label, path)
@@ -82,7 +87,9 @@ class Command(BaseCommand):
             if key.startswith("inventory:") or key in {
                 "users:dashboard",
                 "users:profile",
+                "users:configuration",
                 "sales:contract_party_list",
+                "sales:contract_list",
                 "sales:contract_project_select",
                 "sales:contract_status_select",
                 "sales:contract_list_pending",
@@ -102,6 +109,7 @@ class Command(BaseCommand):
                 "sales:sale_flow_payment",
                 "sales:sale_flow_payment_preview",
                 "sales:sale_flow_payment_confirm",
+                "sales:contract_list",
                 "sales:contract_project_select",
                 "sales:contract_status_select",
                 "sales:contract_list_pending",
@@ -116,8 +124,29 @@ class Command(BaseCommand):
                 "finance:receipt_request_list",
                 "finance:receipt_request_create",
                 "finance:receipt_request_detail",
+                "finance:payment_list",
+                "finance:my_commissions",
             } or _is_users_read_action(key):
                 _grant(RoleCode.ASESOR, key, label, path)
+
+            # ALMACENISTA: operación de bodega (sin ajustes ni config sensible)
+            if key.startswith("warehouse:") and key not in {
+                "warehouse:face_settings",
+                "warehouse:warehouse_create",
+                "warehouse:warehouse_edit",
+                "warehouse:keeper_create",
+                "warehouse:keeper_edit",
+                "warehouse:cost_center_create",
+                "warehouse:cost_center_edit",
+                "warehouse:adjustment_list",
+                "warehouse:adjustment_create",
+                "warehouse:adjustment_detail",
+                "warehouse:adjustment_add_line",
+                "warehouse:adjustment_post",
+            }:
+                _grant(RoleCode.ALMACENISTA, key, label, path)
+            if key in {"users:dashboard", "users:profile"}:
+                _grant(RoleCode.ALMACENISTA, key, label, path)
 
         total = RolePermission.objects.filter(allowed=True).count()
         self.stdout.write(self.style.SUCCESS(f"Permisos cargados: {total}"))
