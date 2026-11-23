@@ -33,6 +33,10 @@ app/**/migrations/__pycache__/
 .env.*
 !.env.example
 
+# Backups de base de datos (contienen datos personales)
+*.dump
+*.sql
+
 # ==============================
 # Dev
 # ==============================
@@ -62,3 +66,7 @@ htmlcov/
 *.bak
 *.tmp
 *.orig
+# Herramientas locales de editor / agentes
+.codegraph/
+.cursor/
+.impeccable/

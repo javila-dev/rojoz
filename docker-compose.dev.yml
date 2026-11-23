@@ -1,6 +1,8 @@
 services:
   web:
-    build: .Dockerfile.dev
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
     command: python manage.py runserver 0.0.0.0:8008
     volumes:
       - ./app:/app

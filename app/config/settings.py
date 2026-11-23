@@ -15,8 +15,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Lee la secret key del entorno, o usa una insegura solo si no existe (para dev)
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-dev-key-change-in-prod')
 
-# DEBUG debe ser True solo si la variable es 'True'
-DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+# DEBUG es False por defecto; solo se activa si la variable es explícitamente 'True'
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 # Hosts permitidos separados por coma
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,0.0.0.0').split(',')

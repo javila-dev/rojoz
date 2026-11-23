@@ -12,7 +12,8 @@ EXEMPT_URL_NAMES = {
     "users:logout",
     "users:advisor_register",
 }
-EXEMPT_NAMESPACES = {"admin", "portal", "finance_api"}
+# Las APIs de tesorería se autentican con token (_check_api_token), no con sesión.
+EXEMPT_NAMESPACES = {"admin", "portal", "finance_api", "finance_api_legacy"}
 
 
 @dataclass(frozen=True)

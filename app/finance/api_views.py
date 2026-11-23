@@ -1,3 +1,4 @@
+import hmac
 import json
 import uuid
 from datetime import date
@@ -38,9 +39,10 @@ def _extract_api_token(request):
 def _check_api_token(request):
     expected = (getattr(settings, "TESORERIA_API_TOKEN", "") or "").strip()
     if not expected:
-        return None
+        # Fail-closed: sin token configurado la API queda deshabilitada.
+        return _json_error("API de tesorería no configurada", status=503, code="api_not_configured")
     token = _extract_api_token(request)
-    if token != expected:
+    if not token or not hmac.compare_digest(token.encode(), expected.encode()):
         return _json_error("Token inválido", status=401, code="invalid_token")
     return None
 
