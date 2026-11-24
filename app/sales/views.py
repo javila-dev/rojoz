@@ -909,6 +909,86 @@ def sale_flow_third_party_search(request):
     return JsonResponse({"terceros": normalized_items, "pagination": pagination or {}})
 
 
+ADJUDICACIONES_SEARCH_PAGE_SIZE = 100
+ADJUDICACIONES_SEARCH_MAX_PAGES = 50
+
+
+def _positive_int(value, default):
+    try:
+        number = int(value)
+    except (TypeError, ValueError):
+        return default
+    return number if number > 0 else default
+
+
+def _request_adjudicaciones(base_url, api_key, params):
+    url = f"{base_url}?{urlencode(params)}"
+    req = Request(url, headers={"Authorization": f"Token {api_key}"}, method="GET")
+    with urlopen(req, timeout=30) as response:
+        payload = response.read().decode("utf-8")
+    data = json.loads(payload)
+    return data if isinstance(data, dict) else {}
+
+
+def _fetch_all_adjudicaciones(base_url, api_key, params):
+    """Recorre todas las páginas de la API para que la búsqueda cubra el total de registros."""
+    fetch_params = {
+        key: value
+        for key, value in params.items()
+        if key not in ("page", "page_size", "since_id", "offset")
+    }
+    fetch_params["page_size"] = ADJUDICACIONES_SEARCH_PAGE_SIZE
+    results = []
+    seen_ids = set()
+    applied_filters = None
+    page = 1
+    while page <= ADJUDICACIONES_SEARCH_MAX_PAGES:
+        fetch_params["page"] = page
+        data = _request_adjudicaciones(base_url, api_key, fetch_params)
+        if applied_filters is None:
+            applied_filters = data.get("filters")
+        new_items = 0
+        for item in data.get("adjudicaciones") or []:
+            if not isinstance(item, dict):
+                continue
+            item_id = item.get("id")
+            if item_id is not None:
+                if item_id in seen_ids:
+                    continue
+                seen_ids.add(item_id)
+            results.append(item)
+            new_items += 1
+        remote_pagination = data.get("pagination")
+        if not isinstance(remote_pagination, dict):
+            remote_pagination = {}
+        total_pages = _positive_int(remote_pagination.get("total_pages"), 0)
+        if not new_items or page >= total_pages:
+            break
+        page += 1
+    return results, applied_filters
+
+
+def _adjudicacion_matches_search(adjudicacion, needle):
+    inmueble = adjudicacion.get("inmueble")
+    if not isinstance(inmueble, dict):
+        inmueble = {}
+    titular_names = " ".join(
+        str(t.get("nombre_completo") or t.get("nombre") or "").upper()
+        for t in (adjudicacion.get("titulares") or [])
+        if isinstance(t, dict)
+    )
+    candidates = [
+        str(adjudicacion.get("id") or "").upper(),
+        str(adjudicacion.get("inmueble_id") or "").upper(),
+        str(inmueble.get("id_inmueble") or inmueble.get("id") or "").upper(),
+        str(inmueble.get("lote") or "").upper(),
+        str(inmueble.get("manzana") or "").upper(),
+        str(inmueble.get("matricula") or "").upper(),
+        titular_names,
+    ]
+    return any(needle in value for value in candidates if value)
+
+
 def sale_flow_lots(request, project_id):
     project = get_object_or_404(Project, pk=project_id)
     adjudicaciones = []
@@ -947,40 +1027,20 @@ def sale_flow_lots(request, project_id):
         if offset:
             params["offset"] = offset
 
-        query = urlencode(params)
-        url = f"{base_url}?{query}"
-        headers = {"Authorization": f"Token {settings.projects_api_key}"}
-        req = Request(url, headers=headers, method="GET")
+        api_key = settings.projects_api_key
 
         try:
-            with urlopen(req, timeout=30) as response:
-                payload = response.read().decode("utf-8")
-            data = json.loads(payload)
-            adjudicaciones = data.get("adjudicaciones", [])
-            pagination = data.get("pagination")
-            applied_filters = data.get("filters")
-
             if search_query:
+                # La API solo devuelve una página: con búsqueda activa se trae el
+                # conjunto completo, se filtra aquí y luego se pagina localmente.
+                adjudicaciones, applied_filters = _fetch_all_adjudicaciones(base_url, api_key, params)
                 needle = search_query.upper()
-
-                def matches_local_search(adjudicacion):
-                    inmueble = adjudicacion.get("inmueble") or {}
-                    titulare_names = " ".join(
-                        str(t.get("nombre_completo") or t.get("nombre") or "").upper()
-                        for t in (adjudicacion.get("titulares") or [])
-                        if isinstance(t, dict)
-                    )
-                    candidates = [
-                        str(adjudicacion.get("id") or "").upper(),
-                        str(inmueble.get("id_inmueble") or inmueble.get("id") or "").upper(),
-                        str(inmueble.get("lote") or "").upper(),
-                        str(inmueble.get("manzana") or "").upper(),
-                        str(inmueble.get("matricula") or "").upper(),
-                        titulare_names,
-                    ]
-                    return any(needle in value for value in candidates if value)
-
-                adjudicaciones = [a for a in adjudicaciones if matches_local_search(a)]
+                adjudicaciones = [a for a in adjudicaciones if _adjudicacion_matches_search(a, needle)]
+            else:
+                data = _request_adjudicaciones(base_url, api_key, params)
+                adjudicaciones = data.get("adjudicaciones") or []
+                pagination = data.get("pagination")
+                applied_filters = data.get("filters")
 
             def normalize(value):
                 if value is None:
@@ -1043,19 +1103,37 @@ def sale_flow_lots(request, project_id):
                 return urlencode(merged)
 
             pagination_links = {}
-            if pagination:
-                current_page = pagination.get("page") or int(page)
-                total_pages = pagination.get("total_pages")
-                if current_page and total_pages and current_page > 1:
+            if search_query:
+                local_page_size = min(_positive_int(page_size, 15), ADJUDICACIONES_SEARCH_PAGE_SIZE)
+                total_records = len(adjudicaciones)
+                total_pages = max(1, -(-total_records // local_page_size))
+                current_page = min(_positive_int(page, 1), total_pages)
+                start = (current_page - 1) * local_page_size
+                adjudicaciones = adjudicaciones[start:start + local_page_size]
+                pagination = {
+                    "page": current_page,
+                    "page_size": local_page_size,
+                    "total_pages": total_pages,
+                    "total_records": total_records,
+                }
+                if current_page > 1:
                     pagination_links["prev"] = f"?{build_query(page=current_page - 1, offset=None, since_id=None)}"
-                if current_page and total_pages and current_page < total_pages:
+                if current_page < total_pages:
                     pagination_links["next"] = f"?{build_query(page=current_page + 1, offset=None, since_id=None)}"
+            else:
+                if pagination:
+                    current_page = pagination.get("page") or int(page)
+                    total_pages = pagination.get("total_pages")
+                    if current_page and total_pages and current_page > 1:
+                        pagination_links["prev"] = f"?{build_query(page=current_page - 1, offset=None, since_id=None)}"
+                    if current_page and total_pages and current_page < total_pages:
+                        pagination_links["next"] = f"?{build_query(page=current_page + 1, offset=None, since_id=None)}"
 
-            last_id = None
-            if adjudicaciones:
-                last_id = adjudicaciones[-1].get("id")
-            if last_id:
-                load_more_link = f"?{build_query(page=None, offset=None, since_id=last_id)}"
+                last_id = None
+                if adjudicaciones:
+                    last_id = adjudicaciones[-1].get("id")
+                if last_id:
+                    load_more_link = f"?{build_query(page=None, offset=None, since_id=last_id)}"
         except (HTTPError, URLError, ValueError) as exc:
             integration_error = f"No se pudo consultar adjudicaciones: {exc}"
     else:

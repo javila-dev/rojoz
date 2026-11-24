@@ -64,6 +64,93 @@ class SalesFlowTests(BaseAppTestCase):
         )
         self.assertEqual(response.status_code, 405)
 
+    def _mock_adjudicaciones_api(self, mock_urlopen, total=40):
+        """Simula la API externa paginada que ignora el parámetro search."""
+        from urllib.parse import parse_qs, urlparse
+
+        items = [
+            {
+                "id": f"ADJ-{n:03d}",
+                "inmueble_id": f"INM-{n:03d}",
+                "inmueble": {"id_inmueble": f"INM-{n:03d}"},
+                "titulares": [{"nombre": f"TITULAR {n:03d}"}],
+                "estado": "ACTIVA",
+                "fecha": "2026-01-01",
+            }
+            for n in range(1, total + 1)
+        ]
+
+        def mocked_call(req, timeout=30):
+            query = parse_qs(urlparse(req.full_url).query)
+            page = int(query.get("page", ["1"])[0])
+            page_size = int(query.get("page_size", ["15"])[0])
+            total_pages = -(-len(items) // page_size)
+            start = (page - 1) * page_size
+            response = MagicMock()
+            response.read.return_value = json.dumps(
+                {
+                    "adjudicaciones": items[start:start + page_size],
+                    "pagination": {
+                        "page": page,
+                        "page_size": page_size,
+                        "total_pages": total_pages,
+                        "total_records": len(items),
+                    },
+                }
+            ).encode("utf-8")
+            cm = MagicMock()
+            cm.__enter__.return_value = response
+            cm.__exit__.return_value = False
+            return cm
+
+        mock_urlopen.side_effect = mocked_call
+
+    @patch("sales.views.urlopen")
+    def test_sale_flow_lots_search_covers_all_pages(self, mock_urlopen):
+        self.grant_permissions(RoleCode.DIRECTOR, ["sales:sale_flow_lots"])
+        self._mock_adjudicaciones_api(mock_urlopen, total=40)
+        url = reverse("sales:sale_flow_lots", kwargs={"project_id": self.project.id})
+
+        # Sin búsqueda solo se ve la primera página de la API.
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        ids = [a["id"] for a in response.context["adjudicaciones"]]
+        self.assertNotIn("ADJ-037", ids)
+
+        # Un registro de la última página aparece al buscarlo.
+        response = self.client.get(url, {"search": "adj-037"})
+        self.assertEqual(response.status_code, 200)
+        ids = [a["id"] for a in response.context["adjudicaciones"]]
+        self.assertEqual(ids, ["ADJ-037"])
+        self.assertEqual(response.context["pagination"]["total_records"], 1)
+
+        # Limpiar la búsqueda vuelve al listado completo paginado por la API.
+        response = self.client.get(url, {"search": ""})
+        self.assertEqual(response.context["pagination"]["total_records"], 40)
+        self.assertEqual(len(response.context["adjudicaciones"]), 15)
+
+    @patch("sales.views.urlopen")
+    def test_sale_flow_lots_search_paginates_filtered_results(self, mock_urlopen):
+        self.grant_permissions(RoleCode.DIRECTOR, ["sales:sale_flow_lots"])
+        self._mock_adjudicaciones_api(mock_urlopen, total=40)
+        url = reverse("sales:sale_flow_lots", kwargs={"project_id": self.project.id})
+
+        # "TITULAR 0" coincide con los 40 registros: 3 páginas de 15.
+        response = self.client.get(url, {"search": "titular 0", "page_size": "15"})
+        pagination = response.context["pagination"]
+        self.assertEqual(pagination["total_records"], 40)
+        self.assertEqual(pagination["total_pages"], 3)
+        self.assertEqual(len(response.context["adjudicaciones"]), 15)
+        next_link = response.context["pagination_links"]["next"]
+        self.assertIn("search=titular+0", next_link)
+        self.assertIn("page=2", next_link)
+
+        response = self.client.get(url, {"search": "titular 0", "page_size": "15", "page": "3"})
+        ids = [a["id"] for a in response.context["adjudicaciones"]]
+        self.assertEqual(ids, [f"ADJ-{n:03d}" for n in range(31, 41)])
+        self.assertIn("prev", response.context["pagination_links"])
+        self.assertNotIn("next", response.context["pagination_links"])
+
     def test_sale_flow_payment_preview_requires_house_type_in_session(self):
         response = self.client.post(
             reverse(

@@ -53,6 +53,9 @@
                             placeholder="Buscar adjudicación, inmueble o titular"
                         />
                         <button class="btn btn-neutral-elegant join-item" type="submit">Buscar</button>
+                        {% if search_query %}
+                        <a class="btn btn-ghost join-item" href="?page_size={{ request.GET.page_size|default:'15'|urlencode }}&amp;order={{ request.GET.order|default:'-fecha'|urlencode }}">Limpiar</a>
+                        {% endif %}
                     </form>
                 </div>
 
@@ -97,7 +100,11 @@
                             {% else %}
                             <tr>
                                 <td colspan="6" class="text-center text-gray-500 py-8">
+                                    {% if search_query %}
+                                    No se encontraron adjudicaciones para "{{ search_query }}".
+                                    {% else %}
                                     No hay adjudicaciones cargadas aún. Conecta el endpoint externo para verlas aquí.
+                                    {% endif %}
                                 </td>
                             </tr>
                             {% endif %}
